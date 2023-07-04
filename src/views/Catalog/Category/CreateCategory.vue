@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import CategoryForm from '/@/components/Page/Catalog/Category/CategoryForm.vue'
-import type { CategoryDTO } from '../../types/category/Category'
-import type { LanguageDTO } from '../../types/language/Language'
+import type { CategoryDTO } from '/@/types/category/Category'
+import type { LanguageDTO } from '/@/types/language/Language'
 import { useLanguageStore } from '/@/stores/language'
 import { computed } from 'vue'
 

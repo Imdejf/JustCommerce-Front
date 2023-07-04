@@ -39,7 +39,7 @@
 <script lang="ts" setup>
 import BuilderNavbar from '../Builder/Navbar.vue'
 import { ref } from 'vue'
-import { menuData } from '../../static/data/MenuData.ts'
+import { menuData } from '/@/static/data/MenuData.ts'
 
 const showSubMenu = ref<number | null>(null)
 

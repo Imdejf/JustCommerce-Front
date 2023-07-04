@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineProps, defineComponent, ref } from 'vue'
 import { DropZone } from 'dropzone-vue'
-import type { FileDTO } from '../../../types/file/File.ts'
+import type { FileDTO } from '/@/types/file/File'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
 

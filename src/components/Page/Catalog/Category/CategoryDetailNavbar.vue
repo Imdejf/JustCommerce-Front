@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { useRouter } from 'vue-router'
-import type { CategoryDTO } from '../../../../types/category/Category.ts'
+import type { CategoryDTO } from '/@/types/category/Category'
 import Button from '../../../Form/Button/Button.vue'
 import { ref } from 'vue'
-import { Api } from '../../../../services/api'
+import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()

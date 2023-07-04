@@ -2,9 +2,9 @@
 import { Api } from '/@/services/api'
 import type { CategoryDTO } from '/@/types/category/Category.ts'
 import { onMounted, ref } from 'vue'
-import CategoryForm from '../../components/Page/Catalog/Category/CategoryForm.vue'
+import CategoryForm from '/@/components/Page/Catalog/Category/CategoryForm.vue'
 import { useRoute } from 'vue-router'
-import { useLanguageStore } from '../../stores/language'
+import { useLanguageStore } from '/@/stores/language'
 
 const language = useLanguageStore()
 const route = useRoute()

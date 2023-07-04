@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed, ref, reactive, watch, watchEffect, onMounted } from 'vue'
 import DropZone from '../../../Form/File/DropZone.vue'
-import { CategoryDTO } from '../../../types/category/Category'
-import { FileDTO } from '../../../../types/file/File.ts'
-import { Api } from '../../../../services/api'
+import type { CategoryDTO } from '/@/types/category/Category'
+import { FileDTO } from '/@/types/file/File'
+import { Api } from '/@/services/api'
 import DropDown from '../../../Form/DropDown/DropDown.vue'
 import { useToast } from 'vue-toastification'
 import { useLanguageStore } from '/@/stores/language'
@@ -11,8 +11,8 @@ import { useStoreStore } from '/@/stores/store'
 import { useRoute, useRouter } from 'vue-router'
 const props = defineProps({
   category: {
-    type: Object as CategoryDTO,
-    default: null
+    type: Object as ObjectConstructor,
+    default: () => ({} as CategoryDTO)
   },
   updated: {
     type: Boolean,
