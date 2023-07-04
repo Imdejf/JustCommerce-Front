@@ -57,7 +57,6 @@ const category = computed(() => {
 
 <template>
   <div v-if="language.languages.length > 0">
-    {{ category }}
     <CategoryForm :category="category" />
   </div>
 </template>

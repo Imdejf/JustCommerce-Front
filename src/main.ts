@@ -16,6 +16,7 @@ import HtmlEditor from './components/Form/Editor/HtmlEditor.vue'
 import ConfirmModal from './components/Form/Modal/ConfirmModal.vue'
 import InfoBox from './components/Form/Box/InfoBox.vue'
 import DropDown from './components/Form/DropDown/DropDown.vue'
+import DataTable from './components/Form/DataTable/DataTable.vue'
 
 import Toast, { PluginOptions } from "vue-toastification";
 import "vue-toastification/dist/index.css";
@@ -66,6 +67,7 @@ app.component('HtmlEditor', HtmlEditor)
 app.component('ConfirmModal', ConfirmModal)
 app.component('InfoBox', InfoBox)
 app.component('DropDown', DropDown)
+app.component('DataTable', DataTable)
 
 .component('font-awesome-icon', FontAwesomeIcon)
 
