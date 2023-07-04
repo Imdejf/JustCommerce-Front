@@ -74,7 +74,7 @@ const handleLogout = () => {
         </transition>
       </Menu>
     </div>
-    <div>dasads</div>
+    <div></div>
     <div class="relative">
       <img
         class="w-10 h-10 p-1 rounded-full ring-1 ring-orange-500 bg-white cursor-pointer"
