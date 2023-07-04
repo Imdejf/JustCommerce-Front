@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useStoreStore } from '/@/stores/store'
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
 import Cookies from 'universal-cookie'
+import router from '/@/router'
 
 const cookies = new Cookies()
 const useStore = useStoreStore()
@@ -22,6 +23,11 @@ const changeMenu = () => {
 
 const setStore = (storeId: string) => {
   useStore.setCurrentStore(storeId)
+  window.location.reload()
+}
+
+const handleLogout = () => {
+  cookies.remove('Authorization')
   window.location.reload()
 }
 </script>
@@ -78,7 +84,7 @@ const setStore = (storeId: string) => {
       />
       <div
         :class="`${
-          openMenu ? 'absolute inset-1/2 -translate-x-[130px] translate-y-[20px]' : 'hidden'
+          openMenu ? 'absolute z-50 inset-1/2 -translate-x-[130px] translate-y-[20px]' : 'hidden'
         }`"
         style="min-width: 4rem"
       >
@@ -91,7 +97,7 @@ const setStore = (storeId: string) => {
           </div>
           <div>
             <div>
-              <button class="flex items-center p-3 gap-3">
+              <button @click="handleLogout" class="flex items-center p-3 gap-3">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="w-5 h-5 text-gray-500"
