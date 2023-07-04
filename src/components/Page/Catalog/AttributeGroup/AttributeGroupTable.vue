@@ -2,6 +2,7 @@
 import { Api } from '/@/services/api'
 import { onMounted, ref } from 'vue'
 import Cookies from 'universal-cookie'
+import DataTable from '/@/components/Form/DataTable/DataTable.vue'
 import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()

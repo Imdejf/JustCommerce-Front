@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRouter } from 'vue-router'
-import type { AttributeGroupDTO } from '/@/types/attributeGroup/AttributeGroup'
+import type { AttributeGroupDTO } from '/@/types/attributeGroup/AttributeGroup.ts'
 import Button from '../../../Form/Button/Button.vue'
 import { ref } from 'vue'
 import { Api } from '/@/services/api'

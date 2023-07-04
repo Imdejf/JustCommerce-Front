@@ -45,6 +45,39 @@ const router = createRouter({
       },
       component: () => import('../views/Catalog/Category/EditCategory.vue')
     },
+    //ATTRIBUTE-GROUP
+    {
+      path: '/catalog/attribute-group',
+      name: 'AttributeGroup',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/AttributeGroup/index.vue')
+    },
+    {
+      path: '/catalog/attribute-group/detail/:id',
+      name: 'DetailAttributeGroup',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/AttributeGroup/DetailAttributeGroup.vue')
+    },
+    {
+      path: '/catalog/attribute-group/add',
+      name: 'CreateAttributeGroup',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/AttributeGroup/CreateAttributeGroup.vue')
+    },
+    {
+      path: '/catalog/attribute-group/edit/:id',
+      name: 'EditAttributeGroup',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/AttributeGroup/EditAttributeGroup.vue')
+    },
   ]
 })
 
