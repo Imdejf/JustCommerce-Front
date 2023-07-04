@@ -12,6 +12,39 @@ const router = createRouter({
       },
       component: () => import('../views/Dashboard.vue')
     },
+     //CATEGORY
+     {
+      path: '/catalog/category',
+      name: 'category',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Category/index.vue')   
+    },
+    {
+      path: '/catalog/category/detail/:id',
+      name: 'CategoryDetail',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Category/Detail.vue')
+    },
+    {
+      path: '/catalog/category/add',
+      name: 'CreateCategory',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Category/CreateCategory.vue')
+    },
+    {
+      path: '/catalog/category/edit/:id',
+      name: 'EditCategory',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Category/EditCategory.vue')
+    },
   ]
 })
 

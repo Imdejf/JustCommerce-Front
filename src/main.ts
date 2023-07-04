@@ -1,15 +1,24 @@
 import './assets/main.css'
 import './style.css'
-
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-
 import App from './App.vue'
 import router from './router'
 import ElementPlus from "element-plus";
 import "element-plus/dist/index.css";
-import config from '../formkit.config.ts'
 import { plugin, defaultConfig } from '@formkit/vue'
+import config from '../formkit.config.ts'
+import ContentContainer from './layouts/ContentContainer.vue'
+import DropZone from 'dropzone-vue';
+import 'dropzone-vue/dist/dropzone-vue.common.css';
+import FormSection from './components/Form/Section/FormSection.vue'
+import HtmlEditor from './components/Form/Editor/HtmlEditor.vue'
+import ConfirmModal from './components/Form/Modal/ConfirmModal.vue'
+import InfoBox from './components/Form/Box/InfoBox.vue'
+import DropDown from './components/Form/DropDown/DropDown.vue'
+
+import Toast, { PluginOptions } from "vue-toastification";
+import "vue-toastification/dist/index.css";
 
 /* import the fontawesome core */
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -43,5 +52,22 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus);
 app.use(plugin, defaultConfig(config))
+app.use(DropZone)
+
+const optionsToast: PluginOptions = {
+    // You can set your default options here
+};
+
+app.use(Toast, optionsToast);
+
+app.component('ContentContainer', ContentContainer)
+app.component('FormSection', FormSection)
+app.component('HtmlEditor', HtmlEditor)
+app.component('ConfirmModal', ConfirmModal)
+app.component('InfoBox', InfoBox)
+app.component('DropDown', DropDown)
+
+.component('font-awesome-icon', FontAwesomeIcon)
+
 
 app.mount('#app')
