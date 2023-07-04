@@ -78,6 +78,73 @@ const router = createRouter({
       },
       component: () => import('../views/Catalog/AttributeGroup/EditAttributeGroup.vue')
     },
+    //PRODUCT-OPTION
+    {
+      path: '/catalog/product-option',
+      name: 'ProductOption',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductOption/index.vue')
+    },
+    {
+      path: '/catalog/product-option/detail/:id',
+      name: 'DetailProductOption',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductOption/DetailProductOption.vue')
+    },
+    {
+      path: '/catalog/product-option/add',
+      name: 'CreateProductOption',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductOption/CreateProductOption.vue')
+    },
+    {
+      path: '/catalog/product-option/edit/:id',
+      name: 'EditProductOption',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductOption/EditProductOption.vue')
+    },
+
+    //PRODUCT-ATTRIBUTE
+    {
+      path: '/catalog/product-attribute',
+      name: 'ProductAttribute',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductAttribute/index.vue')
+    },
+    {
+      path: '/catalog/product-attribute/detail/:id',
+      name: 'DetailProductAttribute',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductAttribute/DetailProductAttribute.vue')
+    },
+    {
+      path: '/catalog/product-attribute/add',
+      name: 'CreateProductAttribute',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductAttribute/CreateProductAttribute.vue')
+    },
+    {
+      path: '/catalog/product-attribute/edit/:id',
+      name: 'EditProductAttribute',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/ProductAttribute/EditProductAttribute.vue')
+    },
   ]
 })
 
