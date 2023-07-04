@@ -1,9 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PageLayout from '../layouts/Page.vue'
+import Cookies from 'universal-cookie'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/login',
+      name: 'Login',
+
+      component: () => import('../views/Login.vue')
+    },
     {
       path: '/',
       name: 'home',
@@ -148,4 +155,12 @@ const router = createRouter({
   ]
 })
 
+router.beforeEach((to, from, next) => {
+  const cookies = new Cookies()
+  if (cookies.get('Authorization') || to.path === '/login') {
+    next()
+  } else {
+    next('/login')
+  }
+})
 export default router

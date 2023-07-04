@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 html {
   height: 100%;
 }
@@ -45,5 +44,4 @@ input:focus {
 .save-button .formkit-wrapper .formkit-input {
   margin-bottom: 20px !important;
 }
-
 

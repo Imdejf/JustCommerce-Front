@@ -17,6 +17,7 @@ export const CreateBaseApiService = (resource) => {
         const url = `${APISettings.baseURL}${resource}?${params.toString()}`
 
         fetch(url, {
+          credentials: 'include',
           method: 'GET'
         })
           .then(async function (response) {
@@ -34,9 +35,11 @@ export const CreateBaseApiService = (resource) => {
     },
     // Get a list of resources
     list: (config) =>
-      fetch(`${APISettings.baseURL}${resource}`, { method: 'GET', ...config }).then(function (
-        response
-      ) {
+      fetch(`${APISettings.baseURL}${resource}`, {
+        method: 'GET',
+        credentials: 'include',
+        ...config
+      }).then(function (response) {
         if (response.status != 200) {
           throw response.status
         } else {
@@ -52,6 +55,7 @@ export const CreateBaseApiService = (resource) => {
 
         fetch(url, {
           method: 'GET',
+          credentials: 'include',
           ...config
         })
           .then(async function (response) {
@@ -69,9 +73,11 @@ export const CreateBaseApiService = (resource) => {
     },
     // Get a single resource by its id
     get: (id, config) =>
-      fetch(`${APISettings.baseURL}${resource}/${id}`, { method: 'GET', ...config }).then(function (
-        response
-      ) {
+      fetch(`${APISettings.baseURL}${resource}/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+        ...config
+      }).then(function (response) {
         if (response.status != 200) {
           throw response.status
         } else {
@@ -83,6 +89,7 @@ export const CreateBaseApiService = (resource) => {
       fetch(`${APISettings.baseURL}${resource}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         ...payload
       }).then(function (response) {
         if (response.status != 200) {
@@ -95,6 +102,7 @@ export const CreateBaseApiService = (resource) => {
     update: (payload) =>
       fetch(`${APISettings.baseURL}${resource}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         ...payload
       }).then(function (response) {
@@ -106,19 +114,22 @@ export const CreateBaseApiService = (resource) => {
       }),
     // Merge new payload into a resource
     patch: (id, payload) =>
-      fetch(`${APISettings.baseURL}${resource}/${id}`, { method: 'PATCH', ...payload }).then(
-        function (response) {
-          if (response.status != 200) {
-            throw response.status
-          } else {
-            return response.json()
-          }
+      fetch(`${APISettings.baseURL}${resource}/${id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        ...payload
+      }).then(function (response) {
+        if (response.status != 200) {
+          throw response.status
+        } else {
+          return response.json()
         }
-      ),
+      }),
     // Remove a resource by its id
     remove: (id) =>
       fetch(`${APISettings.baseURL}${resource}/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       }).then(function (response) {
         if (response.status != 200) {
