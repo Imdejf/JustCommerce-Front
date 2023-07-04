@@ -22,7 +22,6 @@ onMounted(async () => {
 <template>
   <header></header>
   <main>
-    <a>Test</a>
     <component :is="$route.meta.layout || 'div'">
       <router-view></router-view>
     </component>
