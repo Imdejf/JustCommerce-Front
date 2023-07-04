@@ -157,6 +157,10 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const cookies = new Cookies()
+  if(cookies.get('dsStore') === 'undefined') {
+    cookies.remove('dsStore')
+    window.location.reload()
+  }
   if (cookies.get('Authorization') || to.path === '/login') {
     next()
   } else {
