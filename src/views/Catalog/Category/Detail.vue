@@ -3,8 +3,8 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Api } from '/@/services/api'
 import type { CategoryDTO } from '/@/types/category/Category.ts'
-import ContentContainer from '../../layouts/ContentContainer.vue'
-import CategoryDetailNavbar from '../../components/Page/Catalog/Category/CategoryDetailNavbar.vue'
+import ContentContainer from '/@/layouts/ContentContainer.vue'
+import CategoryDetailNavbar from '/@/components/Page/Catalog/Category/CategoryDetailNavbar.vue'
 const route = useRoute()
 const category = ref<CategoryDTO | null>(null)
 
