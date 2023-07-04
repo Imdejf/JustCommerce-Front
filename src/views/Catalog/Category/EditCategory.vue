@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { Api } from '@/services/api'
-import type { CategoryDTO } from '@/types/category/Category.ts'
+import { Api } from '/@/services/api'
+import type { CategoryDTO } from '/@/types/category/Category.ts'
 import { onMounted, ref } from 'vue'
 import CategoryForm from '../../components/Page/Catalog/Category/CategoryForm.vue'
 import { useRoute } from 'vue-router'
