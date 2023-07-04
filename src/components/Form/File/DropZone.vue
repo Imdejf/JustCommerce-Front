@@ -65,18 +65,25 @@ export default defineComponent({
       }
       const defaultString = import.meta.env.VITE_API_URL
 
-      const response = await fetch(defaultString + 'administration/file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fileToSave)
-      })
-      const data = await response.json()
+      try {
+        const response = await fetch(defaultString + 'administration/file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fileToSave)
+        })
+        const data = await response.json()
 
-      toast.success('Dodano zdjęcie', {
-        timeout: 2000
-      })
+        emit('update:modelValue', data.data)
 
-      emit('update:modelValue', data.data)
+        toast.success('Dodano zdjęcie', {
+          timeout: 2000
+        })
+      } catch (error) {
+        toast.success('Błąd dodawania zdjęcia', {
+          timeout: 2000
+        })
+        console.log(error)
+      }
     }
 
     const onFileAdd = (file) => {
