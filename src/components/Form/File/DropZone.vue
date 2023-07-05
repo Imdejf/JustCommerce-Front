@@ -125,7 +125,6 @@ export default defineComponent({
       :multipleUpload="false"
       :parallelUpload="3"
       :maxFileSize="600000000"
-      :acceptedFiles="['image', 'webp', 'png', 'jpg']"
     >
       <template #message>
         <span v-if="!url">Upuść plik</span>
