@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRoute, useRouter } from 'vue-router'
-import type { BlogCategoryDTO } from '/@/types/blogCategory/BlogCategory'
+import type { PostBlogDTO } from '/@/types/postBlog/PostBlog'
 import { FileDTO } from '/@/types/file/File'
 import { computed, ref, reactive, watch, onMounted } from 'vue'
 import { Api } from '/@/services/api'
@@ -9,11 +9,12 @@ import { useLanguageStore } from '/@/stores/language'
 import { useStoreStore } from '/@/stores/store'
 import Cookies from 'universal-cookie'
 import DropZone from '../../../Form/File/DropZone.vue'
+import DropDown from '../../../Form/DropDown/DropDown.vue'
 
 const props = defineProps({
-  categoryBlog: {
+  postBlog: {
     type: Object as ObjectConstructor,
-    default: () => ({} as BlogCategoryDTO)
+    default: () => ({} as PostBlogDTO)
   },
   updated: {
     type: Boolean,
@@ -28,17 +29,18 @@ const file = ref<FileDTO | null>(null)
 const route = useRoute()
 const toast = useToast()
 const language = useLanguageStore()
+const blogCategories = ref([])
 
-const currentCategoryBlog = reactive(props.categoryBlog)
+const currentPostBlog = reactive(props.postBlog)
 
 if (props.updated) {
-  currentCategoryBlog.id = route.params.id
+  currentPostBlog.id = route.params.id
 }
 
 const handleSave = async () => {
   if (files.value) {
-    currentCategoryBlog.thumbnailImage.filePath = files.value?.path
-    currentCategoryBlog.thumbnailImage.mediaLangs.forEach((mediaLang) => {
+    currentPostBlog.thumbnailImage.filePath = files.value?.path
+    currentPostBlog.thumbnailImage.mediaLangs.forEach((mediaLang) => {
       const matchingPath = files.value?.pathLang.find(
         (pathLang) => pathLang.languageId === mediaLang.languageId
       )
@@ -50,16 +52,16 @@ const handleSave = async () => {
 
   try {
     const payload = {
-      body: JSON.stringify(currentCategoryBlog)
+      body: JSON.stringify(currentPostBlog)
     }
     if (!props.updated) {
-      await Api.categoryBlogs.create(payload)
-      toast.success('Dodano kategorie bloga', {
+      await Api.postBlogs.create(payload)
+      toast.success('Dodano post', {
         timeout: 2000
       })
     } else {
-      await Api.categoryBlogs.update(payload)
-      toast.success('Edytowano kategorie bloga', {
+      await Api.postBlogs.update(payload)
+      toast.success('Edytowano post', {
         timeout: 2000
       })
     }
@@ -73,23 +75,33 @@ const handleSave = async () => {
 }
 
 const slugGenerator = () => {
-  if (!currentCategoryBlog.name) {
+  if (!currentPostBlog.name) {
     toast.error('Błędna nazwa kategorii', {
       timeout: 2000
     })
     return
   }
 
-  const slug = currentCategoryBlog.name
+  const slug = currentPostBlog.name
     .trim() // Usuwanie spacji na początku i końcu
     .toLowerCase() // Zamiana na małe litery
     .replace(/\s+/g, '-') // Zamiana spacji na myślniki
 
-  currentCategoryBlog.slug = slug
+  currentPostBlog.slug = slug
+}
+
+const allBlogCategories = async () => {
+  const result = await Api.categoryBlogs.listByStoreId()
+  blogCategories.value = result.items.map((item) => {
+    return {
+      id: item.id,
+      name: item.name
+    }
+  })
 }
 
 watch(
-  currentCategoryBlog.thumbnailImage,
+  currentPostBlog.thumbnailImage,
   (newThumbnailImage, oldThumbnailImage) => {
     file.value = {
       Media: {
@@ -98,12 +110,16 @@ watch(
         TitleAttribute: newThumbnailImage.title,
         MediaLangs: newThumbnailImage.mediaLangs
       },
-      BlobFolder: 2,
+      BlobFolder: 3,
       Watermark: false
     }
   },
   { deep: true }
 )
+
+onMounted(() => {
+  allBlogCategories()
+})
 </script>
 
 <template>
@@ -112,7 +128,7 @@ watch(
       <DropZone
         ref="dropzone"
         :fileInfo="file"
-        :url="currentCategoryBlog.thumbnailImage.filePath"
+        :url="currentPostBlog.thumbnailImage.filePath"
         v-model="files"
       ></DropZone>
     </FormSection>
@@ -121,7 +137,7 @@ watch(
         <FormSection :title="'Zdjęcie SEO'">
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.thumbnailImage.seoFileName"
+            v-model="currentPostBlog.thumbnailImage.seoFileName"
             label="Nazwa SEO"
             validation="required"
             validation-visibility="live"
@@ -129,7 +145,7 @@ watch(
           />
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.thumbnailImage.altAttribute"
+            v-model="currentPostBlog.thumbnailImage.altAttribute"
             label="Alt atrybut"
             validation="required"
             validation-visibility="live"
@@ -137,17 +153,17 @@ watch(
           />
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.thumbnailImage.titleAttribute"
+            v-model="currentPostBlog.thumbnailImage.titleAttribute"
             label="Tytuł atrybutu"
             validation="required"
             validation-visibility="live"
             help=""
           />
         </FormSection>
-        <FormSection :title="'Kategoria'">
+        <FormSection :title="'Post'">
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.name"
+            v-model="currentPostBlog.name"
             label="Nazwa"
             validation="required"
             validation-visibility="live"
@@ -155,7 +171,7 @@ watch(
           />
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.slug"
+            v-model="currentPostBlog.slug"
             label="Slug"
             validation="required"
             validation-visibility="live"
@@ -165,10 +181,18 @@ watch(
             <el-button @click="slugGenerator" color="#ea580c" round>Generuj slug</el-button>
           </div>
         </FormSection>
+        <FormSection
+          ><DropDown
+            label="Kategoria nadrzędna"
+            v-model="currentPostBlog.blogCategoryId"
+            :value="currentPostBlog.blogCategoryId"
+            :options="blogCategories"
+          />
+        </FormSection>
         <FormSection :title="'SEO'">
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.metaTitle"
+            v-model="currentPostBlog.metaTitle"
             label="Meta tytuł"
             validation="required"
             validation-visibility="live"
@@ -176,7 +200,7 @@ watch(
           />
           <FormKit
             type="text"
-            v-model="currentCategoryBlog.metaKeywords"
+            v-model="currentPostBlog.metaKeywords"
             label="Słowa kluczowe"
             validation="required"
             validation-visibility="live"
@@ -187,7 +211,7 @@ watch(
           <FormKit
             type="textarea"
             label="Meta opis"
-            v-model="currentCategoryBlog.metaDescription"
+            v-model="currentPostBlog.metaDescription"
             rows="10"
             placeholder="Podaj opis meta"
             help="Pamiętej długość nie powinna przekraczać 170 liter!"
@@ -204,17 +228,17 @@ watch(
           />
         </FormSection>
         <FormSection title="Opis skrócony">
-          <HtmlEditor v-model="currentCategoryBlog.shortDescription" />
+          <HtmlEditor v-model="currentPostBlog.shortDescription" />
         </FormSection>
         <FormSection title="Opis">
-          <HtmlEditor v-model="currentCategoryBlog.description" />
+          <HtmlEditor v-model="currentPostBlog.description" />
         </FormSection>
-        <FormSection title="Ustawienia" class="block">
+        <FormSection>
           <FormKit
             type="number"
             help=""
             label="Kolejność wyświetlania"
-            v-model="currentCategoryBlog.displayOrder"
+            v-model="currentPostBlog.displayOrder"
             value="0"
             step="1"
           />
@@ -224,7 +248,16 @@ watch(
             type="checkbox"
             label="Widoczny"
             help=""
-            v-model="currentCategoryBlog.isPublished"
+            v-model="currentPostBlog.isActive"
+            :value="false"
+          />
+        </FormSection>
+        <FormSection>
+          <FormKit
+            type="checkbox"
+            label="Zamieść na stronie"
+            help="Artykuł będzie widoczny na stronie głównej"
+            v-model="currentPostBlog.isHomePage"
             :value="false"
           />
         </FormSection>
@@ -234,7 +267,7 @@ watch(
           <FormSection :title="'Zdjęcie SEO'">
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.thumbnailImage.mediaLangs[index].seoFileName"
+              v-model="currentPostBlog.thumbnailImage.mediaLangs[index].seoFileName"
               label="Nazwa SEO"
               validation="required"
               validation-visibility="live"
@@ -242,7 +275,7 @@ watch(
             />
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.thumbnailImage.mediaLangs[index].altAttribute"
+              v-model="currentPostBlog.thumbnailImage.mediaLangs[index].altAttribute"
               label="Alt atrybut"
               validation="required"
               validation-visibility="live"
@@ -250,17 +283,17 @@ watch(
             />
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.thumbnailImage.mediaLangs[index].titleAttribute"
+              v-model="currentPostBlog.thumbnailImage.mediaLangs[index].titleAttribute"
               label="Tytuł atrybutu"
               validation="required"
               validation-visibility="live"
               help=""
             />
           </FormSection>
-          <FormSection :title="'Kategoria'">
+          <FormSection :title="'Post'">
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.blogCategoryLangs[index].name"
+              v-model="currentPostBlog.blogItemLangs[index].name"
               label="Nazwa"
               validation="required"
               validation-visibility="live"
@@ -270,7 +303,7 @@ watch(
           <FormSection :title="'SEO'">
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.blogCategoryLangs[index].metaTitle"
+              v-model="currentPostBlog.blogItemLangs[index].metaTitle"
               label="Meta tytuł"
               validation="required"
               validation-visibility="live"
@@ -278,7 +311,7 @@ watch(
             />
             <FormKit
               type="text"
-              v-model="currentCategoryBlog.blogCategoryLangs[index].metaKeywords"
+              v-model="currentPostBlog.blogItemLangs[index].metaKeywords"
               label="Słowa kluczowe"
               validation="required"
               validation-visibility="live"
@@ -289,7 +322,7 @@ watch(
             <FormKit
               type="textarea"
               label="Meta opis"
-              v-model="currentCategoryBlog.blogCategoryLangs[index].metaDescription"
+              v-model="currentPostBlog.blogItemLangs[index].metaDescription"
               rows="10"
               placeholder="Podaj opis meta"
               help="Pamiętej długość nie powinna przekraczać 170 liter!"
@@ -305,11 +338,15 @@ watch(
               }"
             />
           </FormSection>
+          <FormSection title="Opis skrócony">
+            <HtmlEditor v-model="currentPostBlog.blogItemLangs[index].shortDescription" />
+          </FormSection>
           <FormSection title="Opis">
-            <HtmlEditor v-model="currentCategoryBlog.blogCategoryLangs[index].description" />
+            <HtmlEditor v-model="currentPostBlog.blogItemLangs[index].description" />
           </FormSection>
         </div>
       </div>
+
       <div class="save-button w-full my-10">
         <FormKit type="submit" label="Zapisz" style="display: flex; justify-content: flex-end" />
       </div>

@@ -185,6 +185,39 @@ const router = createRouter({
       },
       component: () => import('../views/ManagerContent/CategoryBlog/DetailCategoryBlog.vue')
     },
+        //POST BLOGS
+        {
+          path: '/manager-content/post-blogs',
+          name: 'PostBlog',
+          meta: {
+            layout: PageLayout
+          },
+          component: () => import('../views/ManagerContent/PostBlog/index.vue')
+        },
+        {
+          path: '/manager-content/post-blogs/add',
+          name: 'CreatePostBlog',
+          meta: {
+            layout: PageLayout
+          },
+          component: () => import('../views/ManagerContent/PostBlog/CreatePostBlog.vue')
+        },
+        {
+          path: '/manager-content/post-blogs/edit/:id',
+          name: 'EditPostBlog',
+          meta: {
+            layout: PageLayout
+          },
+          component: () => import('../views/ManagerContent/PostBlog/EditPostBlog.vue')
+        },
+        {
+          path: '/manager-content/post-blogs/detail/:id',
+          name: 'DetailPostBlog',
+          meta: {
+            layout: PageLayout
+          },
+          component: () => import('../views/ManagerContent/PostBlog/DetailPostBlog.vue')
+        },
   ]
 })
 
