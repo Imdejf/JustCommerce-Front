@@ -305,6 +305,9 @@ watch(
               }"
             />
           </FormSection>
+          <FormSection title="Opis skrócony">
+            <HtmlEditor v-model="currentCategoryBlog.blogCategoryLangs[index].shortDescription" />
+          </FormSection>
           <FormSection title="Opis">
             <HtmlEditor v-model="currentCategoryBlog.blogCategoryLangs[index].description" />
           </FormSection>
