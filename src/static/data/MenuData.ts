@@ -40,5 +40,20 @@ export interface MenuItem {
             }
         ]
     },
+    {
+      id:3,
+      name: "Menadżer kontentu",
+      route: "/",
+      subMenus: [
+        {
+          name: "Kategorie blog",
+          route: "/manager-content/category-blogs"
+        },
+        {
+          name: "Posty blog",
+          route: "/manager-content/post-blogs"
+        },
+      ]
+    }
     
   ]
