@@ -1,27 +1,48 @@
 export interface FileDTO {
-    StoreId?: string;
-    Base64File?: Base64File;
-    Media: MediasDTO;
-    BlobFolder: BlobFolder;
-    Watermark: boolean;
+    id?: string;
+    storeId?: string;
+    base64File?: Base64File;
+    media: MediasDTO;
+    blobFolder: BlobFolder;
+    watermark: boolean;
 }
 
 export interface MediasDTO {
-    SeoFileName: string;
-    AltAttribute: string;
-    TitleAttribute: string;
-    MediaLangs: ProductMediaLangDTO[];
+    seoFileName: string;
+    altAttribute: string;
+    titleAttribute: string;
+    mediaLangs: ProductMediaLangDTO[];
+}
+
+export interface MediaFileDTO {
+    id?: string;
+    storeId?: string;
+    base64File?: Base64File;
+    media: MediaTableDTO;
+    blobFolder: BlobFolder;
+    watermark: boolean;
+}
+
+
+export interface MediaTableDTO {
+    id:string;
+    filePath: string;
+    seoFileName: string;
+    altAttribute: string;
+    titleAttribute: string;
+    mediaLangs: ProductMediaLangDTO[];
+    displayOrder: number;
 }
 
 export interface ProductMediaLangDTO {
-    LanguageId: string;
-    SeoFileName: string;
-    AltAttribute: string;
-    TitleAttribute: string;
+    languageId: string;
+    seoFileName: string;
+    altAttribute: string;
+    titleAttribute: string;
 }
 
 export interface Base64File {
-    Base64String: string
+    base64String: string
 }
 
 export enum BlobFolder {
@@ -29,4 +50,4 @@ export enum BlobFolder {
     Product = 1,
     BlogCategory = 2,
     BlogItem = 3,
-  }
+}

@@ -14,6 +14,10 @@ export default defineComponent({
     url: {
       type: String,
       default: ''
+    },
+    showSaveButton: {
+      type: Boolean,
+      default: true
     }
   },
   components: {
@@ -25,7 +29,6 @@ export default defineComponent({
     const cookies = new Cookies()
     const dropzone = ref(null)
     const base64String = ref('')
-
     const sendFileToServer = async () => {
       if (!base64String.value) {
         toast.error('Dodaj plik', {
@@ -39,15 +42,14 @@ export default defineComponent({
         })
         return
       }
-
-      if (!props.fileInfo || !props.fileInfo.Media.SeoFileName) {
+      if (!props.fileInfo || !props.fileInfo.media.seoFileName) {
         toast.error('Błędna nazwa pliku', {
           timeout: 2000
         })
         return
       }
 
-      const mediaLangs = props.fileInfo.Media.MediaLangs
+      const mediaLangs = props.fileInfo.media.mediaLangs
       for (const mediaLang of mediaLangs) {
         if (!mediaLang.seoFileName) {
           toast.error('Błędna nazwa pliku', {
@@ -59,8 +61,8 @@ export default defineComponent({
 
       const fileToSave = props.fileInfo
 
-      fileToSave.StoreId = cookies.get('dsStore')
-      fileToSave.Base64File = {
+      fileToSave.storeId = cookies.get('dsStore')
+      fileToSave.base64File = {
         base64String: base64String.value
       }
       const defaultString = import.meta.env.VITE_API_URL
@@ -90,6 +92,7 @@ export default defineComponent({
       fileToBase64(file.file)
         .then((base64Data) => {
           base64String.value = base64Data
+          emit('changeFile', true)
         })
         .catch((error) => {
           console.error('Błąd przetwarzania pliku:', error)
@@ -115,7 +118,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="w-[250px] h-[250px]">
+  <div class="w-[250px] h-[250px] dropzone__picture">
     <DropZone
       ref="dropzone"
       @addedFile="onFileAdd"
@@ -131,7 +134,7 @@ export default defineComponent({
         <img class="h-full mx-auto" :src="url" />
       </template>
     </DropZone>
-    <div class="flex justify-center mt-2">
+    <div v-if="showSaveButton" class="flex justify-center mt-2">
       <el-button @click="sendFileToServer" type="primary" round>Zapisz obraz</el-button>
     </div>
   </div>

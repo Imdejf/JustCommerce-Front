@@ -18,27 +18,31 @@ export interface MenuItem {
         subMenus: []
     },
     {
-        id:2,
-        name: "Katalog",
-        route: "/",
-        subMenus: [
-            {
-                name:"Kategorie",
-                route:"/catalog/category"
-            },
-            {
-              name:"Grupa atrybutów",
-              route:"/catalog/attribute-group"
-            },
-            {
-              name: "Opcje produktu",
-              route:"/catalog/product-option"
-            },
-            {
-              name: "Atrybuty produktowe",
-              route:"/catalog/product-attribute"
-            }
-        ]
+      id:2,
+      name: "Katalog",
+      route: "/",
+      subMenus: [
+        {
+          name: "Produkty",
+          route: "/catalog/product"
+        },
+        {
+            name:"Kategorie",
+            route:"/catalog/category"
+        },
+        {
+          name:"Grupa atrybutów",
+          route:"/catalog/attribute-group"
+        },
+        {
+          name: "Opcje produktu",
+          route:"/catalog/product-option"
+        },
+        {
+          name: "Atrybuty produktowe",
+          route:"/catalog/product-attribute"
+        }
+      ]
     },
     {
       id:3,
@@ -52,8 +56,7 @@ export interface MenuItem {
         {
           name: "Posty blog",
           route: "/manager-content/post-blogs"
-        },
+        }
       ]
     }
-    
   ]

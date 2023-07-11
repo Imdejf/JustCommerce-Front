@@ -185,39 +185,72 @@ const router = createRouter({
       },
       component: () => import('../views/ManagerContent/CategoryBlog/DetailCategoryBlog.vue')
     },
-        //POST BLOGS
-        {
-          path: '/manager-content/post-blogs',
-          name: 'PostBlog',
-          meta: {
-            layout: PageLayout
-          },
-          component: () => import('../views/ManagerContent/PostBlog/index.vue')
-        },
-        {
-          path: '/manager-content/post-blogs/add',
-          name: 'CreatePostBlog',
-          meta: {
-            layout: PageLayout
-          },
-          component: () => import('../views/ManagerContent/PostBlog/CreatePostBlog.vue')
-        },
-        {
-          path: '/manager-content/post-blogs/edit/:id',
-          name: 'EditPostBlog',
-          meta: {
-            layout: PageLayout
-          },
-          component: () => import('../views/ManagerContent/PostBlog/EditPostBlog.vue')
-        },
-        {
-          path: '/manager-content/post-blogs/detail/:id',
-          name: 'DetailPostBlog',
-          meta: {
-            layout: PageLayout
-          },
-          component: () => import('../views/ManagerContent/PostBlog/DetailPostBlog.vue')
-        },
+    //POST BLOGS
+    {
+      path: '/manager-content/post-blogs',
+      name: 'PostBlog',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/ManagerContent/PostBlog/index.vue')
+    },
+    {
+      path: '/manager-content/post-blogs/add',
+      name: 'CreatePostBlog',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/ManagerContent/PostBlog/CreatePostBlog.vue')
+    },
+    {
+      path: '/manager-content/post-blogs/edit/:id',
+      name: 'EditPostBlog',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/ManagerContent/PostBlog/EditPostBlog.vue')
+    },
+    {
+      path: '/manager-content/post-blogs/detail/:id',
+      name: 'DetailPostBlog',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/ManagerContent/PostBlog/DetailPostBlog.vue')
+    },
+    //PRODUCT
+    {
+      path: '/catalog/product',
+      name: 'Product',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Product/Product/index.vue')
+    }, 
+    {
+      path: '/catalog/product/add',
+      name: 'CreateProduct',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Product/Product/CreateProduct.vue')
+    },
+    {
+      path: '/catalog/product/edit/:id',
+      name: 'EditProduct',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Product/Product/EditProduct.vue')
+    }, 
+    {
+      path: '/catalog/product/detail',
+      name: 'DetailProduct',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Product/Product/ProductDetail.vue')
+    }, 
   ]
 })
 
