@@ -138,6 +138,8 @@ const handleAddFile = async () => {
 
   changeFile.value = false
   emit('handleAdd', file)
+  currentFile.value.file = null
+  currentFile.value.orderValue = 0
 }
 
 const handleSaveEdit = async () => {
@@ -169,6 +171,9 @@ const handleSaveEdit = async () => {
 
   changeFile.value = false
   emit('handleEdit', file.media)
+  changeFile.value = false
+  currentFile.value.file = null
+  editId.value = null
 }
 
 const handleChangeFile = (value: Boolean) => {
@@ -293,7 +298,7 @@ const handleRemoveFile = () => {
               ref="updatedropzone"
               :fileInfo="currentFile.file"
               :url="currentFile.file?.media.filePath"
-              v-model="files"
+              v-model="uploadedFile"
               :showSaveButton="false"
               @changeFile="handleChangeFile"
             ></DropZone>

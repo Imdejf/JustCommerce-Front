@@ -55,7 +55,7 @@ const product = computed(() => {
       titleAttribute: '',
       filePath: null,
       displayOrder: 0,
-      productMediaLangs: language.languages.map((lang) => ({
+      mediaLangs: language.languages.map((lang) => ({
         languageId: lang.id,
         seoFileName: '',
         altAttribute: '',

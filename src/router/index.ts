@@ -244,7 +244,7 @@ const router = createRouter({
       component: () => import('../views/Catalog/Product/Product/EditProduct.vue')
     }, 
     {
-      path: '/catalog/product/detail',
+      path: '/catalog/product/detail/:id',
       name: 'DetailProduct',
       meta: {
         layout: PageLayout

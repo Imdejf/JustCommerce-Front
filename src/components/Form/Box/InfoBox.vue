@@ -7,7 +7,7 @@
         <div class="w-1/5 h-[150px] flex bg-gray-300 bg-opacity-20 bg-rounded-xl">
           <slot name="picture"></slot>
         </div>
-        <div class="overflow-auto w-full h-[300px]">
+        <div class="overflow-auto w-full h-[230px]">
           <div class="block px-2">
             <slot></slot>
           </div>

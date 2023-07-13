@@ -1,0 +1,1 @@
+<template>ProductRelated</template>

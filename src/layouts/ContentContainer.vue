@@ -51,15 +51,18 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
       <ul class="flex gap-5 justify-center bg-slate-800 text-orange-500 p-3">
         <li><el-button @click="handleLanguage(null)" type="primary" round>Domyślny</el-button></li>
 
-        <li v-for= "lang in language.languages" :key="lang.id">
+        <li v-for="lang in language.languages" :key="lang.id">
           <el-button @click="handleLanguage(lang)" color="#ea580c" round>{{
             lang.isoCode
           }}</el-button>
         </li>
       </ul>
     </div>
-    <div class="p-5 relative top-[60px]">
+    <div class="px-5 pt-5 relative">
       <slot />
+    </div>
+    <div class="block">
+      <slot name="tabs" />
     </div>
   </div>
 </template>

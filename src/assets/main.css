@@ -45,3 +45,6 @@ input:focus {
   margin-bottom: 20px !important;
 }
 
+.formsection_width_full .formsection {
+  display: block;
+}

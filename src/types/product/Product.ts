@@ -29,8 +29,8 @@ export interface ProductDTO {
     vendorId?: string;
     brandId?: string;
     productLangs: ProductLangDTO[];
-    thumbnailImage?: MediaDTO;
-    medias?: MediaDTO[];
+    thumbnailImage: MediaDTO;
+    medias: MediaDTO[];
   }
   
   interface ProductLangDTO {
@@ -52,7 +52,7 @@ export interface ProductDTO {
     titleAttribute: string;
     filePath?: string;
     displayOrder: number;
-    productMediaLangs: ProductMediaLangDTO[];
+    mediaLangs: ProductMediaLangDTO[];
   }
   
   interface ProductMediaLangDTO {

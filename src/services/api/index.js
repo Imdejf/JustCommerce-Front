@@ -7,6 +7,7 @@ import { products } from './product/product'
 import { productAttributes } from './product/productAttribute'
 import { categoryBlogs } from './managerContent/categoryBlog'
 import { postBlogs } from './managerContent/postBlog'
+import { brands } from './product/brands'
 
 export const Api = {
   stores,
@@ -17,5 +18,6 @@ export const Api = {
   products,
   productAttributes,
   categoryBlogs,
-  postBlogs
+  postBlogs,
+  brands
 }

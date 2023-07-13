@@ -9,6 +9,8 @@ import { useToast } from 'vue-toastification'
 import { useLanguageStore } from '/@/stores/language'
 import { useStoreStore } from '/@/stores/store'
 import { useRoute, useRouter } from 'vue-router'
+import Cookies from 'universal-cookie'
+
 const props = defineProps({
   category: {
     type: Object as ObjectConstructor,
@@ -20,6 +22,7 @@ const props = defineProps({
   }
 })
 
+const cookies = new Cookies()
 const router = useRouter()
 const route = useRoute()
 const files = ref(null)
@@ -115,11 +118,11 @@ watch(
   currentCategory.thumbnailImage,
   (newThumbnailImage, oldThumbnailImage) => {
     file.value = {
-      Media: {
-        SeoFileName: newThumbnailImage.seoFileName,
-        AltAttribute: newThumbnailImage.altAttribute,
-        TitleAttribute: newThumbnailImage.title,
-        MediaLangs: newThumbnailImage.mediaLangs
+      media: {
+        seoFileName: newThumbnailImage.seoFileName,
+        altAttribute: newThumbnailImage.altAttribute,
+        titleAttribute: newThumbnailImage.title,
+        mediaLangs: newThumbnailImage.mediaLangs
       },
       BlobFolder: 0,
       Watermark: false
