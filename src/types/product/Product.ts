@@ -1,3 +1,4 @@
+import { ProductOptionDTO } from "./ProductOption";
 export interface ProductDTO {
     currentUserId: string;
     storeId: string;
@@ -31,6 +32,7 @@ export interface ProductDTO {
     productLangs: ProductLangDTO[];
     thumbnailImage: MediaDTO;
     medias: MediaDTO[];
+    options: ProductOptionDTO[]
   }
   
   interface ProductLangDTO {

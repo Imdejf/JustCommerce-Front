@@ -36,7 +36,6 @@ const people = computed(() => {
     selected.value = props.options.find((c) => c.id === props.value)
   } else {
     selected.value = props.options[0]
-    console.log(props.options)
   }
 
   return props.options

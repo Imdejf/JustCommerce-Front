@@ -15,8 +15,33 @@ const product = ref<ProductDTO | null>(null)
 
 const activeTab = ref('productAttribute') // Ustawienie aktywnej zakładki na 'productAttribute'
 
+const productOptions = ref([
+  {
+    optionId: '1',
+    name: 'Test',
+    displayType: 1,
+    values: [
+      {
+        key: 'Test22',
+        display: 'Test22'
+      },
+      {
+        key: 'Test223',
+        display: 'Test322'
+      }
+    ]
+  }
+])
+
 const tabs = [
-  { id: 'productVariation', title: 'Warianty', component: ProductVariationTab },
+  {
+    id: 'productVariation',
+    title: 'Warianty',
+    component: ProductVariationTab,
+    props: {
+      productOptions: productOptions.value
+    }
+  },
   { id: 'productRelated', title: 'Relacje', component: ProductRelatedTab },
   { id: 'productCategory', title: 'Kategorie', component: ProductCategoryTab }
 ]
