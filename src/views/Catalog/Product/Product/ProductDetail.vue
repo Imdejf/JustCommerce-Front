@@ -13,7 +13,7 @@ import ProductNavbar from '/@/components/Page/Catalog/Product/ProductNavbar.vue'
 const route = useRoute()
 const product = ref<ProductDTO | null>(null)
 
-const activeTab = ref('productAttribute') // Ustawienie aktywnej zakładki na 'productAttribute'
+const activeTab = ref('productAttribute')
 
 const productOptions = ref([
   {
@@ -23,11 +23,25 @@ const productOptions = ref([
     values: [
       {
         key: 'Test22',
-        display: 'Test22'
+        display: 'Test22',
+        productOptionValueLangs: [
+          {
+            languageId: '1',
+            key: 'Test22',
+            display: 'Test22'
+          }
+        ]
       },
       {
         key: 'Test223',
-        display: 'Test322'
+        display: 'Test322',
+        productOptionValueLangs: [
+          {
+            languageId: '1',
+            key: 'Test223',
+            display: 'Test322'
+          }
+        ]
       }
     ]
   }

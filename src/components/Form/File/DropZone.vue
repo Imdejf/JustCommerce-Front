@@ -118,6 +118,7 @@ export default defineComponent({
 </script>
 
 <template>
+  {{ fileInfo }}
   <div class="w-[250px] h-[250px] dropzone__picture">
     <DropZone
       ref="dropzone"

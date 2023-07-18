@@ -10,6 +10,7 @@ export interface FileDTO {
 export interface MediasDTO {
     seoFileName: string;
     altAttribute: string;
+    filePath: string;
     titleAttribute: string;
     mediaLangs: ProductMediaLangDTO[];
 }
@@ -39,6 +40,7 @@ export interface ProductMediaLangDTO {
     seoFileName: string;
     altAttribute: string;
     titleAttribute: string;
+    filePath: string;
 }
 
 export interface Base64File {

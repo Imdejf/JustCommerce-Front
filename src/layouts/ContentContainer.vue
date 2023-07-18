@@ -18,6 +18,10 @@ const props = defineProps({
   showLanguage: {
     type: Boolean,
     default: false
+  },
+  showBack: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -36,6 +40,7 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
   <div>
     <div class="flex justify-between bg-slate-200 bg-opacity-50 p-3">
       <button
+        v-if="showBack"
         @click="back"
         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex"
       >

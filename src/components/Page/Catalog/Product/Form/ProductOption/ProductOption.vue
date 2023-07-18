@@ -15,6 +15,8 @@ const props = defineProps({
   }
 })
 
+const emits = defineEmits(['updateOptions'])
+
 const toast = useToast()
 const language = useLanguageStore()
 const configurationOption = ref<ProductOptionDTO | null>(null)
@@ -27,23 +29,22 @@ const handleConfigurationOption = (id: string) => {
 }
 
 const handleCloseConfigurationModal = (productOption: ProductOptionDTO) => {
-  console.log(productOption)
   addedOptions.value.forEach((obj, index) => {
     if (obj.optionId === productOption.optionId) {
       addedOptions[index] = productOption
     }
   })
-  console.log(addedOptions)
   configurationOption.value = null
   showConfigurationModal.value = false
 }
 
 const handleSaveProductOption = (productOption: ProductOptionDTO) => {
-  addedOptions.value.forEach((obj, index) => {
-    if (obj.optionId === productOption.optionId) {
-      addedOptions[index] = productOption
-    }
-  })
+  const index = addedOptions.value.findIndex((obj) => obj.optionId === productOption.value.optionId)
+  if (index !== -1) {
+    addedOptions.value.splice(index, 1, productOption.value)
+  }
+
+  console.log(addedOptions.value)
 }
 
 //tags
@@ -61,7 +62,7 @@ const handleClose = (id: string, tag: string) => {
   const index = addedOptions.value.findIndex((option) => option.optionId === id)
   if (index !== -1) {
     addedOptions.value[index].values = addedOptions.value[index].values.filter(
-      (value) => value !== tag
+      (value) => value.key !== tag
     )
   }
 }
@@ -85,7 +86,7 @@ const handleInputConfirm = (id: string) => {
       display: option.display,
       productOptionValueLangs: language.languages.map((lang) => ({
         languageId: lang.id,
-        key: '',
+        key: tagValue.value,
         display: ''
       }))
     }
@@ -145,7 +146,13 @@ onMounted(() => {
   addExistTags()
 })
 
-watch(addedOptions.value, (newOptions, oldOptions) => {}, { deep: true })
+watch(
+  addedOptions.value,
+  (newOptions, oldOptions) => {
+    emits('updateOptions', newOptions)
+  },
+  { deep: true }
+)
 </script>
 <template>
   <div>
@@ -158,9 +165,6 @@ watch(addedOptions.value, (newOptions, oldOptions) => {}, { deep: true })
     <FormSection :title="'Wartość opcji'">
       <div>
         <ul>
-          {{
-            addedOptions
-          }}
           <li v-for="(option, index) in addedOptions" :key="option.optionId" class="flex mt-5">
             {{ option.name }}
             <div class="flex">

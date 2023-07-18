@@ -104,11 +104,11 @@ watch(
   currentPostBlog.thumbnailImage,
   (newThumbnailImage, oldThumbnailImage) => {
     file.value = {
-      Media: {
-        SeoFileName: newThumbnailImage.seoFileName,
-        AltAttribute: newThumbnailImage.altAttribute,
-        TitleAttribute: newThumbnailImage.title,
-        MediaLangs: newThumbnailImage.mediaLangs
+      media: {
+        seoFileName: newThumbnailImage.seoFileName,
+        altAttribute: newThumbnailImage.altAttribute,
+        titleAttribute: newThumbnailImage.title,
+        mediaLangs: newThumbnailImage.mediaLangs
       },
       BlobFolder: 3,
       Watermark: false

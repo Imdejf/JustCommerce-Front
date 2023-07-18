@@ -9,20 +9,21 @@ import { productOptions } from '/@/services/api/product/productOption'
 
 const props = defineProps({
   option: {
-    type: Object as () => ProductOptionDTO,
-    default: () => []
+    type: Object,
+    default: () => null
   }
 })
 
-const activeOption = ref<ProductOptionDTO>(props.option)
+const activeOption = ref(JSON.parse(JSON.stringify(props.option)))
 const emits = defineEmits(['close', 'save'])
 
-const displayTypeSelected = ref('0')
+const displayTypeSelected = ref(props.option.displayType)
 
 const handleChangeDisplayType = (value: number) => {
   displayTypeSelected.value = value
 
   activeOption.value.displayType = value
+
   activeOption.value.values.forEach((c) => {
     c.display = ''
   })
@@ -78,6 +79,7 @@ const handleSave = () => {
               <el-radio label="1" size="large">Kolor</el-radio>
             </el-radio-group>
           </div>
+          {{ activeOption.displayType }}
           <div class="inputs_area" v-if="activeOption.displayType == 0">
             <div v-for="(value, index) in activeOption.values" :key="value.key" class="flex">
               <span class="w-1/5">
