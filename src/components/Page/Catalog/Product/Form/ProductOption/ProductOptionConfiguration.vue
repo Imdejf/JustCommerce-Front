@@ -6,6 +6,8 @@ import {
 } from '/@/types/product/ProductOption'
 import { computed, ref } from 'vue'
 import { productOptions } from '/@/services/api/product/productOption'
+import { useLanguageStore } from '/@/stores/language'
+import { LanguageDTO } from '/@/types/language/Language'
 
 const props = defineProps({
   option: {
@@ -13,6 +15,8 @@ const props = defineProps({
     default: () => null
   }
 })
+
+const language = useLanguageStore()
 
 const activeOption = ref(JSON.parse(JSON.stringify(props.option)))
 const emits = defineEmits(['close', 'save'])
@@ -36,6 +40,10 @@ const handleClose = () => {
 const handleSave = () => {
   emits('save', activeOption)
 }
+
+const handleLanguage = (currentLanguage: LanguageDTO | null) => {
+  language.setCurrentLanguage(currentLanguage)
+}
 </script>
 
 <template>
@@ -43,6 +51,7 @@ const handleSave = () => {
     <div class="relative w-full max-w-2xl max-h-full mx-auto top-[20%]">
       <div class="relative bg-white rounded-lg shadow">
         <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+          {{ activeOption }}
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Konfiguracja:</h3>
           <button
             @click="handleClose"
@@ -68,6 +77,19 @@ const handleSave = () => {
             <span class="sr-only">Close modal</span>
           </button>
         </div>
+        <div>
+          <ul class="flex gap-5 justify-center bg-slate-800 text-orange-500 p-3">
+            <li>
+              <el-button @click="handleLanguage(null)" type="primary" round>Domyślny</el-button>
+            </li>
+
+            <li v-for="lang in language.languages" :key="lang.id">
+              <el-button @click="handleLanguage(lang)" color="#ea580c" round>{{
+                lang.isoCode
+              }}</el-button>
+            </li>
+          </ul>
+        </div>
         <div class="p-6 space-y-6">
           <div class="mb-2 flex items-center text-sm w-full">
             <el-radio-group
@@ -79,21 +101,54 @@ const handleSave = () => {
               <el-radio label="1" size="large">Kolor</el-radio>
             </el-radio-group>
           </div>
-          {{ activeOption.displayType }}
-          <div class="inputs_area" v-if="activeOption.displayType == 0">
-            <div v-for="(value, index) in activeOption.values" :key="value.key" class="flex">
-              <span class="w-1/5">
-                {{ value.key }}
-              </span>
-              <FormKit type="text" v-model="value.display" help="" />
+          <div v-if="!language.selectedLanguage">
+            <div class="inputs_area" v-if="activeOption.displayType == 0">
+              <div v-for="(value, index) in activeOption.values" :key="value.key" class="flex">
+                <span class="w-1/5">
+                  {{ value.key }}
+                </span>
+                <FormKit type="text" v-model="value.display" help="" />
+              </div>
+            </div>
+            <div class="inputs_area" v-if="activeOption.displayType == 1">
+              <div v-for="(value, index) in activeOption.values" :key="value.key" class="flex">
+                <span class="w-1/5">
+                  {{ value.key }}
+                </span>
+                <FormKit type="color" :value="value.display" v-model="value.display" />
+              </div>
             </div>
           </div>
-          <div class="inputs_area" v-if="activeOption.displayType == 1">
-            <div v-for="(value, index) in activeOption.values" :key="value.key" class="flex">
-              <span class="w-1/5">
-                {{ value.key }}
-              </span>
-              <FormKit type="color" :value="value.display" v-model="value.display" />
+          <div v-for="(formLanguage, index) in language.languages" :key="formLanguage.id">
+            <div v-if="language.selectedLanguage?.id === formLanguage.id">
+              <div class="inputs_area" v-if="activeOption.displayType == 0">
+                <div v-for="value in activeOption.values" :key="value.key" class="flex gap-5">
+                  <FormKit
+                    type="text"
+                    v-model="value.productOptionValueLangs[index].key"
+                    label="Nazwa SEO"
+                  />
+                  <FormKit
+                    type="text"
+                    v-model="value.productOptionValueLangs[index].display"
+                    label="Nazwa SEO"
+                  />
+                </div>
+              </div>
+              <div class="inputs_area" v-if="activeOption.displayType == 1">
+                <div v-for="value in activeOption.values" :key="value.key" class="flex gap-5">
+                  <FormKit
+                    type="text"
+                    v-model="value.productOptionValueLangs[index].key"
+                    label="Nazwa SEO"
+                  />
+                  <FormKit
+                    type="color"
+                    v-model="value.productOptionValueLangs[index].display"
+                    label="Wyświetl"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

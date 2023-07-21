@@ -1,4 +1,5 @@
 import { CreateBaseApiService } from '../baseApi'
+import { APISettings } from '../config.js'
 
 const addVariation = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
@@ -28,8 +29,68 @@ const updateVariation = (payload) =>
     }
   })
 
+const addOptionCombination = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
+const addOption = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/ProductOption`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
+const updateOption = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/ProductOption`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
+const removeOptionCombination = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
 export const products = {
   addVariation,
   updateVariation,
+  addOptionCombination,
+  removeOptionCombination,
+  addOption,
+  updateOption,
   ...CreateBaseApiService('administration/product')
 }

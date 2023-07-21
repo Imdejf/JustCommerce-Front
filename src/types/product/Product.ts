@@ -1,5 +1,6 @@
 import { ProductOptionDTO } from "./ProductOption";
 export interface ProductDTO {
+    id: string;
     currentUserId: string;
     storeId: string;
     price: number;
@@ -32,7 +33,8 @@ export interface ProductDTO {
     productLangs: ProductLangDTO[];
     thumbnailImage: MediaDTO;
     medias: MediaDTO[];
-    options: ProductOptionDTO[]
+    options: ProductOptionDTO[];
+    productOptionCombinations: ProductOptionCombinationDTO[];
   }
   
   interface ProductLangDTO {
@@ -63,4 +65,11 @@ export interface ProductDTO {
     altAttribute: string;
     titleAttribute: string;
     filePath?: string;
+  }
+
+  interface ProductOptionCombinationDTO {
+    optionId: string;
+    optionName: string;
+    value: string;
+    sortIndex: number;
   }

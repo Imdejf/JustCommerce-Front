@@ -7,8 +7,21 @@ import { ElInput } from 'element-plus'
 import { useLanguageStore } from '/@/stores/language'
 import { OptionProps } from 'element-plus/es/components/select-v2/src/defaults'
 import ProductOptionConfiguration from './ProductOptionConfiguration.vue'
+import { useRoute } from 'vue-router'
+import { ProductDTO } from '/@/types/product/Product'
+import { useStoreStore } from '/@/stores/store'
+
+interface ProductOptionInterface {
+  productId: string
+  storeId: string
+  option: ProductOptionDTO
+}
 
 const props = defineProps({
+  product: {
+    type: Object as () => ProductDTO,
+    default: () => []
+  },
   productOptions: {
     type: Array as () => ProductOptionDTO[],
     default: () => []
@@ -16,8 +29,11 @@ const props = defineProps({
 })
 
 const emits = defineEmits(['updateOptions'])
+const route = useRoute()
 
+const existProductOptionValue = ref([])
 const toast = useToast()
+const store = useStoreStore()
 const language = useLanguageStore()
 const configurationOption = ref<ProductOptionDTO | null>(null)
 const showConfigurationModal = ref(false)
@@ -38,13 +54,39 @@ const handleCloseConfigurationModal = (productOption: ProductOptionDTO) => {
   showConfigurationModal.value = false
 }
 
-const handleSaveProductOption = (productOption: ProductOptionDTO) => {
+const handleSaveProductOption = async (productOption: ProductOptionDTO) => {
   const index = addedOptions.value.findIndex((obj) => obj.optionId === productOption.value.optionId)
   if (index !== -1) {
     addedOptions.value.splice(index, 1, productOption.value)
   }
 
-  console.log(addedOptions.value)
+  const updateProductOption: ProductOptionInterface = {
+    productId: props.product.id,
+    storeId: store.selectedStore.id,
+    option: productOption.value
+  }
+
+  updateProductOption.option.displayType = +updateProductOption.option.displayType
+
+  const payload = {
+    body: JSON.stringify(updateProductOption)
+  }
+
+  const existOptionValue = existProductOptionValue.value.find(
+    (c) => c === productOption.value.optionId
+  )
+  if (existOptionValue) {
+    existProductOptionValue.value = existProductOptionValue.value.filter(
+      (id) => id !== productOption.value.optionId
+    )
+
+    await Api.products.addOption(payload)
+  } else {
+    await Api.products.updateOption(payload)
+  }
+
+  configurationOption.value = null
+  showConfigurationModal.value = false
 }
 
 //tags
@@ -86,7 +128,7 @@ const handleInputConfirm = (id: string) => {
       display: option.display,
       productOptionValueLangs: language.languages.map((lang) => ({
         languageId: lang.id,
-        key: tagValue.value,
+        key: '',
         display: ''
       }))
     }
@@ -103,7 +145,7 @@ const addedOptions = ref<Array<ProductOptionDTO>>(props.productOptions)
 const productOptionsList = ref<Array<ProductOptionDTO>>([])
 const currentOption = ref(null)
 
-const addOption = () => {
+const addOption = async () => {
   const result = productOptionsList.value.find((c) => c.id === currentOption.value && c.id !== '')
 
   if (!Array.isArray(dynamicTags.value[result.id])) {
@@ -118,16 +160,60 @@ const addOption = () => {
   }
 
   addedOptions.value.push(newOption)
+
+  const addOption = {
+    productId: route.params.id,
+    optionId: result.id,
+    sortIndex: findNextUniqueIndex(addedOptions)
+  }
+
+  const payload = {
+    body: JSON.stringify(addOption)
+  }
+
+  await Api.products.addOptionCombination(payload)
+}
+
+const removeOption = async (optionId: string) => {
+  const payload = {
+    body: JSON.stringify({
+      productId: props.product.id,
+      productOptionId: optionId
+    })
+  }
+
+  await Api.products.removeOptionCombination(payload)
+  console.log('remove')
+}
+
+function findNextUniqueIndex(addedOptions: ProductOptionDTO[]) {
+  let uniqueIndex = 0
+  const usedIndexes = addedOptions.value.map((option) => option.sortIndex)
+
+  while (usedIndexes.includes(uniqueIndex)) {
+    uniqueIndex++
+  }
+
+  return uniqueIndex
 }
 
 const allProductOption = async () => {
   const result = await Api.productOptions.listByStoreId()
-  productOptionsList.value = result.items.map((item) => {
-    return {
-      id: item.id,
-      name: item.name
-    }
-  })
+
+  productOptionsList.value = result.items
+    .map((item) => {
+      const existsInCombinations = props.product.productOptionCombinations.some(
+        (combination) => combination.optionId === item.id
+      )
+
+      if (!existsInCombinations) {
+        return {
+          id: item.id,
+          name: item.name
+        }
+      }
+    })
+    .filter(Boolean) // Filtrujemy wartości niezdefiniowane z pętli map
 }
 
 const addExistTags = () => {
@@ -144,6 +230,12 @@ const addExistTags = () => {
 onMounted(() => {
   allProductOption()
   addExistTags()
+
+  addedOptions.value.forEach((option) => {
+    if (option.values.length === 0) {
+      existProductOptionValue.value.push(option.optionId)
+    }
+  })
 })
 
 watch(
@@ -204,8 +296,11 @@ watch(
                   >Konfiguruj</el-button
                 >
               </div>
+
               <div class="ml-5">
-                <el-button @click="addOption" color="#dc2626" round>Usuń</el-button>
+                <el-button @click="removeOption(option.optionId)" color="#dc2626" round
+                  >Usuń</el-button
+                >
               </div>
             </div>
           </li>

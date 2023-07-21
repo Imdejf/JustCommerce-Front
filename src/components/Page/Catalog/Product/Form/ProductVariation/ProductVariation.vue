@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { ProductOptionDTO, ProductOptionValueDTO } from '/@/types/product/ProductOption'
+import type { ProductDTO } from '/@/types/product/Product.ts'
 import { useLanguageStore } from '/@/stores/language'
 import {
   ProductVariationDTO,
@@ -12,6 +13,9 @@ import { ArrowDown, Check, Delete } from '@element-plus/icons-vue'
 import ProductVariationImages from './ProductVariationImages.vue'
 import ProductVariationThumbnail from './ProductVariationThumbnail.vue'
 import { useToast } from 'vue-toastification'
+import { useStoreStore } from '/@/stores/store'
+import Cookies from 'universal-cookie'
+import jwt_decode from 'jwt-decode'
 
 interface User {
   date: string
@@ -19,7 +23,18 @@ interface User {
   address: string
 }
 
+interface ProductVariationInterface {
+  userId: string
+  storeId: string
+  productId: string
+  variation: ProductVariationDTO
+}
+
 const props = defineProps({
+  product: {
+    type: Object as () => ProductDTO,
+    default: () => null
+  },
   productOptions: {
     type: Array as () => ProductOptionDTO[],
     default: () => []
@@ -31,11 +46,13 @@ const props = defineProps({
 })
 
 const toast = useToast()
+const cookies = new Cookies()
 
 const selectedItems = ref([])
 const showThumbnail = ref(false)
 const showMediaArea = ref(false)
 
+const store = useStoreStore()
 const language = useLanguageStore()
 const currentLanguage = ref(null)
 const currentProductVariation = ref<ProductVariationDTO | null>(null)
@@ -55,7 +72,13 @@ const handleNewVariation = () => {
     oldPrice: null,
     thumbnailImage: null,
     images: null,
-    optionCombinations: []
+    optionCombinations: [],
+    productVariationLangs: language.languages.map((lang) => {
+      return {
+        languageId: lang.id,
+        name: ''
+      }
+    })
   }
 
   currentProductVariation.value = productVariation
@@ -75,7 +98,7 @@ const handleOptionChange = (optionId: string, key: string) => {
       optionId: optionId,
       optionName: option.name,
       sortIndex: activeProductOptions.value.findIndex((option) => option.optionId === optionId),
-      value: option.name,
+      value: key,
       productOptionCombinationLangs: productOptionValue.productOptionValueLangs.map((lang) => ({
         productOptionCombinationId: null,
         languageId: lang.languageId,
@@ -111,13 +134,25 @@ const handleThumbnailImage = (media: MediaDTO) => {
 }
 
 const handleSaveVariation = async () => {
+  const token = cookies.get('Authorization')
+  const decoded = jwt_decode(token)
   try {
+    const productVariation: ProductVariationInterface = {
+      storeId: store.selectedStore.id,
+      userId: decoded.sub,
+      productId: props.product.id,
+      variation: currentProductVariation.value
+    }
+    productVariation.variation.oldPrice = productVariation.variation.oldPrice = ''
+      ? null
+      : productVariation.variation.oldPrice
+
     const payload = {
-      body: JSON.stringify(currentProductVariation.value)
+      body: JSON.stringify(productVariation)
     }
     if (!props.updated) {
       console.log('SAVE')
-      console.log(currentProductVariation.value)
+      console.log(productVariation)
       await Api.products.addVariation(payload)
       toast.success('Dodano wariant', {
         timeout: 2000
@@ -152,7 +187,6 @@ const handleShowMediaArea = (value: boolean) => {
 
 <template>
   <div v-if="!showThumbnail && !showMediaArea">
-    {{ selectedItems }}
     <FormSection :title="'Warianty'">
       <div class="relative overflow-x-auto shadow-md sm:rounded-lg w-full">
         <div class="w-full bg-slate-800">

@@ -3,7 +3,7 @@
 import ProductCategoryTab from '../../../../components/Page/Catalog/Product/Tabs/ProductCategory.vue'
 import ProductRelatedTab from '../../../../components/Page/Catalog/Product/Tabs/ProductRelated.vue'
 import ProductVariationTab from '../../../../components/Page/Catalog/Product/Tabs/ProductVariation.vue'
-
+import { ProductOptionDTO } from '/@/types/product/ProductOption'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Api } from '/@/services/api'
@@ -15,45 +15,14 @@ const product = ref<ProductDTO | null>(null)
 
 const activeTab = ref('productAttribute')
 
-const productOptions = ref([
-  {
-    optionId: '1',
-    name: 'Test',
-    displayType: 1,
-    values: [
-      {
-        key: 'Test22',
-        display: 'Test22',
-        productOptionValueLangs: [
-          {
-            languageId: '1',
-            key: 'Test22',
-            display: 'Test22'
-          }
-        ]
-      },
-      {
-        key: 'Test223',
-        display: 'Test322',
-        productOptionValueLangs: [
-          {
-            languageId: '1',
-            key: 'Test223',
-            display: 'Test322'
-          }
-        ]
-      }
-    ]
-  }
-])
-
 const tabs = [
   {
     id: 'productVariation',
     title: 'Warianty',
     component: ProductVariationTab,
     props: {
-      productOptions: productOptions.value
+      productOptions: product.value?.options,
+      product: product
     }
   },
   { id: 'productRelated', title: 'Relacje', component: ProductRelatedTab },
@@ -64,10 +33,32 @@ const getById = (id: string) => {
   return Api.products.get(id)
 }
 
+// const existCombinations = () => {
+//   product.value?.productOptionCombinations.forEach((combination) => {
+//     const optionIdToCheck = combination.optionId
+//     const existsInOptions = product.value?.options.some(
+//       (option) => option.optionId === optionIdToCheck
+//     )
+
+//     if (!existsInOptions) {
+//       const newCombination: ProductOptionDTO = {
+//         optionId: combination.optionId,
+//         displayType: 0,
+//         name: combination.optionName,
+//         values: []
+//       }
+//       product.value.options.push(newCombination)
+//     }
+//   })
+// }
+const isLoading = ref(false)
+
 onMounted(async () => {
   const id = route.params.id
   const result = await getById(id.toString())
   product.value = result.data
+  // await existCombinations()
+  isLoading.value = true
 })
 </script>
 
@@ -105,7 +96,7 @@ onMounted(async () => {
       </InfoBox>
     </div>
     <template #tabs>
-      <TabsView :tabs="tabs" />
+      <TabsView :tabs="tabs" v-if="isLoading" />
     </template>
   </ContentContainer>
 </template>

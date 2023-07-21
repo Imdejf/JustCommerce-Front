@@ -8,7 +8,15 @@ export interface ProductVariationDTO {
     thumbnailImage: MediaDTO | null;
     images: MediaDTO[] | null;
     optionCombinations: ProductOptionCombinationDTO[] | null;
+    productVariationLangs: ProductVariationLang[]
   }
+
+  export interface ProductVariationLang
+  {
+      languageId: string;
+      name: string;
+  }
+
   
   export interface MediaDTO {
     productId: string | null;
