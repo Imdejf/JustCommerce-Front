@@ -3,6 +3,8 @@
 import ProductCategoryTab from '../../../../components/Page/Catalog/Product/Tabs/ProductCategory.vue'
 import ProductRelatedTab from '../../../../components/Page/Catalog/Product/Tabs/ProductRelated.vue'
 import ProductVariationTab from '../../../../components/Page/Catalog/Product/Tabs/ProductVariation.vue'
+import ProductAttributeTab from '../../../../components/Page/Catalog/Product/Tabs/ProductAttribute.vue'
+
 import { ProductOptionDTO } from '/@/types/product/ProductOption'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -25,8 +27,21 @@ const tabs = [
       product: product
     }
   },
+  {
+    id: 'productAttribute',
+    title: 'Atrybuty',
+    component: ProductAttributeTab,
+    props: { product: product }
+  },
   { id: 'productRelated', title: 'Relacje', component: ProductRelatedTab },
-  { id: 'productCategory', title: 'Kategorie', component: ProductCategoryTab }
+  {
+    id: 'productCategory',
+    title: 'Kategorie',
+    component: ProductCategoryTab,
+    props: {
+      product: product
+    }
+  }
 ]
 
 const getById = (id: string) => {

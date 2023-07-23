@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { ProductOptionDTO, ProductOptionValueDTO } from '/@/types/product/ProductOption'
 import type { ProductDTO } from '/@/types/product/Product.ts'
@@ -56,6 +56,7 @@ const store = useStoreStore()
 const language = useLanguageStore()
 const currentLanguage = ref(null)
 const currentProductVariation = ref<ProductVariationDTO | null>(null)
+const productVariationList = ref<ProductVariationDTO[]>([])
 const activeProductOptions = ref<ProductOptionDTO[]>(props.productOptions)
 
 const handleLanguage = (id: string) => {
@@ -183,6 +184,15 @@ const handleShowThumbnail = (value: boolean) => {
 const handleShowMediaArea = (value: boolean) => {
   showMediaArea.value = value
 }
+
+const existProductVariation = () => {
+  productVariationList.value = props.product.variations
+}
+
+onMounted(() => {
+  existProductVariation()
+  console.log(productVariationList)
+})
 </script>
 
 <template>
@@ -274,6 +284,25 @@ const handleShowMediaArea = (value: boolean) => {
                 </div>
               </td>
             </tr>
+            <tr class="text-center" v-for="variation in productVariationList" :key="variation.id">
+              <td>
+                {{ variation.name }}
+              </td>
+              <td>
+                {{ variation.sku }}
+              </td>
+              <td>
+                {{ variation.gtin }}
+              </td>
+              <td>
+                {{ variation.price }}
+              </td>
+              <td>
+                {{ variation.oldPrice }}
+              </td>
+              <td><img class="w-10 mx-auto" :src="variation.thumbnailImage.filePath" /></td>
+              <td>Zdjęcia</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -292,5 +321,9 @@ const handleShowMediaArea = (value: boolean) => {
 <style>
 .section__variation .formkit-outer {
   width: 100%;
+}
+
+.section__variation .formkit-outer .formkit-wrapper {
+  margin: auto;
 }
 </style>

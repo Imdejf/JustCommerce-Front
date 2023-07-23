@@ -16,6 +16,7 @@ import HtmlEditor from './components/Form/Editor/HtmlEditor.vue'
 import ConfirmModal from './components/Form/Modal/ConfirmModal.vue'
 import InfoBox from './components/Form/Box/InfoBox.vue'
 import DropDown from './components/Form/DropDown/DropDown.vue'
+import DropDownGroup from './components/Form/DropDown/DropDownGroup.vue'
 import DataTable from './components/Form/DataTable/DataTable.vue'
 import MediaArea from './components/Form/File/MediaArea.vue'
 import TabsView from './components/Builder/TabsView.vue'
@@ -72,6 +73,7 @@ app.component('DropDown', DropDown)
 app.component('DataTable', DataTable)
 app.component('MediaArea', MediaArea)
 app.component('TabsView', TabsView)
+app.component('DropDownGroup', DropDownGroup)
 
 .component('font-awesome-icon', FontAwesomeIcon)
 

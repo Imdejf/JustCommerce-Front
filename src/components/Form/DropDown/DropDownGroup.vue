@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 import {
   Combobox,
   ComboboxInput,
@@ -25,20 +26,38 @@ const props = defineProps({
     default: []
   }
 })
-// const people = ref(props.options)
 
 const people = computed(() => {
-  if (!props.options.find((c) => c.name === 'Brak')) {
-    props.options.splice(0, 0, { id: null, name: 'Brak' })
-  }
+  //   if (!props.options.find((c) => c.name === 'Brak')) {
+  //     props.options.splice(0, 0, { id: null, name: 'Brak' })
+  //   }
 
-  if (props.value && props.options.length > 1) {
-    selected.value = props.options.find((c) => c.id === props.value)
+  // Odseparuj grupy i pozycje bez grupy
+  const groups = props.options.filter((option) => option.group)
+  const ungroupedOptions = props.options.filter((option) => !option.group)
+
+  // Wróć do wyświetlania pierwotnej listy osób, ale teraz używając odpowiednich grup
+  const peopleWithGroups = []
+  groups.forEach((group) => {
+    const groupItem = {
+      id: group.group.id,
+      name: group.group.name,
+      isGroup: true
+    }
+    peopleWithGroups.push(groupItem)
+    group.items.forEach((item) => peopleWithGroups.push(item))
+  })
+
+  // Dodaj pozycje bez grupy na końcu listy
+  peopleWithGroups.push(...ungroupedOptions)
+
+  if (props.value && peopleWithGroups.length > 1) {
+    selected.value = peopleWithGroups.find((c) => c.id === props.value)
   } else {
-    selected.value = props.options[0]
+    selected.value = peopleWithGroups[1]
   }
 
-  return props.options
+  return peopleWithGroups
 })
 
 let selected = ref([])
@@ -55,13 +74,12 @@ let filteredPeople = computed(() =>
       )
 )
 </script>
-
 <template>
   <div class="top-16 w-72">
     <span class="formkit-label">{{ label }}</span>
     <Combobox
       v-model="selected"
-      :defaultValue="people[0]"
+      :defaultValue="people[1]"
       @update:modelValue="(value) => emits('update:modelValue', value.id)"
     >
       <div class="relative mt-1 z-8">
@@ -95,46 +113,42 @@ let filteredPeople = computed(() =>
           <ComboboxOptions
             class="absolute mt-1 max-h-60 z-10 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
           >
-            <div
-              v-if="filteredPeople.length === 0 && query !== ''"
-              class="relative cursor-default select-none py-2 px-4 text-gray-700"
-            >
-              Nothing found.
-            </div>
-            <ComboboxOption
-              v-for="person in filteredPeople"
-              as="template"
-              :key="person.id"
-              :value="person"
-              v-slot="{ selected, active }"
-            >
-              <li
-                class="relative cursor-default select-none py-2 pl-10 pr-4"
-                :class="{
-                  'bg-orange-500 text-white': active,
-                  'text-gray-900': !active
-                }"
-              >
-                <span
-                  class="block truncate"
-                  :class="{ 'font-medium': selected, 'font-normal': !selected }"
+            <template v-for="(option, index) in filteredPeople">
+              <div v-if="option.isGroup" :key="option.id">
+                <!-- Grupa: Wyświetl nazwę grupy -->
+                <div class="relative cursor-default select-none py-2 pl-4 text-gray-700">
+                  {{ option.name }}
+                </div>
+              </div>
+              <ComboboxOption v-else :key="option.id" :value="option" v-slot="{ selected, active }">
+                <li
+                  class="relative cursor-default select-none py-2 pl-10 pr-4"
+                  :class="{
+                    'bg-orange-500 text-white': active,
+                    'text-gray-900': !active
+                  }"
                 >
-                  {{ person.name }}
-                </span>
-                <span
-                  v-if="selected"
-                  class="absolute inset-y-0 left-0 flex items-center pl-3"
-                  :class="{ 'text-white': active, 'text-teal-600': !active }"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="m10 16.4l-4-4L7.4 11l2.6 2.6L16.6 7L18 8.4l-8 8Z"
-                    />
-                  </svg>
-                </span>
-              </li>
-            </ComboboxOption>
+                  <span
+                    class="block truncate"
+                    :class="{ 'font-medium': selected, 'font-normal': !selected }"
+                  >
+                    {{ option.name }}
+                  </span>
+                  <span
+                    v-if="selected"
+                    class="absolute inset-y-0 left-0 flex items-center pl-3"
+                    :class="{ 'text-white': active, 'text-teal-600': !active }"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24">
+                      <path
+                        fill="currentColor"
+                        d="m10 16.4l-4-4L7.4 11l2.6 2.6L16.6 7L18 8.4l-8 8Z"
+                      />
+                    </svg>
+                  </span>
+                </li>
+              </ComboboxOption>
+            </template>
           </ComboboxOptions>
         </TransitionRoot>
       </div>

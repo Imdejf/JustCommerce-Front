@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { ProductDTO } from '/@/types/product/Product.ts'
-import ProductCategory from '../Form/ProductCategory/ProductCategory.vue'
+import ProductAttribute from '../Form/ProductAttribute/ProductAttribute.vue'
 
 const props = defineProps({
   product: {
@@ -11,5 +11,7 @@ const props = defineProps({
 </script>
 
 <template>
-  <div><ProductCategory :product="product" /></div>
+  <div>
+    <ProductAttribute :product="product" />
+  </div>
 </template>

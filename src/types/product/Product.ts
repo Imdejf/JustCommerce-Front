@@ -1,4 +1,5 @@
 import { ProductOptionDTO } from "./ProductOption";
+import { ProductVariationDTO } from "./ProductVariation";
 export interface ProductDTO {
     id: string;
     currentUserId: string;
@@ -35,6 +36,8 @@ export interface ProductDTO {
     medias: MediaDTO[];
     options: ProductOptionDTO[];
     productOptionCombinations: ProductOptionCombinationDTO[];
+    variations: ProductVariationDTO[];
+    attributes: ProductAttributeDTO[]
   }
   
   interface ProductLangDTO {
@@ -72,4 +75,20 @@ export interface ProductDTO {
     optionName: string;
     value: string;
     sortIndex: number;
+  }
+
+export interface ProductAttributeDTO {
+    id: string;
+    attributeValueId: string;
+    name: string;
+    value: string;
+    groupName: string;
+    groupId: string;
+    productAttributeLangs: ProductAttributreLangDTO[];
+  }
+  
+  interface ProductAttributreLangDTO {
+    productAttributeValueId: string;
+    languageId: string;
+    value: string;
   }

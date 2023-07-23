@@ -13,12 +13,7 @@ const products = ref([])
 
 onMounted(async () => {
   try {
-    products.value = await Api.products.filterList(
-      cookies.get('dsStore'),
-      '',
-      1,
-      1
-    )
+    products.value = await Api.products.filterList(cookies.get('dsStore'), '', 1, 20)
   } catch (error) {
     console.error(error)
   }
@@ -30,11 +25,7 @@ const handleAdd = () => {
 </script>
 
 <template>
-  <DataTable
-    :dataTable="products?.items"
-    :columns="tableColumns"
-    :link="'/catalog/product/detail'"
-  >
+  <DataTable :dataTable="products?.items" :columns="tableColumns" :link="'/catalog/product/detail'">
     <template #topbar>
       <el-button @click="handleAdd" type="primary" round>Dodaj</el-button>
     </template>

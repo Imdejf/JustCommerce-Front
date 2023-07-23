@@ -85,6 +85,48 @@ const removeOptionCombination = (payload) =>
     }
   })
 
+const addAttributeValue = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
+const updateAttributeValue = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
+const updateCategory = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/ProductCategory`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
 export const products = {
   addVariation,
   updateVariation,
@@ -92,5 +134,8 @@ export const products = {
   removeOptionCombination,
   addOption,
   updateOption,
+  addAttributeValue,
+  updateAttributeValue,
+  updateCategory,
   ...CreateBaseApiService('administration/product')
 }
