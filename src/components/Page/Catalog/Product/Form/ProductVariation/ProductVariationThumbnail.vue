@@ -62,6 +62,7 @@ if (props.thumbnailImage !== null) {
   const newThumbnailImage: FileDTO = {
     blobFolder: 1,
     watermark: true,
+    thumbnail: true,
     media: {
       seoFileName: props.thumbnailImage.seoFileName,
       titleAttribute: props.thumbnailImage.titleAttribute,
@@ -81,6 +82,7 @@ if (props.thumbnailImage !== null) {
   const newThumbnailImage: FileDTO = {
     blobFolder: 1,
     watermark: true,
+    thumbnail: true,
     media: {
       seoFileName: '',
       titleAttribute: '',
@@ -107,8 +109,9 @@ watch(
         titleAttribute: newThumbnailImage.media.titleAttribute,
         mediaLangs: newThumbnailImage.media.mediaLangs
       },
-      BlobFolder: 1,
-      Watermark: true
+      blobFolder: 1,
+      watermark: true,
+      thumbnail: true,
     }
   },
   { deep: true }

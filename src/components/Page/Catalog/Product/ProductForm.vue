@@ -158,7 +158,8 @@ watch(
         mediaLangs: newThumbnailImage.mediaLangs
       },
       blobFolder: 1,
-      watermark: false
+      watermark: true,
+      thumbnail: true
     }
   },
   { deep: true }
@@ -168,7 +169,7 @@ watch(
 <template>
   <ContentContainer :showLanguage="true">
     <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
-      <FormSection :title="'Zdjęcie kategorii'">
+      <FormSection :title="'Zdjęcie produktu'">
         <DropZone
           ref="dropzone"
           :fileInfo="fileThumbnail"
@@ -177,7 +178,6 @@ watch(
         ></DropZone>
       </FormSection>
       <div v-if="!language.selectedLanguage">
-        {{ fileThumbnail }}
         <FormSection :title="'Zdjęcie SEO'">
           <FormKit
             type="text"

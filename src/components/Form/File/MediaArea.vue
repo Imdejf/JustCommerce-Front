@@ -55,6 +55,7 @@ const addFile = () => {
     storeId: store.selectedStore?.id,
     blobFolder: props.folder,
     watermark: props.watermark,
+    thumbnail: false,
     media: {
       id: guid,
       filePath: '',
@@ -88,6 +89,7 @@ const handleSelectToEdit = (id: string) => {
     storeId: store.selectedStore?.id,
     blobFolder: props.folder,
     watermark: props.watermark,
+    thumbnail: false,
     media: {
       id: selectFile?.id,
       filePath: selectFile?.filePath || '',

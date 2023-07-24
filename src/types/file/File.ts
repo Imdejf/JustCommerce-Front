@@ -5,6 +5,7 @@ export interface FileDTO {
     media: MediasDTO;
     blobFolder: BlobFolder;
     watermark: boolean;
+    thumbnail: boolean;
 }
 
 export interface MediasDTO {

@@ -98,8 +98,9 @@ watch(
         TitleAttribute: newThumbnailImage.title,
         MediaLangs: newThumbnailImage.mediaLangs
       },
-      BlobFolder: 2,
-      Watermark: false
+      blobFolder: 2,
+      watermark: false,
+      thumbnail: false,
     }
   },
   { deep: true }
