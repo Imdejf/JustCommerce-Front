@@ -51,9 +51,9 @@ const handleRemoveFile = async (id: string) => {
 const handleSave = async (values) => {
   const token = cookies.get('Authorization')
   const decoded = jwt_decode(token)
-
-  if (uploadedFileThumbnail.value) {
-    currentProduct.storeId = store.selectedStore.id
+  currentProduct.storeId = store.selectedStore.id
+  console.log(currentProduct.storeId)
+  if (uploadedFileThumbnail.valuei) {
     currentProduct.thumbnailImage.filePath = uploadedFileThumbnail.value?.path
     currentProduct.thumbnailImage.mediaLangs.forEach((mediaLang) => {
       const matchingPath = uploadedFileThumbnail.value?.pathLang.find(
@@ -66,7 +66,7 @@ const handleSave = async (values) => {
   }
 
   currentProduct.currentUserId = decoded.sub
-
+  currentProduct.deletedMediaIds = []
   try {
     const payload = {
       body: JSON.stringify(currentProduct)
@@ -77,7 +77,6 @@ const handleSave = async (values) => {
         timeout: 2000
       })
     } else {
-      console.log(route.params.id)
       await Api.products.update(payload)
       toast.success('Edytowano produkt', {
         timeout: 2000

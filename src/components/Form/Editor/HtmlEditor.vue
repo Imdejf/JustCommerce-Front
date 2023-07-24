@@ -170,9 +170,28 @@ export default {
 }
 </script>
 
-<style lang="less" scoped>
+<style lang="less">
 .ProseMirror {
-  height: 300px;
+  height: 300px !important;
+  overflow: auto !important;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  outline: none;
+
+  > p:first-child {
+    margin-top: 0.5em;
+  }
+
+  > h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    &:first-child {
+      margin-top: 0.5em;
+    }
+  }
 }
 #text-editor {
   border: 1px solid #808080;
@@ -271,29 +290,6 @@ export default {
 
       &.danger {
         color: red;
-      }
-    }
-  }
-
-  .ProseMirror {
-    height: 300px;
-    overflow-y: auto;
-    padding-left: 0.5em;
-    padding-right: 0.5em;
-    outline: none;
-
-    > p:first-child {
-      margin-top: 0.5em;
-    }
-
-    > h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-      &:first-child {
-        margin-top: 0.5em;
       }
     }
   }

@@ -251,6 +251,39 @@ const router = createRouter({
       },
       component: () => import('../views/Catalog/Product/Product/ProductDetail.vue')
     }, 
+    //SHIPPING RULE
+    {
+      path: '/system/rule',
+      name: 'ShippingRule',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/ShippingRule/index.vue')
+    }, 
+    {
+      path: '/system/rule/add',
+      name: 'CreateShippingRule',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/ShippingRule/CreateShippingRule.vue')
+    },   
+    {
+      path: '/system/rule/edit/:id',
+      name: 'UpdateShippingRule',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/ShippingRule/UpdateShippingRule.vue')
+    },     
+    {
+      path: '/system/rule/detail/:id',
+      name: 'DetailShippingRule',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/ShippingRule/DetailShippingRule.vue')
+    },   
   ]
 })
 

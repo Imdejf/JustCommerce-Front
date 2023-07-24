@@ -8,6 +8,7 @@ import { productAttributes } from './product/productAttribute'
 import { categoryBlogs } from './managerContent/categoryBlog'
 import { postBlogs } from './managerContent/postBlog'
 import { brands } from './product/brands'
+import { rules } from './system/rule'
 
 export const Api = {
   stores,
@@ -19,5 +20,6 @@ export const Api = {
   productAttributes,
   categoryBlogs,
   postBlogs,
+  rules,
   brands
 }

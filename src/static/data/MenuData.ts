@@ -58,5 +58,16 @@ export interface MenuItem {
           route: "/manager-content/post-blogs"
         }
       ]
+    },
+    {
+      id:4,
+      name: "System",
+      route: "/",
+      subMenus: [
+        {
+          name: "Reguły",
+          route: "/system/rule"
+        },
+      ]
     }
   ]
