@@ -299,21 +299,13 @@ watch(
             type="number"
             v-model="currentProduct.price"
             label="Cena (netto)"
+            step="0.01"
             validation="required"
             validation-visibility="live"
           />
-          <FormKit label="Stara cena" type="number" v-model="currentProduct.oldPrice" />
+          <FormKit label="Stara cena" type="number" step="0.01" v-model="currentProduct.oldPrice" />
         </FormSection>
-        <FormSection :title="'Cena'">
-          <FormKit
-            type="number"
-            v-model="currentProduct.price"
-            label="Cena (netto)"
-            validation="required"
-            validation-visibility="live"
-          />
-          <FormKit label="Stara cena" type="number" v-model="currentProduct.oldPrice" />
-        </FormSection>
+
         <FormSection>
           <FormKit
             type="number"

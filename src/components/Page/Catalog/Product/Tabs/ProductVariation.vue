@@ -47,7 +47,6 @@ onMounted(() => {})
 </script>
 <template>
   <div class="block">
-    {{ props.productOptions }}
     <ProductOption
       @updateOptions="updateOptions"
       :product="product"

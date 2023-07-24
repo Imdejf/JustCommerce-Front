@@ -51,7 +51,6 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
     <div class="relative w-full max-w-2xl max-h-full mx-auto top-[20%]">
       <div class="relative bg-white rounded-lg shadow">
         <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
-          {{ activeOption }}
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Konfiguracja:</h3>
           <button
             @click="handleClose"
@@ -126,12 +125,12 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
                   <FormKit
                     type="text"
                     v-model="value.productOptionValueLangs[index].key"
-                    label="Nazwa SEO"
+                    label="Nazwa"
                   />
                   <FormKit
                     type="text"
                     v-model="value.productOptionValueLangs[index].display"
-                    label="Nazwa SEO"
+                    label="Wyświetl"
                   />
                 </div>
               </div>
@@ -140,7 +139,7 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
                   <FormKit
                     type="text"
                     v-model="value.productOptionValueLangs[index].key"
-                    label="Nazwa SEO"
+                    label="Nazwa"
                   />
                   <FormKit
                     type="color"

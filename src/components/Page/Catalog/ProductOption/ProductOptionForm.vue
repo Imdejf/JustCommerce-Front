@@ -56,10 +56,9 @@ const handleSave = async () => {
 
 <template>
   <ContentContainer :showLanguage="true">
-    {{ currentProductOption }}
     <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
       <div v-if="!language.selectedLanguage">
-        <FormSection :title="'Grupa atrybutów'">
+        <FormSection :title="'Opcje'">
           <FormKit
             type="text"
             v-model="currentProductOption.name"
