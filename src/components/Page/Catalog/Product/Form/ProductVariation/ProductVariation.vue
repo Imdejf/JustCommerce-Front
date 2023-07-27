@@ -59,6 +59,13 @@ const currentProductVariation = ref<ProductVariationDTO | null>(null)
 const productVariationList = ref<ProductVariationDTO[]>([])
 const activeProductOptions = ref<ProductOptionDTO[]>(props.productOptions)
 
+const editProductVariation = ref<ProductVariationDTO | null>(null)
+
+const handleSelectToEdit = (id: string) => {
+  const selectVariation = productVariationList.value.find((c) => c.id == id)
+  editProductVariation.value = selectVariation
+}
+
 const handleLanguage = (id: string) => {
   currentLanguage.value = id
 }
@@ -134,6 +141,10 @@ const handleThumbnailImage = (media: MediaDTO) => {
   showThumbnail.value = false
 }
 
+const handleCancelEditVariation = () => {
+  editProductVariation.value = null
+}
+
 const handleSaveVariation = async () => {
   const token = cookies.get('Authorization')
   const decoded = jwt_decode(token)
@@ -159,13 +170,34 @@ const handleSaveVariation = async () => {
         timeout: 2000
       })
     } else {
-      console.log('SAVE')
-      console.log(currentProductVariation.value)
-      await Api.products.update(payload)
       toast.success('Edytowano wariant', {
         timeout: 2000
       })
     }
+  } catch (error) {
+    toast.error('Wystąpił błąd', {
+      timeout: 2000
+    })
+  }
+}
+
+const handleSaveEdit = async () => {
+  const token = cookies.get('Authorization')
+  const decoded = jwt_decode(token)
+  try {
+    const productVariation: ProductVariationInterface = {
+      storeId: store.selectedStore.id,
+      userId: decoded.sub,
+      productId: editProductVariation.value.id,
+      variation: editProductVariation.value
+    }
+    const payload = {
+      body: JSON.stringify(productVariation)
+    }
+    await Api.products.updateVariation(payload)
+    toast.success('Edytowano wariant', {
+      timeout: 2000
+    })
   } catch (error) {
     toast.error('Wystąpił błąd', {
       timeout: 2000
@@ -288,20 +320,77 @@ onMounted(() => {
               <td>
                 {{ variation.name }}
               </td>
-              <td>
+              <td v-if="editProductVariation?.id !== variation.id">
                 {{ variation.sku }}
               </td>
-              <td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit type="text" v-model="editProductVariation.sku" help="" />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
                 {{ variation.gtin }}
               </td>
-              <td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit type="text" v-model="editProductVariation.gtin" help="" />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
                 {{ variation.price }}
               </td>
-              <td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit type="number" step="0.01" v-model="editProductVariation.price" help="" />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
                 {{ variation.oldPrice }}
               </td>
-              <td><img class="w-10 mx-auto" :src="variation.thumbnailImage.filePath" /></td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit
+                  type="number"
+                  step="0.01"
+                  v-model="editProductVariation.oldPrice"
+                  help=""
+                />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
+                <img class="w-10 mx-auto" :src="variation.thumbnailImage.filePath" />
+              </td>
+              <td v-if="editProductVariation?.id === variation.id" class="section__variation">
+                <el-button @click="handleShowThumbnail(true)" color="#ea580c" round
+                  >Miniatura</el-button
+                >
+              </td>
               <td>Zdjęcia</td>
+              <td class="px-6 py-4">
+                <a
+                  @click="handleSelectToEdit(variation.id)"
+                  v-if="editProductVariation === null"
+                  class="mr-3 font-medium text-blue-600 dark:text-blue-500 hover:underline"
+                  >Edytuj</a
+                >
+                <a
+                  v-if="editProductVariation !== null"
+                  @click="handleSaveEdit"
+                  class="mr-3 font-medium text-blue-600 dark:text-blue-500 hover:underline"
+                  >Zapisz</a
+                >
+                <a
+                  href="#"
+                  v-if="editProductVariation === null"
+                  class="ml-3 font-medium text-red-500 dark:text-blue-500 hover:underline"
+                  @click="handleSelectFile(variation.id)"
+                  >Usuń</a
+                >
+                <a
+                  v-if="editProductVariation !== null"
+                  class="ml-3 font-medium text-red-500 dark:text-blue-500 hover:underline"
+                  @click="handleCancelEditVariation"
+                  >Anuluj</a
+                >
+                <ConfirmModal
+                  v-if="removeModal"
+                  @confirmed="handleRemove()"
+                  @canceled="removeModal = false"
+                  text="Czy chcesz usunąć zdjęcie?"
+                />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -313,6 +402,7 @@ onMounted(() => {
       v-if="showThumbnail"
       @save="handleThumbnailImage"
       @close="handleShowThumbnail"
+      :thumbnailImage="editProductVariation?.thumbnailImage"
     />
     <ProductVariationImages v-if="showMediaArea" @close="handleShowMediaArea" />
   </div>

@@ -9,7 +9,7 @@ const emits = defineEmits(['close', 'save'])
 
 const props = defineProps({
   thumbnailImage: {
-    type: Object as () => MediaDTO,
+    type: Object as () => Object,
     default: () => null
   }
 })
@@ -21,7 +21,6 @@ const language = useLanguageStore()
 
 const handleSave = async (values) => {
   if (file.value) {
-    console.log(file.value)
     currentThumbnailImage.value.media.filePath = file.value?.path
     currentThumbnailImage.value.media.mediaLangs.forEach((mediaLang) => {
       const matchingPath = file.value?.pathLang.find(
@@ -67,7 +66,8 @@ if (props.thumbnailImage !== null) {
       seoFileName: props.thumbnailImage.seoFileName,
       titleAttribute: props.thumbnailImage.titleAttribute,
       altAttribute: props.thumbnailImage.altAttribute,
-      mediaLangs: props.thumbnailImage.productMediaLangs.map((lang) => ({
+      filePath: props.thumbnailImage.filePath,
+      mediaLangs: props.thumbnailImage.mediaLangs.map((lang) => ({
         mediaId: lang.mediaId,
         languageId: lang.languageId,
         filePath: lang.filePath,
@@ -111,7 +111,7 @@ watch(
       },
       blobFolder: 1,
       watermark: true,
-      thumbnail: true,
+      thumbnail: true
     }
   },
   { deep: true }
@@ -124,7 +124,7 @@ watch(
       <DropZone
         ref="dropzone"
         :fileInfo="file"
-        :url="currentThumbnailImage.filePath"
+        :url="currentThumbnailImage?.media?.filePath"
         v-model="file"
       ></DropZone>
     </FormSection>

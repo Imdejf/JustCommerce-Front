@@ -52,8 +52,7 @@ const handleSave = async (values) => {
   const token = cookies.get('Authorization')
   const decoded = jwt_decode(token)
   currentProduct.storeId = store.selectedStore.id
-  console.log(currentProduct.storeId)
-  if (uploadedFileThumbnail.valuei) {
+  if (uploadedFileThumbnail.value) {
     currentProduct.thumbnailImage.filePath = uploadedFileThumbnail.value?.path
     currentProduct.thumbnailImage.mediaLangs.forEach((mediaLang) => {
       const matchingPath = uploadedFileThumbnail.value?.pathLang.find(
@@ -96,10 +95,11 @@ const handleAddFile = (file: Object) => {
 }
 
 const handleEditFile = (file: Object) => {
-  const index = files.value?.findIndex((c) => c.id === file.id)
+  const index = files.value?.findIndex((c) => c.mediaId === file.id)
+  console.log(file)
   currentFile.value = {
     displayOrder: file.displayOrder,
-    id: file.id,
+    mediaId: file.id,
     filePath: file?.filePath || '',
     seoFileName: file?.seoFileName || '',
     altAttribute: file?.altAttribute || '',
@@ -108,15 +108,20 @@ const handleEditFile = (file: Object) => {
       const selectedMediaLang = file?.mediaLangs.find(
         (mediaLang) => mediaLang.languageId === lang.id
       )
+      console.log(selectedMediaLang)
       return {
         languageId: lang.id,
         seoFileName: selectedMediaLang?.seoFileName || '',
         altAttribute: selectedMediaLang?.altAttribute || '',
-        titleAttribute: selectedMediaLang?.titleAttribute || ''
+        titleAttribute: selectedMediaLang?.titleAttribute || '',
+        filePath: selectedMediaLang?.filePath || ''
       }
     })
   }
-  files.value.splice(0, 1, currentFile.value)
+
+  files.value[index] = currentFile.value
+
+  console.log(currentFile.value)
 }
 
 const slugGenerator = () => {

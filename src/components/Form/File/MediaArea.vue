@@ -84,14 +84,16 @@ const handleRemove = () => {
 
 const handleSelectToEdit = (id: string) => {
   editId.value = id
-  const selectFile = files.value.find((c) => c.id === id)
+
+  const selectFile = files.value.find((c) => c.mediaId === id)
+
   currentFile.value.file = {
     storeId: store.selectedStore?.id,
     blobFolder: props.folder,
     watermark: props.watermark,
     thumbnail: false,
     media: {
-      id: selectFile?.id,
+      id: selectFile?.mediaId,
       filePath: selectFile?.filePath || '',
       altAttribute: selectFile?.altAttribute || '',
       seoFileName: selectFile?.seoFileName || '',
@@ -105,7 +107,8 @@ const handleSelectToEdit = (id: string) => {
           languageId: lang.id,
           seoFileName: selectedMediaLang?.seoFileName || '',
           altAttribute: selectedMediaLang?.altAttribute || '',
-          titleAttribute: selectedMediaLang?.titleAttribute || ''
+          titleAttribute: selectedMediaLang?.titleAttribute || '',
+          filePath: selectedMediaLang?.filePath || ''
         }
       })
     }
@@ -149,6 +152,8 @@ const handleSaveEdit = async () => {
     await updatedropzone.value[0].sendFileToServer()
   }
 
+  console.log('xxxx')
+  console.log(currentFile.value.file?.media.mediaLangs)
   const file = {
     media: {
       id: currentFile.value.file?.media.id,
@@ -166,7 +171,7 @@ const handleSaveEdit = async () => {
           ? uploadedFile.value.pathLang.find((item) => item.languageId === lang.languageId)?.path
           : currentFile.value.file?.media.mediaLangs.find(
               (item) => item.languageId === lang.languageId
-            )
+            )?.filePath
       }))
     }
   }
@@ -237,7 +242,7 @@ const handleRemoveFile = () => {
               :showSaveButton="false"
             ></DropZone>
           </td>
-          <td>
+          <td class="area_input">
             <FormKit
               v-if="currentLanguage === null"
               type="text"
@@ -251,7 +256,7 @@ const handleRemoveFile = () => {
               />
             </div>
           </td>
-          <td>
+          <td class="area_input">
             <FormKit
               v-if="currentLanguage === null"
               type="text"
@@ -265,7 +270,7 @@ const handleRemoveFile = () => {
               />
             </div>
           </td>
-          <td>
+          <td class="area_input">
             <FormKit
               v-if="currentLanguage === null"
               type="text"
@@ -279,7 +284,7 @@ const handleRemoveFile = () => {
               />
             </div>
           </td>
-          <td>
+          <td class="area_input">
             <FormKit type="number" v-model="currentFile.orderNumber" />
           </td>
           <td>
@@ -289,13 +294,13 @@ const handleRemoveFile = () => {
         </tr>
         <tr
           v-for="file in files"
-          :key="file.id"
+          :key="file.mediaId"
           class="bg-white text-center border-b dark:bg-gray-900 dark:border-gray-700"
         >
-          <td v-if="editId !== file.id">
+          <td v-if="editId !== file.mediaId">
             <img :src="file.filePath" class="w-20" />
           </td>
-          <td v-if="editId === file.id" class="picture">
+          <td v-if="editId === file.mediaId" class="picture">
             <DropZone
               ref="updatedropzone"
               :fileInfo="currentFile.file"
@@ -307,16 +312,16 @@ const handleRemoveFile = () => {
           </td>
 
           <th
-            v-if="editId !== file.id"
+            v-if="editId !== file.mediaId"
             scope="row"
-            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap area_input"
           >
             {{ file.seoFileName }}
           </th>
           <th
-            v-if="editId === file.id"
+            v-if="editId === file.mediaId"
             scope="row"
-            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap area_input"
           >
             <FormKit
               v-if="currentLanguage === null"
@@ -331,8 +336,8 @@ const handleRemoveFile = () => {
               />
             </div>
           </th>
-          <td v-if="editId !== file.id" class="px-6 py-4">{{ file.altAttribute }}</td>
-          <td v-if="editId === file.id">
+          <td v-if="editId !== file.mediaId" class="px-6 py-4">{{ file.altAttribute }}</td>
+          <td v-if="editId === file.mediaId" class="area_input">
             <FormKit
               v-if="currentLanguage === null"
               type="text"
@@ -346,8 +351,8 @@ const handleRemoveFile = () => {
               />
             </div>
           </td>
-          <td v-if="editId !== file.id" class="px-6 py-4">{{ file.titleAttribute }}</td>
-          <td v-if="editId === file.id">
+          <td v-if="editId !== file.mediaId" class="px-6 py-4">{{ file.titleAttribute }}</td>
+          <td v-if="editId === file.mediaId" class="area_input">
             <FormKit
               v-if="currentLanguage === null"
               type="text"
@@ -361,32 +366,33 @@ const handleRemoveFile = () => {
               />
             </div>
           </td>
-          <td v-if="editId !== file.id" class="px-6 py-4">{{ file.displayOrder }}</td>
-          <td v-if="editId === file.id">
+
+          <td v-if="editId !== file.mediaId" class="px-6 py-4">{{ file.displayOrder }}</td>
+          <td v-if="editId === file.mediaId" class="area_input">
             <FormKit type="number" v-model="currentFile.file.media.displayOrder" />
           </td>
           <td class="px-6 py-4">
             <a
-              @click="handleSelectToEdit(file.id)"
-              v-if="editId !== file.id"
+              @click="handleSelectToEdit(file.mediaId)"
+              v-if="editId !== file.mediaId"
               class="mr-3 font-medium text-blue-600 dark:text-blue-500 hover:underline"
               >Edytuj</a
             >
             <a
-              v-if="editId === file.id"
+              v-if="editId === file.mediaId"
               @click="handleSaveEdit"
               class="mr-3 font-medium text-blue-600 dark:text-blue-500 hover:underline"
               >Zapisz</a
             >
             <a
               href="#"
-              v-if="editId !== file.id"
+              v-if="editId !== file.mediaId"
               class="ml-3 font-medium text-red-500 dark:text-blue-500 hover:underline"
-              @click="handleSelectFile(file.id)"
+              @click="handleSelectFile(file.mediaId)"
               >Usuń</a
             >
             <a
-              v-if="editId === file.id"
+              v-if="editId === file.mediaId"
               class="ml-3 font-medium text-red-500 dark:text-blue-500 hover:underline"
               @click="handleCancelFile"
               >Anuluj</a
@@ -408,5 +414,9 @@ const handleRemoveFile = () => {
 .picture .dropzone__picture {
   width: 150px;
   height: 150px;
+}
+
+.area_input .formkit-outer {
+  display: contents;
 }
 </style>

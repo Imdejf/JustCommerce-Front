@@ -131,7 +131,7 @@ export default defineComponent({
     >
       <template #message>
         <span v-if="!url">Upuść plik</span>
-        <img class="h-full mx-auto" :src="url" />
+        <img v-if="url" class="absolute w-full h-full mx-auto" :src="url" />
       </template>
     </DropZone>
     <div v-if="showSaveButton" class="flex justify-center mt-2">
