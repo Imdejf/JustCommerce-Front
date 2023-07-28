@@ -82,7 +82,8 @@ const handleSave = async () => {
       </FormSection>
       <FormSection :title="'Paczki'">
         <FormKit
-          type="text"
+          type="number"
+          step="0.01"
           v-model="currentRule.shipmentPrice"
           label="Cena paczki"
           validation="required"
@@ -105,7 +106,8 @@ const handleSave = async () => {
       </FormSection>
       <FormSection :title="'Palety'">
         <FormKit
-          type="text"
+          type="number"
+          step="0.01"
           v-model="currentRule.shipmentPricePallet"
           label="Cena palety"
           validation="required"

@@ -34,6 +34,7 @@ const currentProduct = reactive(props.product)
 const currentFile = ref(null)
 const files = ref(props.product.medias)
 const brands = ref([])
+const rules = ref([])
 const test = ref(null)
 const handleRemoveFile = async (id: string) => {
   try {
@@ -147,8 +148,20 @@ const allBrands = async () => {
   })
 }
 
+const allRules = async () => {
+  const result = await Api.rules.listByStoreId()
+
+  rules.value = result.items.map((item) => {
+    return {
+      id: item.id,
+      name: item.name
+    }
+  })
+}
+
 onMounted(() => {
   allBrands()
+  allRules()
 })
 
 watch(
@@ -228,6 +241,14 @@ watch(
           <div class="mt-7">
             <el-button @click="slugGenerator" color="#ea580c" round>Generuj slug</el-button>
           </div>
+        </FormSection>
+        <FormSection :title="'Transport'"
+          ><DropDown
+            label="Reguła transportowa"
+            v-model="currentProduct.ruleId"
+            :value="currentProduct.ruleId"
+            :options="rules"
+          />
         </FormSection>
         <FormSection :title="'Marka'"
           ><DropDown

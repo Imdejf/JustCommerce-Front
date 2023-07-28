@@ -4,6 +4,7 @@ export interface ProductDTO {
     id: string;
     currentUserId: string;
     storeId: string;
+    ruleId: string;
     price: number;
     oldPrice?: number;
     specialPrice?: number;
