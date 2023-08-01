@@ -7,7 +7,10 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
-const tableColumns = [{ prop: 'name', label: 'Name' }]
+const tableColumns = [
+  { prop: 'name', label: 'Name' },
+  { prop: 'displayOrder', label: 'DisplayOrder' }
+]
 
 const productAttributes = ref([])
 

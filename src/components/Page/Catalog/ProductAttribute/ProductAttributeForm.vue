@@ -114,6 +114,9 @@ onMounted(async () => {
           </FormSection>
         </div>
       </div>
+      <FormSection :title="'Konfiguracja'">
+        <FormKit type="number" v-model="currentProductAttribute.displayOrder" label="Kolejność" />
+      </FormSection>
       <div class="save-button w-full my-10">
         <FormKit type="submit" label="Zapisz" style="display: flex; justify-content: flex-end" />
       </div>

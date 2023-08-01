@@ -16,6 +16,7 @@ const productAttribute = computed(() => {
     storeId: cookies.get('dsStore'),
     name: '',
     groupId: '',
+    displayOrder: 0,
     productAttributeLangs: language.languages.map((lang: LanguageDTO) => ({
       languageId: lang.id,
       name: ''

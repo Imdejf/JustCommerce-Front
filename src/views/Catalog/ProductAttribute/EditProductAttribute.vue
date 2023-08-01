@@ -18,6 +18,7 @@ onMounted(async () => {
   const id = route.params.id
   const result = await getById(id.toString())
   productAttribute.value = result.data
+  console.log(result.data)
 })
 </script>
 <template>
