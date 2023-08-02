@@ -13,7 +13,7 @@ const products = ref([])
 
 onMounted(async () => {
   try {
-    products.value = await Api.products.filterList(cookies.get('dsStore'), '', 1, 20)
+    products.value = await Api.products.filterList(cookies.get('dsStore'), '', 1, 30)
   } catch (error) {
     console.error(error)
   }

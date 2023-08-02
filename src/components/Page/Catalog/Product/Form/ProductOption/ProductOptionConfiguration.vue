@@ -135,7 +135,11 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
                 </div>
               </div>
               <div class="inputs_area" v-if="activeOption.displayType == 1">
-                <div v-for="value in activeOption.values" :key="value.key" class="flex gap-5">
+                <div
+                  v-for="(value, langIndex) in activeOption.values"
+                  :key="value.key"
+                  class="flex gap-5"
+                >
                   <FormKit
                     type="text"
                     v-model="value.productOptionValueLangs[index].key"
