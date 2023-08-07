@@ -22,6 +22,7 @@ const language = useLanguageStore()
 const handleSave = async (values) => {
   if (file.value) {
     currentThumbnailImage.value.media.filePath = file.value?.path
+
     currentThumbnailImage.value.media.mediaLangs.forEach((mediaLang) => {
       const matchingPath = file.value?.pathLang.find(
         (pathLang) => pathLang.languageId === mediaLang.languageId
@@ -121,6 +122,7 @@ watch(
 <template>
   <ContentContainer :showLanguage="true" :showBack="false">
     <FormSection :title="'Zdjęcie kategorii'">
+      {{ currentThumbnailImage }}
       <DropZone
         ref="dropzone"
         :fileInfo="file"

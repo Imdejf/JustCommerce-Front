@@ -1,6 +1,11 @@
 <template>
-  <div class="float-right mr-5 my-2">
-    <slot name="topbar"></slot>
+  <div class="float-right mr-5 my-2 flex">
+    <div>
+      <slot name="filter"></slot>
+    </div>
+    <div class="ml-20">
+      <slot name="topbar"></slot>
+    </div>
   </div>
   <ElTable
     :data="dataTable"

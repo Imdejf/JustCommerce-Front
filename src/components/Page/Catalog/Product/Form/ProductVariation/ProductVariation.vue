@@ -126,7 +126,6 @@ const handleOptionChange = (optionId: string, key: string) => {
     }
 
     const indexSelectItem = selectedItems.value.findIndex((c) => c.optionId == optionId)
-    console.log(indexSelectItem)
     if (indexSelectItem !== -1) {
       selectedItems.value[indexSelectItem] = selectedItem
     } else {
@@ -136,8 +135,11 @@ const handleOptionChange = (optionId: string, key: string) => {
 }
 
 const handleThumbnailImage = (media: MediaDTO) => {
-  currentProductVariation.value.thumbnailImage = media
-
+  if (editProductVariation.value != null) {
+    editProductVariation.value.thumbnailImage = media
+  } else {
+    currentProductVariation.value.thumbnailImage = media
+  }
   showThumbnail.value = false
 }
 
@@ -163,8 +165,6 @@ const handleSaveVariation = async () => {
       body: JSON.stringify(productVariation)
     }
     if (!props.updated) {
-      console.log('SAVE')
-      console.log(productVariation)
       await Api.products.addVariation(payload)
       toast.success('Dodano wariant', {
         timeout: 2000

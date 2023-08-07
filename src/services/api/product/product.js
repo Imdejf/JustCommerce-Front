@@ -1,6 +1,20 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
 
+const smartTable = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/smartTable`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
 const addVariation = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
     method: 'POST',
@@ -128,6 +142,7 @@ const updateCategory = (payload) =>
   })
 
 export const products = {
+  smartTable,
   addVariation,
   updateVariation,
   addOptionCombination,

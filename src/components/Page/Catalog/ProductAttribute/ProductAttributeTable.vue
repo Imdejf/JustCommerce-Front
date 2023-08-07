@@ -20,7 +20,7 @@ onMounted(async () => {
       cookies.get('dsStore'),
       '',
       1,
-      1
+      30
     )
   } catch (error) {
     console.error(error)
