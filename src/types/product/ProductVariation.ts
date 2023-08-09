@@ -3,8 +3,10 @@ export interface ProductVariationDTO {
     name: string;
     sku: string;
     gtin: string;
+    identificationCode: string | null;
     price: number;
     oldPrice: number | null;
+    producerPrice: number | null;
     thumbnailImage: MediaDTO | null;
     images: MediaDTO[] | null;
     optionCombinations: ProductOptionCombinationDTO[] | null;

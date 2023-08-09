@@ -7,6 +7,7 @@ export interface ProductDTO {
     ruleId: string;
     price: number;
     oldPrice?: number;
+    producerPrice?: number;
     specialPrice?: number;
     specialPriceStart?: string;
     specialPriceEnd?: string;
@@ -23,10 +24,12 @@ export interface ProductDTO {
     metaDescription: string;
     sku: string;
     gtin: string;
+    identificationCode: string;
     shortDescription: string;
     description: string;
     specification: string;
     isPublished: boolean;
+    productAvailability: ProductAvailability;
     isFeatured: boolean;
     stockTrackingIsEnabled: boolean;
     taxId?: string;
@@ -92,4 +95,17 @@ export interface ProductAttributeDTO {
     productAttributeValueId: string;
     languageId: string;
     value: string;
+  }
+
+  export enum ProductAvailability {
+    Available = 0,
+    TwentyFourToFourtyEight = 1,
+    SellerConfirmation = 2,
+    ThreeToSevenDays = 3,
+    ThreeToTenDays = 4,
+    TwoWeeks = 5,
+    ThreeWeeks = 6,
+    ThreeToFiveWeeks = 7,
+    TemporarilyUnavailable = 8,
+    ToOrder = 9
   }

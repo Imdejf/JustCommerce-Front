@@ -252,8 +252,10 @@ onMounted(() => {
               <th scope="col" class="px-6 py-3">Kombinacja</th>
               <th scope="col" class="px-6 py-3">SKU</th>
               <th scope="col" class="px-6 py-3">GTIN</th>
+              <th scope="col" class="px-6 py-3">Identyfikator produktu</th>
               <th scope="col" class="px-6 py-3">Cena</th>
               <th scope="col" class="px-6 py-3">Stara cena</th>
+              <th scope="col" class="px-6 py-3">Cena producenta</th>
               <th scope="col" class="px-6 py-3">Miniatura</th>
               <th scope="col" class="px-6 py-3">Zdjęcia</th>
               <th scope="col px-6 py-3">
@@ -289,10 +291,16 @@ onMounted(() => {
                 <FormKit type="text" v-model="currentProductVariation.gtin" help="" />
               </td>
               <td class="section__variation">
+                <FormKit type="text" v-model="currentProductVariation.identificationCode" help="" />
+              </td>
+              <td class="section__variation">
                 <FormKit type="number" v-model="currentProductVariation.price" help="" />
               </td>
               <td class="section__variation">
                 <FormKit type="number" v-model="currentProductVariation.oldPrice" help="" />
+              </td>
+              <td class="section__variation">
+                <FormKit type="number" v-model="currentProductVariation.producerPrice" help="" />
               </td>
               <td class="section__variation">
                 <el-button @click="handleShowThumbnail(true)" color="#ea580c" round
@@ -333,6 +341,12 @@ onMounted(() => {
                 <FormKit type="text" v-model="editProductVariation.gtin" help="" />
               </td>
               <td v-if="editProductVariation?.id !== variation.id">
+                {{ variation.identificationCode }}
+              </td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit type="text" v-model="editProductVariation.identificationCode" help="" />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
                 {{ variation.price }}
               </td>
               <td v-if="editProductVariation?.id === variation.id" class="area_input">
@@ -346,6 +360,17 @@ onMounted(() => {
                   type="number"
                   step="0.01"
                   v-model="editProductVariation.oldPrice"
+                  help=""
+                />
+              </td>
+              <td v-if="editProductVariation?.id !== variation.id">
+                {{ variation.producerPrice }}
+              </td>
+              <td v-if="editProductVariation?.id === variation.id" class="area_input">
+                <FormKit
+                  type="number"
+                  step="0.01"
+                  v-model="editProductVariation.producerPrice"
                   help=""
                 />
               </td>

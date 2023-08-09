@@ -32,8 +32,8 @@ const people = computed(() => {
     props.options.splice(0, 0, { id: null, name: 'Brak' })
   }
 
-  if (props.value && props.options.length > 1) {
-    selected.value = props.options.find((c) => c.id === props.value)
+  if (props.value != null && props.options.length > 1) {
+    selected.value = props.options.find((c) => c.id === props.value.toString())
   } else {
     selected.value = props.options[0]
   }

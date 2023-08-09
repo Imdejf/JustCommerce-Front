@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
-import { ProductDTO } from '/@/types/product/Product'
+import { ProductDTO, ProductAvailability } from '/@/types/product/Product'
 import type { MediaFileDTO, FileDTO } from '/@/types/file/File'
 import { useLanguageStore } from '/@/stores/language'
 import { useStoreStore } from '/@/stores/store'
@@ -36,6 +36,27 @@ const files = ref(props.product.medias)
 const brands = ref([])
 const rules = ref([])
 const test = ref(null)
+const productAvailableList = ref([])
+
+const translationsProductAvailable = {
+  [ProductAvailability.Available]: 'Dostępny',
+  [ProductAvailability.TwentyFourToFourtyEight]: 'Od 24 do 48h',
+  [ProductAvailability.ThreeToSevenDays]: 'Od 3 do 7 dni',
+  [ProductAvailability.ThreeToTenDays]: 'Od 3 do 10 dni',
+  [ProductAvailability.TwoWeeks]: 'Do 2 tygodni',
+  [ProductAvailability.ThreeWeeks]: 'Do 3 tygodni',
+  [ProductAvailability.ThreeToFiveWeeks]: 'Od 3 do 5 tygodni',
+  [ProductAvailability.TemporarilyUnavailable]: 'Tymczasowo niedostępne',
+  [ProductAvailability.ToOrder]: 'Na zamówienie',
+  [ProductAvailability.SellerConfirmation]: 'Potwierdzenie sprzedawcy'
+}
+
+for (const id in translationsProductAvailable) {
+  productAvailableList.value.push({
+    id: id,
+    name: translationsProductAvailable[id]
+  })
+}
 const handleRemoveFile = async (id: string) => {
   try {
     files.value = files.value.filter((file) => file.id !== id)
@@ -319,6 +340,12 @@ watch(
         <FormSection :title="'Kod'">
           <FormKit type="text" v-model="currentProduct.sku" label="SKU" help="" />
           <FormKit type="text" v-model="currentProduct.gtin" label="GTIN" help="" />
+          <FormKit
+            type="text"
+            v-model="currentProduct.identificationCode"
+            label="Kod identyfikacyjny"
+            help=""
+          />
         </FormSection>
         <FormSection :title="'Cena'">
           <FormKit
@@ -330,6 +357,12 @@ watch(
             validation-visibility="live"
           />
           <FormKit label="Stara cena" type="number" step="0.01" v-model="currentProduct.oldPrice" />
+          <FormKit
+            label="Cena producenta"
+            type="number"
+            step="0.01"
+            v-model="currentProduct.producerPrice"
+          />
         </FormSection>
 
         <FormSection>
@@ -352,6 +385,14 @@ watch(
               </div>
             </div>
           </div>
+        </FormSection>
+        <FormSection :title="'Dostępność'">
+          <DropDown
+            label="Czas realiazacji"
+            v-model="currentProduct.productAvailability"
+            :value="currentProduct.productAvailability"
+            :options="productAvailableList"
+          />
         </FormSection>
         <FormSection>
           <FormKit
