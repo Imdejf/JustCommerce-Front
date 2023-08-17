@@ -9,7 +9,6 @@ const language = useLanguageStore()
 
 const category = computed(() => {
   return {
-    id: '',
     slug: '',
     parentCategoryId: null,
     parentCategory: null,

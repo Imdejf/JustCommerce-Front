@@ -114,7 +114,49 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
                 <span class="w-1/5">
                   {{ value.key }}
                 </span>
-                <FormKit type="color" :value="value.display" v-model="value.display" />
+                <FormKit
+                  type="color"
+                  :value="value.display"
+                  v-model="value.display"
+                  class="!m-[0px]"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#409EFF"
+                  circle
+                  @click="value.display = '#409EFF'"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#000000"
+                  circle
+                  @click="value.display = '#000000'"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#B0B0B0"
+                  circle
+                  @click="value.display = '#B0B0B0'"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#67C23A"
+                  circle
+                  @click="value.display = '#67C23A'"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#FFDD00"
+                  circle
+                  @click="value.display = '#FFDD00'"
+                />
+                <el-button
+                  class="my-auto w-5 !h-5"
+                  color="#FA0000"
+                  circle
+                  @click="value.display = '#FA0000'"
+                />
+                <el-button class="my-auto w-5 !h-5" circle @click="value.display = '#FFFFFF'" />
               </div>
             </div>
           </div>
@@ -149,6 +191,47 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
                     type="color"
                     v-model="value.productOptionValueLangs[index].display"
                     label="Wyświetl"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#409EFF"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#409EFF'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#000000"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#000000'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#B0B0B0"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#B0B0B0'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#67C23A"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#67C23A'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#FFDD00"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#FFDD00'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    color="#FA0000"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#FA0000'"
+                  />
+                  <el-button
+                    class="my-auto w-5 !h-5"
+                    circle
+                    @click="value.productOptionValueLangs[index].display = '#FFFFFF'"
                   />
                 </div>
               </div>
