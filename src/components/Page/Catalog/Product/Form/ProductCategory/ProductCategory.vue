@@ -74,7 +74,6 @@ onMounted(async () => {
 })
 </script>
 <template>
-  {{ produc }}
   <div>
     <div v-for="category in categoriesList" :key="category.id">
       <label>
