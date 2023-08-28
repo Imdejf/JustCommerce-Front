@@ -15,6 +15,7 @@ interface ProductAttribute {
 interface ProductAttributeValue {
   attributeId: string
   value: string
+  productAttributeValueId: string
   productAttributeValueLangs: ProductAttributeValueLang[]
 }
 
@@ -101,7 +102,6 @@ const getAllAvailableAttributes = async () => {
     }
   })
 
-  // Przypisz atrybuty do odpowiednich grup na podstawie groupId
   result.items.forEach((item) => {
     const groupId = item.attributeGroup.id
 
@@ -179,6 +179,7 @@ const handleUpdateAttribute = async (attribute: ProductAttributeDTO) => {
     productAttributeValues: {
       value: attribute.value,
       attributeId: attribute.id,
+      productAttributeValueId: attribute.attributeValueId,
       productAttributeValueLangs: attribute.productAttributeLangs.map((lang) => {
         return {
           languageId: lang.languageId,

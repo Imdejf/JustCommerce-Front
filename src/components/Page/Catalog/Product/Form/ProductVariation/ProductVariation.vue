@@ -164,6 +164,7 @@ const handleSaveVariation = async () => {
     const payload = {
       body: JSON.stringify(productVariation)
     }
+
     if (!props.updated) {
       await Api.products.addVariation(payload)
       toast.success('Dodano wariant', {
