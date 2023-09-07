@@ -10,6 +10,7 @@ import { Api } from '/@/services/api'
 import jwt_decode from 'jwt-decode'
 import Cookies from 'universal-cookie'
 import { useRoute, useRouter } from 'vue-router'
+import diacritics from 'diacritics';
 
 const props = defineProps({
   product: {
@@ -85,6 +86,8 @@ const handleSave = async (values) => {
       }
     })
   }
+
+  currentProduct.slug = diacritics.remove(currentProduct.slug);
 
   currentProduct.currentUserId = decoded.sub
   currentProduct.deletedMediaIds = []

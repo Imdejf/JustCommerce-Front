@@ -24,7 +24,10 @@ const filter = ref({
   }
 })
 
-const tableColumns = [{ prop: 'name', label: 'Name' }]
+const tableColumns = [
+  { prop: 'name', label: 'Name' },
+  { prop: 'slug', label: 'Slug' }
+]
 
 const products = ref([])
 
