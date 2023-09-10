@@ -33,7 +33,14 @@ const tabs = [
     component: ProductAttributeTab,
     props: { product: product }
   },
-  { id: 'productRelated', title: 'Relacje', component: ProductRelatedTab },
+  {
+    id: 'productRelated',
+    title: 'Relacje',
+    component: ProductRelatedTab,
+    props: {
+      product: product
+    }
+  },
   {
     id: 'productCategory',
     title: 'Kategorie',

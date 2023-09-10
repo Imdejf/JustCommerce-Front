@@ -7,10 +7,11 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
+
 const filter = ref({
   StoreId: cookies.get('dsStore'),
   PageNumber: 1,
-  PageSize: 30,
+  PageSize: 120,
   SmartTableParam: {
     Search: {
       PredicateObject: {
@@ -23,6 +24,13 @@ const filter = ref({
     }
   }
 })
+
+const filterStorage = sessionStorage.getItem('filter')
+const parsedFilter = JSON.parse(filterStorage)
+
+if (parsedFilter) {
+  filter.value = parsedFilter
+}
 
 const tableColumns = [
   { prop: 'name', label: 'Name' },
@@ -50,10 +58,14 @@ const handleAdd = () => {
 watch(
   filter.value,
   async (newFilter, oldFilter) => {
+    newFilter.PageSize = 120
     try {
       const payload = {
         body: JSON.stringify(filter.value)
       }
+
+      window.sessionStorage.setItem('filter', JSON.stringify(newFilter))
+
       const result = await Api.products.smartTable(payload)
       products.value = result.data
     } catch (error) {

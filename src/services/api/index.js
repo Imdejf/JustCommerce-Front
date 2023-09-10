@@ -5,6 +5,7 @@ import { attributeGroups } from './product/attributeGroup'
 import { productOptions } from './product/productOption'
 import { products } from './product/product'
 import { productAttributes } from './product/productAttribute'
+import { productRelateds } from './product/productRelated'
 import { categoryBlogs } from './managerContent/categoryBlog'
 import { postBlogs } from './managerContent/postBlog'
 import { brands } from './product/brands'
@@ -18,6 +19,7 @@ export const Api = {
   productOptions,
   products,
   productAttributes,
+  productRelateds,
   categoryBlogs,
   postBlogs,
   rules,
