@@ -19,6 +19,21 @@ export interface MenuItem {
     },
     {
       id:2,
+      name: "Sprzedaż",
+      route: '/',
+      subMenus: [
+       {
+         name: "Zamówienia",
+         route: "/sale/order"
+       },
+       {
+        name:"Dostawy",
+        route: "/sale/shipment"
+       }
+      ]
+    },
+    {
+      id:3,
       name: "Katalog",
       route: "/",
       subMenus: [
@@ -45,7 +60,7 @@ export interface MenuItem {
       ]
     },
     {
-      id:3,
+      id:4,
       name: "Menadżer kontentu",
       route: "/",
       subMenus: [
@@ -60,7 +75,7 @@ export interface MenuItem {
       ]
     },
     {
-      id:4,
+      id:5,
       name: "System",
       route: "/",
       subMenus: [

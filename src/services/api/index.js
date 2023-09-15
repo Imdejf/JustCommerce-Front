@@ -10,6 +10,7 @@ import { categoryBlogs } from './managerContent/categoryBlog'
 import { postBlogs } from './managerContent/postBlog'
 import { brands } from './product/brands'
 import { rules } from './system/rule'
+import { orders } from './sale/order'
 
 export const Api = {
   stores,
@@ -23,5 +24,6 @@ export const Api = {
   categoryBlogs,
   postBlogs,
   rules,
-  brands
+  brands,
+  orders
 }
