@@ -30,8 +30,24 @@ const changePaidStatus = (payload) => {
   })
 }
 
+const changeOrderStatus = (payload) => {
+  fetch(`${APISettings.baseURL}administration/order/ChangeOrderStatus`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
 export const orders = {
   smartTable,
   changePaidStatus,
+  changeOrderStatus, 
   ...CreateBaseApiService('administration/order')
 }

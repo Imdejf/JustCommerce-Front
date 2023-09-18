@@ -117,6 +117,7 @@
           <el-select
             v-model="prop.row.orderStatus"
             class="m-2 select__element"
+            @change="handleChangeStatus($event, prop.row.id)"
             placeholder="Select"
           >
             <el-option
@@ -221,6 +222,20 @@ const filter = ref({
     }
   }
 })
+
+const handleChangeStatus = async (status: number, orderId: string) => {
+  const currentStatus = {
+    orderStatus: status,
+    orderId: orderId
+  }
+
+  const payload = {
+    body: JSON.stringify(currentStatus)
+  }
+
+  await Api.orders.changeOrderStatus(payload)
+  toast.success('Zmieniono status zamówienia')
+}
 
 const handleChangePaid = async (status: boolean, orderId: string) => {
   const currentStatus = {
