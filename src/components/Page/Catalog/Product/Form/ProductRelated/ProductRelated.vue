@@ -52,6 +52,8 @@ const addProductRelated = (relatedId: string, product) => {
   }
 
   Api.productRelateds.create(payload)
+  props.product.relatedProducts.push(newRelated)
+  products.value.items = products.value.items.filter((item) => item.id != product.id)
 }
 
 const removeProductRelated = (relatedId: string) => {
@@ -69,8 +71,6 @@ const removeProductRelated = (relatedId: string) => {
   Api.productRelateds.removeRelated(payload)
 }
 
-console.log(props.product)
-
 watch(
   filter.value,
   async (newFilter, oldFilter) => {
@@ -82,6 +82,12 @@ watch(
 
       const result = await Api.products.smartTable(payload)
       products.value = result.data
+      var filteredItems = products.value.items.filter((item) => {
+        return !props.product.relatedProducts.some((productItem) => productItem.id === item.id)
+      })
+
+      filteredItems = filteredItems.filter((item) => item.id != props.product.id)
+      products.value.items = filteredItems
     } catch (error) {
       console.error(error)
     }
@@ -136,9 +142,6 @@ watch(
             </ul>
           </div>
         </div>
-      </div>
-      <div class="float-right">
-        <el-button @click="slugGenerator" color="#60a5fa" round>Dodaj</el-button>
       </div>
     </div>
   </div>
