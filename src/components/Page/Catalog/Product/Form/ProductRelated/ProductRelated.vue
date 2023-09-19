@@ -74,9 +74,10 @@ console.log(props.product)
 watch(
   filter.value,
   async (newFilter, oldFilter) => {
+    console.log(newFilter)
     try {
       const payload = {
-        body: JSON.stringify(filter.value)
+        body: JSON.stringify(newFilter)
       }
 
       const result = await Api.products.smartTable(payload)
@@ -114,7 +115,7 @@ watch(
           <FormKit
             type="text"
             label="Szukaj produktu"
-            v-model="filter.SmartTableParam.Search.Name"
+            v-model="filter.SmartTableParam.Search.PredicateObject.Name"
           />
         </div>
         <div>
