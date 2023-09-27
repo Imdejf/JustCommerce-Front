@@ -28,7 +28,7 @@ export interface ProductVariationDTO {
     titleAttribute: string;
     filePath: string;
     displayOrder: number;
-    productMediaLangs: ProductMediaLangDTO[];
+    mediaLangs: ProductMediaLangDTO[];
   }
   
   export interface ProductMediaLangDTO {

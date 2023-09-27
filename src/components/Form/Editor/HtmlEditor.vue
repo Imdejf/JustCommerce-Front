@@ -12,7 +12,7 @@
             @click="onHeadingClick(index)"
             role="button"
           >
-            H{{ index }}
+            {{ index }}
           </a>
         </div>
       </div>

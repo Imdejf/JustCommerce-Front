@@ -39,7 +39,7 @@ const handleSave = async (values) => {
     titleAttribute: currentThumbnailImage.value.media.titleAttribute,
     altAttribute: currentThumbnailImage.value.media.altAttribute,
     filePath: currentThumbnailImage.value.media.filePath,
-    productMediaLangs: currentThumbnailImage.value.media.mediaLangs.map((lang) => {
+    mediaLangs: currentThumbnailImage.value.media.mediaLangs.map((lang) => {
       return {
         mediaId: currentThumbnailImage.value.media.mediaId,
         languageId: lang.languageId,
