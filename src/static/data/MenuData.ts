@@ -83,6 +83,10 @@ export interface MenuItem {
           name: "Reguły",
           route: "/system/rule"
         },
+        {
+          name: "Producenci",
+          route: "/system/brand"
+        },
       ]
     }
   ]

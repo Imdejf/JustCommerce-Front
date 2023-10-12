@@ -284,6 +284,39 @@ const router = createRouter({
       },
       component: () => import('../views/System/ShippingRule/DetailShippingRule.vue')
     },  
+    // BRAND
+    {
+      path: '/system/brand',
+      name: 'Brand',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/Brand/index.vue')
+    }, 
+    {
+      path: '/system/brand/add',
+      name: 'CreateBrand',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/Brand/CreateBrand.vue')
+    }, 
+    {
+      path: '/system/brand/edit/:id',
+      name: 'UpdateBrand',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/Brand/UpdateBrand.vue')
+    }, 
+    {
+      path: '/system/brand/detail/:id',
+      name: 'DetailBrand',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/System/Brand/DetailBrand.vue')
+    },  
     //ORDER
     {
       path: '/sale/order',
