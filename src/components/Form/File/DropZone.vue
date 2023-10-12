@@ -130,7 +130,7 @@ export default defineComponent({
       :maxFileSize="600000000"
     >
       <template #message>
-        <span v-if="!url">Upuść plik</span>
+        <div v-if="!url" class="">Upuść plik</div>
         <img v-if="url" class="absolute w-full h-full mx-auto" :src="url" />
       </template>
     </DropZone>

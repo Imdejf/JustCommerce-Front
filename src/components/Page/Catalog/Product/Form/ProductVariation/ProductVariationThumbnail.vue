@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { MediaDTO } from '/@/types/product/ProductVariation'
 import { FileDTO } from '/@/types/file/File'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useLanguageStore } from '/@/stores/language'
 import DropZone from '../../../../../Form/File/DropZone.vue'
 
@@ -100,6 +100,20 @@ if (props.thumbnailImage !== null) {
   currentThumbnailImage.value = newThumbnailImage
 }
 
+onMounted(() => {
+  file.value = {
+    media: {
+      seoFileName: currentThumbnailImage.value.media.seoFileName,
+      altAttribute: currentThumbnailImage.value.media.altAttribute,
+      titleAttribute: currentThumbnailImage.value.media.titleAttribute,
+      mediaLangs: currentThumbnailImage.value.media.mediaLangs
+    },
+    blobFolder: 1,
+    watermark: true,
+    thumbnail: true
+  }
+})
+
 watch(
   currentThumbnailImage.value,
   (newThumbnailImage, oldThumbnailImage) => {
@@ -122,7 +136,6 @@ watch(
 <template>
   <ContentContainer :showLanguage="true" :showBack="false">
     <FormSection :title="'Zdjęcie kategorii'">
-      {{ currentThumbnailImage }}
       <DropZone
         ref="dropzone"
         :fileInfo="file"

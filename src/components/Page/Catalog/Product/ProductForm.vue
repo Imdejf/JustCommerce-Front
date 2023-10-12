@@ -186,6 +186,17 @@ const allRules = async () => {
 onMounted(() => {
   allBrands()
   allRules()
+  fileThumbnail.value = {
+    media: {
+      seoFileName: currentProduct.thumbnailImage.seoFileName,
+      altAttribute: currentProduct.thumbnailImage.altAttribute,
+      titleAttribute: currentProduct.thumbnailImage.titleAttribute,
+      mediaLangs: currentProduct.thumbnailImage.mediaLangs
+    },
+    blobFolder: 1,
+    watermark: false,
+    thumbnail: true
+  }
 })
 
 watch(
