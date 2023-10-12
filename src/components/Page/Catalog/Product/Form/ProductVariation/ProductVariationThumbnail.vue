@@ -109,7 +109,7 @@ onMounted(() => {
       mediaLangs: currentThumbnailImage.value.media.mediaLangs
     },
     blobFolder: 1,
-    watermark: true,
+    watermark: false,
     thumbnail: true
   }
 })
@@ -125,7 +125,7 @@ watch(
         mediaLangs: newThumbnailImage.media.mediaLangs
       },
       blobFolder: 1,
-      watermark: true,
+      watermark: false,
       thumbnail: true
     }
   },
