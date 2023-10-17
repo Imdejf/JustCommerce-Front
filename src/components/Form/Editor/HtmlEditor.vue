@@ -278,6 +278,9 @@ export default {
       const vm = this.editor.chain().focus()
       vm.toggleHeading({ level: index }).run()
     },
+    setFontSize() {
+      const vm = this.editor.chain().focus()
+    },
     onColorClick(color: string) {
       const vm = this.editor.chain().focus()
       vm.setColor(color).run()
