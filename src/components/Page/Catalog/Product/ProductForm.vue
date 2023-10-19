@@ -42,6 +42,7 @@ const productAvailableList = ref([])
 const translationsProductAvailable = {
   [ProductAvailability.Available]: 'Dostępny',
   [ProductAvailability.TwentyFourToFourtyEight]: 'Od 24 do 48h',
+  [ProductAvailability.UpToFiveBusinessDays]: 'Do 5 dni roboczych',
   [ProductAvailability.ThreeToSevenDays]: 'Od 3 do 7 dni',
   [ProductAvailability.ThreeToTenDays]: 'Od 3 do 10 dni',
   [ProductAvailability.TwoWeeks]: 'Do 2 tygodni',
@@ -58,6 +59,7 @@ for (const id in translationsProductAvailable) {
     name: translationsProductAvailable[id]
   })
 }
+
 const handleRemoveFile = async (id: string) => {
   try {
     files.value = files.value.filter((file) => file.id !== id)

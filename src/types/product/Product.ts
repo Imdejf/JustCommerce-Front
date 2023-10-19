@@ -100,12 +100,13 @@ export interface ProductAttributeDTO {
   export enum ProductAvailability {
     Available = 0,
     TwentyFourToFourtyEight = 1,
-    SellerConfirmation = 2,
+    UpToFiveBusinessDays = 2,
     ThreeToSevenDays = 3,
     ThreeToTenDays = 4,
     TwoWeeks = 5,
     ThreeWeeks = 6,
     ThreeToFiveWeeks = 7,
     TemporarilyUnavailable = 8,
-    ToOrder = 9
+    SellerConfirmation = 9,
+    ToOrder = 10,
   }
