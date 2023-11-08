@@ -7,7 +7,9 @@ export interface CategoryDTO {
     metaTitle: string;
     metaKeywords: string;
     metaDescription: string;
+    shortDescription: string;
     description: string;
+    gmcCategory: string;
     displayOrder: number;
     isPublished: boolean;
     includeInMenu: boolean;
@@ -23,6 +25,7 @@ export interface CategoryDTO {
   
   export interface CategoryLangDTO {
     name: string;
+    shortDescription: string;
     description: string;
     metaKeywords: string;
     metaDescription: string;

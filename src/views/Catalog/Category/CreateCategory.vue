@@ -16,6 +16,7 @@ const category = computed(() => {
     metaTitle: '',
     metaKeywords: '',
     metaDescription: '',
+    shortDescription: '',
     description: '',
     displayOrder: 0,
     isPublished: false,

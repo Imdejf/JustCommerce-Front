@@ -17,7 +17,7 @@ const categories = ref([])
 
 onMounted(async () => {
   try {
-    categories.value = await Api.categories.filterList(cookies.get('dsStore'), '', 1, 1)
+    categories.value = await Api.categories.filterList(cookies.get('dsStore'), '', 1000, 1)
     console.log(categories.value)
   } catch (error) {
     console.error(error)

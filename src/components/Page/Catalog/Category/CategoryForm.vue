@@ -67,13 +67,13 @@ const handleSave = async (values) => {
         timeout: 2000
       })
     } else {
-      console.log(route.params.id)
+      console.log('HERE')
+      console.log(payload)
       await Api.categories.update(payload)
       toast.success('Edytowano kategorie', {
         timeout: 2000
       })
     }
-
     router.go(-1)
   } catch (error) {
     toast.error('Wystąpił błąd', {
@@ -126,7 +126,7 @@ watch(
       },
       blobFolder: 0,
       watermark: false,
-      thumbnail: true,
+      thumbnail: true
     }
   },
   { deep: true }
@@ -244,8 +244,19 @@ onMounted(() => {
             }"
           />
         </FormSection>
+        <FormSection title="Skrócony opis">
+          <HtmlEditor v-model="currentCategory.shortDescription" />
+        </FormSection>
         <FormSection title="Opis">
           <HtmlEditor v-model="currentCategory.description" />
+        </FormSection>
+        <FormSection title="Zewnętrzni dostawcy">
+          <FormKit
+            type="text"
+            v-model="currentCategory.gmcCategory"
+            label="GMC"
+            help="Kategoria GMC"
+          />
         </FormSection>
         <FormSection title="Ustawienia" class="block">
           <FormKit
@@ -369,6 +380,9 @@ onMounted(() => {
                 }
               }"
             />
+          </FormSection>
+          <FormSection title="Skrócony opis">
+            <HtmlEditor v-model="currentCategory.categoryLangs[index].shortDescription" />
           </FormSection>
           <FormSection title="Opis">
             <HtmlEditor v-model="currentCategory.categoryLangs[index].description" />
