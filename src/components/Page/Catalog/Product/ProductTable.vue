@@ -33,8 +33,9 @@ if (parsedFilter) {
 }
 
 const tableColumns = [
-  { prop: 'name', label: 'Name' },
-  { prop: 'slug', label: 'Slug' }
+  { prop: 'name', label: 'Nazwa' },
+  { prop: 'slug', label: 'Slug' },
+  { prop: 'availability', label: 'Dostępność' }
 ]
 
 const products = ref([])
@@ -46,6 +47,7 @@ onMounted(async () => {
     }
     const result = await Api.products.smartTable(payload)
     products.value = result.data
+    console.log(products.value)
   } catch (error) {
     console.error(error)
   }

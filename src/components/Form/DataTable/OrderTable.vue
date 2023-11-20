@@ -3,7 +3,7 @@
     <el-table-column type="expand">
       <template #default="props">
         <div class="bg-gray-100">
-          <div class="flex w-full justify-center gap-[30%] p-2">
+          <div class="flex w-full gap-[30%] p-2">
             <div>
               <span class="font-bold text-base">Dane Klienta</span>
               <p v-show="props.row.billingAddress.companyName" m="t-0 b-2">
@@ -16,21 +16,29 @@
               <p>Adres: {{ props.row.billingAddress.addressLine1 }}</p>
               <p>Kod pocztowy: {{ props.row.billingAddress.zipCode }}</p>
               <p>Miasto: {{ props.row.billingAddress.city }}</p>
+              <p>Email: {{ props.row.billingAddress.email }}</p>
             </div>
             <div>
               <span class="font-bold text-base">Dane Wysyłki</span>
-              <p v-show="props.row.billingAddress.companyName" m="t-0 b-2">
-                Firma: {{ props.row.billingAddress.companyName }}
+              <p v-show="props.row.shippingAddress.companyName" m="t-0 b-2">
+                Firma: {{ props.row.shippingAddress.companyName }}
               </p>
               <p>
                 Imię i nazwisko:
-                {{ props.row.billingAddress.firstName + ' ' + props.row.billingAddress.lastName }}
+                {{ props.row.shippingAddress.firstName + ' ' + props.row.shippingAddress.lastName }}
               </p>
-              <p>Adres: {{ props.row.billingAddress.addressLine1 }}</p>
-              <p>Kod pocztowy: {{ props.row.billingAddress.zipCode }}</p>
-              <p>Miasto: {{ props.row.billingAddress.city }}</p>
+              <p>Adres: {{ props.row.shippingAddress.addressLine1 }}</p>
+              <p>Kod pocztowy: {{ props.row.shippingAddress.zipCode }}</p>
+              <p>Miasto: {{ props.row.shippingAddress.city }}</p>
+            </div>
+            <div>
+              <span class="font-bold text-base">Pozostałe dane</span>
+              <p>Płatność: {{ translatePaymentProvider(props.row.payment) }}</p>
+              <p>Numer Faktury: {{ props.row.invoiceNumber }}</p>
+              <p>Numer Proformy: {{ props.row.proformaNumber }}</p>
             </div>
           </div>
+
           <div class="px-8 flex gap-5 my-5">
             <strong>Informacje dodatkowe: </strong>
             <p class="w-[75%] text-wrap">
@@ -157,6 +165,15 @@ import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
 
+enum PaymentProvider {
+  Przelewy24 = 0,
+  StandardTransfer = 1,
+  CashOnDelivery = 2,
+  PayPo = 3,
+  Blik = 4,
+  Term = 5
+}
+
 enum OrderStatus {
   New = 1,
   OnHold = 10,
@@ -267,6 +284,25 @@ onMounted(async () => {
     console.error(error)
   }
 })
+
+function translatePaymentProvider(value: number): string | null {
+  switch (value) {
+    case PaymentProvider.Przelewy24:
+      return 'Przelewy24'
+    case PaymentProvider.StandardTransfer:
+      return 'Przelew Standardowy'
+    case PaymentProvider.CashOnDelivery:
+      return 'Płatność przy odbiorze'
+    case PaymentProvider.PayPo:
+      return 'PayPo'
+    case PaymentProvider.Blik:
+      return 'Blik'
+    case PaymentProvider.Term:
+      return 'Raty'
+    default:
+      return null // lub inny sposób obsługi nieprawidłowej wartości
+  }
+}
 </script>
 
 <style>

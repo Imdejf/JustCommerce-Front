@@ -89,6 +89,7 @@ import { Color } from '@tiptap/extension-color'
 import Image from '@tiptap/extension-image'
 import TextStyle from '@tiptap/extension-text-style'
 import Cookies from 'universal-cookie'
+import Link from '@tiptap/extension-link'
 
 export default {
   components: {
@@ -296,6 +297,12 @@ export default {
         StarterKit,
         Underline,
         TextStyle,
+        Link.configure({
+          HTMLAttributes: {
+            rel: null,
+            target: null
+          }
+        }),
         Color,
         Text,
         Subscript,
