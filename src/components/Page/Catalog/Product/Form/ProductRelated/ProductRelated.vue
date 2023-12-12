@@ -125,7 +125,7 @@ watch(
           />
         </div>
         <div>
-          <span>List produktów</span>
+          <span>Lista produktów</span>
           <div>
             <ul>
               <li v-for="product in products?.items" :key="product.id" class="flex gap-2 mt-5">

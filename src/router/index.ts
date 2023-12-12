@@ -326,6 +326,14 @@ const router = createRouter({
       },
       component: () => import('../views/Sale/Order/index.vue')
     }, 
+    {
+      path: '/sale/order/createorder',
+      name: 'CreateOrder',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Sale/Order/CreateOrder.vue')
+    }, 
   ]
 })
 

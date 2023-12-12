@@ -1,4 +1,7 @@
 <template>
+  <div class="p-2">
+    <router-link :to="'/sale/order/createorder'">Dodaj zamówienie</router-link>
+  </div>
   <el-table ref="table" :data="dataTable.items" :border="true" style="width: 100%" stripe>
     <el-table-column type="expand">
       <template #default="props">
@@ -9,6 +12,9 @@
               <p v-show="props.row.billingAddress.companyName" m="t-0 b-2">
                 Firma: {{ props.row.billingAddress.companyName }}
               </p>
+              <p v-show="props.row.billingAddress.nip" m="t-0 b-2">
+                Nip: {{ props.row.billingAddress.nip }}
+              </p>
               <p>
                 Imię i nazwisko:
                 {{ props.row.billingAddress.firstName + ' ' + props.row.billingAddress.lastName }}
@@ -17,7 +23,9 @@
               <p>Kod pocztowy: {{ props.row.billingAddress.zipCode }}</p>
               <p>Miasto: {{ props.row.billingAddress.city }}</p>
               <p>Email: {{ props.row.billingAddress.email }}</p>
+              <p>Telefon: {{ props.row.billingAddress.phone }}</p>
             </div>
+
             <div>
               <span class="font-bold text-base">Dane Wysyłki</span>
               <p v-show="props.row.shippingAddress.companyName" m="t-0 b-2">
@@ -30,6 +38,7 @@
               <p>Adres: {{ props.row.shippingAddress.addressLine1 }}</p>
               <p>Kod pocztowy: {{ props.row.shippingAddress.zipCode }}</p>
               <p>Miasto: {{ props.row.shippingAddress.city }}</p>
+              <p>Telefon: {{ props.row.shippingAddress.phone }}</p>
             </div>
             <div>
               <span class="font-bold text-base">Pozostałe dane</span>

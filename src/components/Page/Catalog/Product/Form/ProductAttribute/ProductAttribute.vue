@@ -61,7 +61,6 @@ const addGroupAttributes = (groupId: string) => {
   if (selectedGroup) {
     // Pobierz wszystkie items z wybranej grupy
     const itemsInGroup = selectedGroup.items
-    console.log(itemsInGroup)
 
     itemsInGroup.forEach((item) => {
       const newAttribute: ProductAttributeDTO = {
@@ -120,7 +119,6 @@ const handleSelectTemplate = (id: string) => {}
 const selectAttribute = ref(null)
 const handleAddProductAttribute = () => {
   const attribute = findItemsById(selectAttribute.value)
-  console.log(attribute)
   const newAttribute: ProductAttributeDTO = {
     id: attribute.id,
     name: attribute.name,

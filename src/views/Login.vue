@@ -26,7 +26,6 @@ const handleLogin = () => {
   })
     .then(async (response) => {
       const result = await response.json()
-      console.log(result)
       if (result?.error) {
         error.value = true
         console.log(result.error)
