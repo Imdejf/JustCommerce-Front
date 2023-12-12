@@ -91,16 +91,17 @@ const slugGenerator = () => {
 watch(
   currentCategoryBlog.thumbnailImage,
   (newThumbnailImage, oldThumbnailImage) => {
+    console.log(newThumbnailImage)
     file.value = {
-      Media: {
-        SeoFileName: newThumbnailImage.seoFileName,
-        AltAttribute: newThumbnailImage.altAttribute,
-        TitleAttribute: newThumbnailImage.title,
-        MediaLangs: newThumbnailImage.mediaLangs
+      media: {
+        seoFileName: newThumbnailImage.seoFileName,
+        altAttribute: newThumbnailImage.altAttribute,
+        titleAttribute: newThumbnailImage.title,
+        mediaLangs: newThumbnailImage.mediaLangs
       },
       blobFolder: 2,
       watermark: false,
-      thumbnail: false,
+      thumbnail: false
     }
   },
   { deep: true }
@@ -110,6 +111,7 @@ watch(
 <template>
   <ContentContainer :showLanguage="true">
     <FormSection :title="'Zdjęcie kategorii'">
+      {{ file }}
       <DropZone
         ref="dropzone"
         :fileInfo="file"

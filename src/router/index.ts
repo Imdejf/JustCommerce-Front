@@ -333,7 +333,15 @@ const router = createRouter({
         layout: PageLayout
       },
       component: () => import('../views/Sale/Order/CreateOrder.vue')
-    }, 
+    },
+    {
+      path: '/sale/order/:slug',
+      name: 'OrderDetail',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Sale/Order/[slug].vue`)
+    }
   ]
 })
 

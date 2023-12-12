@@ -97,10 +97,14 @@
         {{ formatDate(prop.row.createdOn) }}
       </template>
     </el-table-column>
-    <el-table-column label="Faktura" width="65">
-      <div class="text-center">
-        <a class="font-bold cursor-pointer">Pokaż</a>
-      </div>
+    <el-table-column label="Zamówienie" width="95">
+      <template #default="prop">
+        <div class="text-center">
+          <router-link :to="`/sale/order/${prop.row.id}`" target="_blank" class="font-bold"
+            >Pokaż</router-link
+          >
+        </div>
+      </template>
     </el-table-column>
     <el-table-column label="Dane klienta" prop="billingData" />
     <el-table-column label="Adres wysyłki" prop="shippingData" />
