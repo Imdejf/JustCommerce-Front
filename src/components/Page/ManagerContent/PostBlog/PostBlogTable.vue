@@ -16,7 +16,7 @@ const postBlogs = ref([])
 
 onMounted(async () => {
   try {
-    postBlogs.value = await Api.postBlogs.filterList(cookies.get('dsStore'), '', 1, 1)
+    postBlogs.value = await Api.postBlogs.filterList(cookies.get('dsStore'), '', 1, 50)
   } catch (error) {
     console.error(error)
   }
