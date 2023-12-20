@@ -6,6 +6,7 @@ import DataTable from '/@/components/Form/DataTable/DataTable.vue'
 import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
+
 const router = useRouter()
 const tableColumns = [
   { prop: 'name', label: 'Name' },
