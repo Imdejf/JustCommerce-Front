@@ -24,6 +24,7 @@ export interface ProductDTO {
     metaDescription: string;
     sku: string;
     gtin: string;
+    gmc: string;
     identificationCode: string;
     shortDescription: string;
     description: string;

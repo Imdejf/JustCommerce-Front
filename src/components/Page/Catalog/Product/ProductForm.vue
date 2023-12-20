@@ -446,6 +446,15 @@ watch(
             :value="false"
           />
         </FormSection>
+        <FormSection>
+          <FormKit
+            type="checkbox"
+            label="GMC"
+            help=""
+            v-model="currentProduct.gmc"
+            :value="false"
+          />
+        </FormSection>
       </div>
       <div v-for="(formLanguage, index) in language.languages" :key="formLanguage.id">
         <div v-if="language.selectedLanguage?.id === formLanguage.id">
