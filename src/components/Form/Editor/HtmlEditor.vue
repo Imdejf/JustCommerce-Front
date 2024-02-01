@@ -297,17 +297,20 @@ export default {
         StarterKit,
         Underline,
         TextStyle,
-        Link.configure({
-          HTMLAttributes: {
-            rel: null,
-            target: null
-          }
-        }),
         Color,
         Text,
         Subscript,
         Superscript,
         Image,
+        Link.configure({
+          autolink: false,
+          openOnClick: false,
+          linkOnPaste: false,
+          HTMLAttributes: {
+            rel: null,
+            target: null
+          }
+        }),
         CharacterCount.configure({
           limit: this.maxLimit
         }),
