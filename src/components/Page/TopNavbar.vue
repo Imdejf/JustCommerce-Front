@@ -32,8 +32,8 @@ const handleLogout = () => {
 }
 </script>
 <template>
-  <div class="my-auto container mx-10 xl:mx-auto flex w-full justify-between">
-    <div class="w-56">
+  <div class="my-auto  mr-10 3xl:mr-5 flex justify-end">
+    <div class="w-32">
       <Menu as="div" class="relative inline-block text-left">
         <div>
           <MenuButton

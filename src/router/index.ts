@@ -341,6 +341,15 @@ const router = createRouter({
         layout: PageLayout
       },
       component: route => import(`../views/Sale/Order/[slug].vue`)
+    },
+    //SHIPMENT
+    {
+      path:'/sale/shipment',
+      name:'Shipment',
+      meta:{
+        layout: PageLayout
+      },
+      component: () => import('../views/Sale/Shipment/index.vue')
     }
   ]
 })

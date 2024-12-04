@@ -93,6 +93,9 @@ const handleSave = async (values) => {
 
   currentProduct.currentUserId = decoded.sub
   currentProduct.deletedMediaIds = []
+
+  console.log(currentProduct)
+
   try {
     const payload = {
       body: JSON.stringify(currentProduct)
@@ -349,6 +352,8 @@ watch(
         </FormSection>
         <FormSection :title="'Opis'">
           <HtmlEditor v-model="currentProduct.description" />
+          {{ currentProduct.description }}
+          dasds
         </FormSection>
         <FormSection :title="'Specyfikacja'">
           <HtmlEditor v-model="currentProduct.specification" />

@@ -31,6 +31,7 @@ const handleLogin = () => {
         console.log(result.error)
       } else {
         cookies.set('Authorization', result.access_token)
+        cookies.set("dsStore", "cdf63b0a-88d0-40b0-a31f-c63ae02f320d")
         router.push('/')
       }
     })

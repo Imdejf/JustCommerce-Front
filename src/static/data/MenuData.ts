@@ -27,7 +27,7 @@ export interface MenuItem {
          route: "/sale/order"
        },
        {
-        name:"Dostawy",
+        name:"Wysyłki",
         route: "/sale/shipment"
        }
       ]
