@@ -26,7 +26,8 @@ const decoded = jwt_decode(token)
 const stateOrProvinces = ref([] as IStateOrProvince[])
 const selectedDeliveryOption = ref(null);
 const selectedPaymentOption = ref(null);
-let selectedBillingProvince = ref(null)
+const selectedBillingProvince = ref(null);
+const selectedShippingProvince = ref(null);
 let query = ref('')
 
 let filteredProvince = computed(() =>
@@ -72,7 +73,7 @@ export interface ProductDTO {
   ProducerPrice?: number | null
   Tax?: number | null
   ShippingPrice: number
-  DescriptionForProducer: string
+  NoteForProducer: string
 }
 
 enum OrderSourceType {
@@ -131,9 +132,17 @@ const currentOrder = ref({
   paymentProvider: null,
   paymentTerm: 99,
   shippingFeeAmountNetto: 0,
+  shippingFeeAmountGross: 0, // Nowe pole
+  realShippingFeeAmountNetto: 0, // Nowe pole
+  realShippingFeeAmountGross: 0, // Nowe pole
+  subTotalGross: 0, // Nowe pole
+  subTotalNetto: 0, // Nowe pole
+  useShippingAddressAsBillingAddress: false, // Nowe pole
+  totalGross: 0,
+  totalNetto: 0,
   isPaid: false,
+  paymentOn: null, // Nowe pole
   userId: null,
-  shippingAnotherAddress: false,
   billingAddress: {
     isCompany: false,
     firstName: '',
@@ -147,7 +156,7 @@ const currentOrder = ref({
     city: '',
     zipCode: '',
     stateProvinceId: '',
-    countryId: '0b64292c-e249-4906-ab48-429441745899'
+    countryId: '0b64292c-e249-4906-ab48-429441745899',
   },
   shippingAddress: {
     firstName: '',
@@ -161,14 +170,24 @@ const currentOrder = ref({
     city: '',
     zipCode: '',
     stateProvinceId: '',
-    countryId: '0b64292c-e249-4906-ab48-429441745899'
+    countryId: '0b64292c-e249-4906-ab48-429441745899',
   },
-  products: [],
+  products: [
+    {
+      id: '', // UUID
+      priceNetto: 0, // Nowe pole
+      tax: 0, // Nowe pole
+      producerPrice: 0, // Nowe pole
+      quantity: 0, // Nowe pole
+      shippingPrice: 0, // Nowe pole
+      noteForProducer: '', // Nowe pole
+    },
+  ],
   applyRules: false,
   orderNote: '',
   orderNoteForCustomer: '',
-  orderNoteOnInvoice: ''
-})
+  orderNoteOnInvoice: '',
+});
 
 const totalShippingPrice = computed(() => {
   return orderProducts.value.reduce((total, product) => {
@@ -176,6 +195,38 @@ const totalShippingPrice = computed(() => {
     return +total + +product.shippingPriceNetto
   }, 0)
 })
+
+function updateGrossAndNet(product) {
+  const TAX_RATE = 0.23;
+
+  // Aktualizuj cenę brutto na podstawie netto
+  // if (product.priceNetto !== undefined) {
+  //   product.priceGross = (product.priceNetto * (1 + TAX_RATE)).toFixed(2);
+  // }
+
+  // Aktualizuj cenę netto na podstawie brutto
+  // if (product.priceGross !== undefined) {
+  //   product.priceNetto = (product.priceGross / (1 + TAX_RATE)).toFixed(2);
+  // }
+
+  // Aktualizuj transport brutto na podstawie netto
+  if (product.shippingPriceNetto !== undefined) {
+    product.shippingPriceGross = (product.shippingPriceNetto * (1 + TAX_RATE)).toFixed(2);
+  }
+
+  // Aktualizuj transport netto na podstawie brutto
+  if (product.shippingPriceGross !== undefined) {
+    product.shippingPriceNetto = (product.shippingPriceGross / (1 + TAX_RATE)).toFixed(2);
+  }
+  // if(product.realShippingFeeAmountNetto !== undefined) {
+  //   product.realShippingFeeAmountGross = product.shippingRule.shipmentPrice;
+  // }
+
+  // if(product.realShippingFeeAmountGross !== undefined) {
+  //   product.realShippingFeeAmountNetto = (product.shippingRule.shipmentPrice / (1 + TAX_RATE)).toFixed(2);
+  // }
+}
+
 
 function translatePaymentProvider(key) {
   const translations = {
@@ -269,11 +320,101 @@ const calculatePalletsAndCardboards = (product) => {
 
   const shippingAmount = shippingPrice / (1 + TAX_RATE)
 
+  product.realShippingFeeAmountNetto = (shippingPrice / (1 + TAX_RATE)).toFixed(2)
+  product.realShippingFeeAmountGross = shippingPrice.toFixed(2)
+
   return shippingAmount
 }
 
 const priceGross = (item) => {
   return item.price * 1.23
+}
+
+const handleCreateOrder = async () => {
+  console.log(orderProducts)
+  console.log(currentOrder.value.useShippingAddressAsBillingAddress)
+  console.log(currentOrder.value.useShippingAddressAsBillingAddress !== false)
+  const createOrderPayload: CreateOrder = {
+    StoreId: currentOrder.value.storeId,
+    CustomerId: currentOrder.value.customerId,
+    LanguageId: currentOrder.value.languageId,
+    CreatedById: currentOrder.value.createdById,
+    BillingAddress: {
+      IsCompany: currentOrder.value.billingAddress.isCompany,
+      FirstName: currentOrder.value.billingAddress.firstName,
+      LastName: currentOrder.value.billingAddress.lastName,
+      Email: currentOrder.value.billingAddress.email || null,
+      CompanyName: currentOrder.value.billingAddress.companyName || null,
+      Nip: currentOrder.value.billingAddress.nip || null,
+      Phone: currentOrder.value.billingAddress.phone || null,
+      AddressLine1: currentOrder.value.billingAddress.addressLine1,
+      City: currentOrder.value.billingAddress.city,
+      ZipCode: currentOrder.value.billingAddress.zipCode,
+      StateOrProvinceId: selectedBillingProvince.value.id,
+      CountryId: currentOrder.value.billingAddress.countryId,
+    },
+    ShippingAddress: currentOrder.value.useShippingAddressAsBillingAddress === false
+      ? null
+      : {
+          IsCompany: currentOrder.value.shippingAddress.isCompany,
+          FirstName: currentOrder.value.shippingAddress.firstName,
+          LastName: currentOrder.value.shippingAddress.lastName,
+          Email: currentOrder.value.shippingAddress.email || null,
+          CompanyName: currentOrder.value.shippingAddress.companyName || null,
+          Nip: currentOrder.value.shippingAddress.nip || null,
+          Phone: currentOrder.value.shippingAddress.phone || null,
+          AddressLine1: currentOrder.value.shippingAddress.addressLine1,
+          City: currentOrder.value.shippingAddress.city,
+          ZipCode: currentOrder.value.shippingAddress.zipCode,
+          StateOrProvinceId: selectedShippingProvince.value.id,
+          CountryId: currentOrder.value.shippingAddress.countryId,
+        },
+    DeliveryMethod: selectedDeliveryOption.value,
+    OrderStatus: currentOrder.value.orderStatus,
+    OrderSourceType: currentOrder.value.orderSourceType,
+    PaymentStatus: 10,
+    PaymentProvider: selectedPaymentOption.value,
+    PaymentTerm: currentOrder.value.paymentTerm || null,
+    OrderNoteForClient: currentOrder.value.orderNoteForCustomer,
+    OrderNoteForCustomer: currentOrder.value.orderNote,
+    OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice,
+    ShippingFeeAmountNetto: currentOrder.value.shippingFeeAmountNetto,
+    RealShippingFeeAmountNetto: currentOrder.value.realShippingFeeAmountNetto,
+    ShippingFeeAmountGross: currentOrder.value.shippingFeeAmountGross,
+    RealShippingFeeAmountGross: currentOrder.value.realShippingFeeAmountGross,
+    SubTotalGross: currentOrder.value.subTotalGross,
+    UseShippingAddressAsBillingAddress: currentOrder.value.useShippingAddressAsBillingAddress,
+    IsPaid: currentOrder.value.isPaid,
+    Products: orderProducts.value.map((product) => ({
+      Id: product.id,
+      PriceNetto: product.priceNetto,
+      Tax: product.tax,
+      Quantity: product.quantity,
+      NoteForProducer: product.noteForProducer,
+      ProducerPriceNetto: product.producerPrice || 0,
+      ShippingPriceNetto: product.shippingPriceNetto,
+      ShippingPriceGross: product.shippingPriceGross,
+      RealShippingFeeAmountNetto: product.realShippingFeeAmountNetto,
+      RealShippingFeeAmountGross: product.realShippingFeeAmountGross,
+    })),
+  };
+
+  try {
+    const payload = {
+      body: JSON.stringify(createOrderPayload),
+    };
+    // await Api.orders.createOrder(payload);
+    console.log(createOrderPayload)
+    toast.success('Zamówienie zostało stworzone pomyślnie', {
+      timeout: 2000,
+    });
+  } catch (error) {
+    console.error('Błąd podczas tworzenia zamówienia:', error);
+    toast.error('Nie udało się stworzyć zamówienia', {
+      timeout: 2000,
+    });
+};
+
 }
 
 const addProductToOrderHandle = async (item) => {
@@ -282,6 +423,9 @@ const addProductToOrderHandle = async (item) => {
   item.quantity = 1
   item.shippingPriceNetto = 0
   item.shippingPriceGross = 0
+  item.realShippingFeeAmountNetto = 0
+  item.realShippingFeeAmountGross = 0
+  item. noteForProducer = ""
   orderProducts.value.push(item)
 }
 
@@ -293,18 +437,15 @@ const handleAddOrder = async () => {
     return
   }
 
-  currentOrder.value.billingAddress.stateOrProvinceId = selectedBillingProvince.value.id
-  currentOrder.value.shippingAddress.stateOrProvinceId = selectedBillingProvince.value.id
-
   currentOrder.value.products = orderProducts.value.map((product) => ({
-    Id: product.id,
-    Quantity: product.quantity,
-    PriceNetto: product.priceNetto,
-    ProducerPrice: product.producerPrice ?? null,
-    Tax: product.tax ?? 23,
-    ShippingPrice: product.shippingPriceNetto,
-    DescriptionForProducer: product.name
-  }))
+    id: product.id,
+    quantity: product.quantity,
+    priceNetto: product.priceNetto,
+    producerPrice: product.producerPrice ?? null,
+    tax: product.tax ?? 23,
+    shippingPrice: product.shippingPriceNetto,
+    noteForProducer: product.name
+  }));
 
   const payload = {
     body: JSON.stringify(currentOrder.value)
@@ -397,7 +538,41 @@ watch(filterSearchProduct.value, async (newFilterSearchProduct, oldFilterSearchP
   }
 })
 
+watch(
+  orderProducts,
+  (newProducts) => {
+    // Oblicz wartości na podstawie nowych produktów
+    let subTotalNetto = 0;
+    let subTotalGross = 0;
+    let shippingFeeNetto = 0;
+    let shippingFeeGross = 0;
+    let realShippingFeeNetto = 0;
+    let realShippingFeeGross = 0;
 
+    newProducts.forEach((product) => {
+      updateGrossAndNet(product);
+
+      subTotalGross += parseFloat((product.priceNetto * product.quantity * 1.23).toFixed(2));
+      subTotalNetto += parseFloat((product.priceNetto * product.quantity).toFixed(2));
+
+      shippingFeeNetto += parseFloat(product.shippingPriceNetto);
+      shippingFeeGross += parseFloat(product.shippingPriceGross);
+
+      realShippingFeeNetto += parseFloat(product.realShippingFeeAmountNetto).toFixed(2);
+      realShippingFeeGross += parseFloat(product.realShippingFeeAmountGross).toFixed(2);
+    });
+
+    currentOrder.value.shippingFeeAmountNetto = shippingFeeNetto.toFixed(2);
+    currentOrder.value.shippingFeeAmountGross = shippingFeeGross.toFixed(2);
+    currentOrder.value.realShippingFeeAmountNetto = parseFloat(realShippingFeeNetto).toFixed(2);
+    currentOrder.value.realShippingFeeAmountGross = parseFloat(realShippingFeeGross).toFixed(2);
+    currentOrder.value.subTotalNetto = parseFloat(subTotalNetto).toFixed(2);
+    currentOrder.value.subTotalGross = parseFloat(subTotalGross).toFixed(2);
+    currentOrder.value.totalNetto = parseFloat(subTotalNetto + shippingFeeNetto).toFixed(2);
+    currentOrder.value.totalGross = parseFloat(subTotalGross + shippingFeeGross).toFixed(2);
+  },
+  { deep: true } // Śledzenie głębokich zmian w tablicy produktów
+);
 
 onMounted(async () => {
   const storeId = cookies.get('dsStore')
@@ -440,8 +615,9 @@ onMounted(async () => {
 })
 </script>
 <template>
-  {{ currentOrder }}
-  <ContentContainer :showLanguage="false" class="!overflow-auto w-full !h-[83vh]">
+  <ContentContainer :showLanguage="false" class="!overflow-auto w-full !h-[90vh]">
+    <FormKit ref="myForm" type="form" @submit="handleCreateOrder" :actions="false">
+    <div>
     <div class="inline-flex justify-center items-center w-full">
       <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
       <h1 class="absolute px-2 font-semibold text-2xl text-orange-400 bg-blue-50"> Zamówienie </h1>
@@ -518,11 +694,11 @@ onMounted(async () => {
       </div>
   </div>
   <div class="mt-2">
-    <div class="inline-flex justify-center items-center w-full">
+    <div class="inline-flex justify-center items-center w-full mb-4">
       <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
       <h1 class="absolute px-2 font-semibold text-2xl text-orange-400 bg-blue-50"> Szczegóły zamówienia </h1>
     </div>  
-    <div class="grid grid-cols-3 gap-4 mt-3" style="grid-template-columns: 400px 400px 100%;">
+    <div class="grid grid-cols-3 gap-4 mt-3 flex" style="grid-template-columns: 400px 400px 50%;">
       <div class="w-[400px]">
         <div class="bg-white rounded-md shadow-md p-4">
           <h2 class="text-xl font-bold my-2">1. Dane odbiorcy</h2>
@@ -651,6 +827,7 @@ onMounted(async () => {
               help=""
             />
             </div>
+            <span>Wojwództwo</span>
             <Combobox v-model="selectedBillingProvince" >
               <div class="relative mt-1">
                 <div
@@ -745,14 +922,14 @@ onMounted(async () => {
               </h3>
             </div>
               <el-switch
-                v-model="currentOrder.shippingAnotherAddress"
+                v-model="currentOrder.useShippingAddressAsBillingAddress"
                 class="ml-2"
                 style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
               />
-              <div v-show="currentOrder.shippingAnotherAddress">
+              <div v-show="currentOrder.useShippingAddressAsBillingAddress">
                 <FormKit
                 outer-class="hidden_name fomik_form_witdh"
-                v-if="currentOrder.shippingAnotherAddress && !currentOrder.billingAddress.IsCompany"
+                v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.IsCompany"
                 type="text"
                 v-model="currentOrder.shippingAddress.firstName"
                 label="Imię"
@@ -762,7 +939,7 @@ onMounted(async () => {
             />
             <FormKit
               outer-class="hidden_name fomik_form_witdh"
-              v-if="currentOrder.shippingAnotherAddress && !currentOrder.billingAddress.IsCompany"
+              v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.IsCompany"
               type="text"
               v-model="currentOrder.shippingAddress.lastName"
               label="Nazwisko"
@@ -773,7 +950,7 @@ onMounted(async () => {
             />
             <FormKit
               outer-class="hidden_name fomik_form_witdh"
-              v-if="currentOrder.shippingAnotherAddress && currentOrder.billingAddress.IsCompany"
+              v-if="currentOrder.useShippingAddressAsBillingAddress && currentOrder.billingAddress.IsCompany"
               type="text"
               v-model="currentOrder.shippingAddress.lastName"
               label="Nazwa firmy"
@@ -784,7 +961,7 @@ onMounted(async () => {
             />
             <FormKit
               outer-class="hidden_name fomik_form_witdh"
-              v-if="currentOrder.shippingAnotherAddress"
+              v-if="currentOrder.useShippingAddressAsBillingAddress"
               type="text"
               v-model="currentOrder.billingAddress.phone"
               label="Telefon"
@@ -795,40 +972,40 @@ onMounted(async () => {
             />
             <FormKit
               outer-class="hidden_name fomik_form_witdh"
-              v-if="currentOrder.shippingAnotherAddress"
+              v-if="currentOrder.useShippingAddressAsBillingAddress"
               type="text"
               v-model="currentOrder.shippingAddress.addressLine1"
               label="Ulica i numer domu"
               placeholder="Ulica i numer domu"
-              :validation="currentOrder.shippingAnotherAddress ? 'required' : ''"
+              :validation="currentOrder.useShippingAddressAsBillingAddress ? 'required' : ''"
               validation-visibility="live"
               help=""
             />
             <div class="flex gap-2 w-full">
               <FormKit
-                v-if="currentOrder.shippingAnotherAddress"
+                v-if="currentOrder.useShippingAddressAsBillingAddress"
                 outer-class="hidden_name fomik_form_witdh"
                 type="text"
                 v-model="currentOrder.shippingAddress.city"
                 label="Miasto"
                 placeholder="Miasto"
-                :validation="currentOrder.shippingAnotherAddress ? 'required' : ''"
+                :validation="currentOrder.useShippingAddressAsBillingAddress ? 'required' : ''"
                 validation-visibility="live"
                 help=""
               />
               <FormKit
                 outer-class="hidden_name fomik_form_witdh"
-                v-if="currentOrder.shippingAnotherAddress"
+                v-if="currentOrder.useShippingAddressAsBillingAddress"
                 type="text"
                 v-model="currentOrder.shippingAddress.zipCode"
                 label="Kod pocztowy"
                 placeholder="Kod pocztowy"
-                :validation="currentOrder.shippingAnotherAddress ? 'required' : ''"
+                :validation="currentOrder.useShippingAddressAsBillingAddress ? 'required' : ''"
                 validation-visibility="live"
                 help=""
               />
               </div>
-              <Combobox v-model="selectedBillingProvince" >
+              <Combobox v-model="selectedShippingProvince" >
               <div class="relative mt-1">
                 <div
                   class="relative w-[330px] cursor-default outline-none overflow-hidden rounded-lg bg-white text-left shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm"
@@ -932,7 +1109,8 @@ onMounted(async () => {
             :options="[
             { label: 'Kurier', value: '0' },
             { label: 'Odbiór własny', value: '1' },
-            ]"         v-model="selectedDeliveryOption" 
+            ]"         
+            v-model="selectedDeliveryOption" 
             outer-class="!text-xl hidden_border_formik !my-auto"
           />
           </div>
@@ -1020,6 +1198,7 @@ onMounted(async () => {
                       :wrapper-class="'ml-4 font-[2px] w-[130px]'"
                       label="Cena netto"
                       step="0.01"
+                      :format="false"
                       validation="required"
                       validation-visibility="live"
                       v-model="product.priceNetto"
@@ -1075,6 +1254,8 @@ onMounted(async () => {
                     />
                   </div>
                   <div class="flex ml-4">
+                    <div class="flex">
+                    <div>
                     <div class="formkit-wrapper w-[220px]">
                       <label class="formkit-label" for="input_0"
                         >Cena transportu z reguł (netto)</label
@@ -1094,30 +1275,16 @@ onMounted(async () => {
                     </div>
                     <FormKit
                       type="number"
-                      :wrapper-class="'ml-4'"
+                      :wrapper-class="'mt-4'"
                       label="Cena transportu (netto)"
                       step="0.01"
                       validation="required"
-                      v-model="product.shippingPriceNetoo"
+                      v-model="product.shippingPriceNetto"
                       validation-visibility="live"
                     />
-                    <FormKit
-                      type="number"
-                      :wrapper-class="'ml-4'"
-                      label="Właściwa cena transprotu (netto)"
-                      step="0.01"
-                      validation="required"
-                      v-model="product.RealShippingFeeAmountNetto"
-                      validation-visibility="live"
-                    />
-                    <!-- <FormKit
-                        :classes="{ outer: ' font-[10px]' }"
-                        :wrapper-class="'ml-4 w-[340px]'"
-                        type="textarea"
-                        label="Informacja dla producenta"
-                      /> -->
                   </div>
-                  <div class="flex ml-4">
+                  </div>
+                  <div class="block ml-4">
                     <div class="formkit-wrapper w-[220px]">
                       <label class="formkit-label" for="input_0"
                         >Cena transportu z reguł (brutto)</label
@@ -1137,50 +1304,69 @@ onMounted(async () => {
                     </div>
                     <FormKit
                       type="number"
-                      :wrapper-class="'ml-4'"
+                      :wrapper-class="'mt-4'"
                       label="Cena transportu (brutto)"
                       step="0.01"
                       validation="required"
-                      v-model="product.ShippingPriceGross"
+                      v-model="product.shippingPriceGross"
                       validation-visibility="live"
                     />
-                    <FormKit
-                      type="number"
-                      :wrapper-class="'ml-4'"
-                      label="Właściwa cena transprotu (brutto)"
-                      step="0.01"
-                      validation="required"
-                      v-model="product.RealShippingFeeAmountGross"
-                      validation-visibility="live"
-                    />
-                    <!-- <FormKit
-                        :classes="{ outer: ' font-[10px]' }"
-                        :wrapper-class="'ml-4 w-[340px]'"
-                        type="textarea"
-                        label="Informacja dla producenta"
-                      /> -->
-                  </div>
+                </div>
+                <div>
+                  <FormKit
+                    :classes="{ outer: ' font-[10px]' }"
+                    :wrapper-class="'ml-4 w-[340px]'"
+                    type="textarea"
+                    v-model="product.producerNote"
+                    label="Informacja dla producenta"
+                  />
+                </div>
+              </div>
                   <el-button
                       @click="removeProductRelated(product.id)"
                       color="#dc2626"
-                      class="m-auto "
+                      class="m-auto"
                       round
                       >Usuń</el-button
                     >
                 </li>
               </ul>
-              <div>
-
+              <div class="text-[16px]">
+                  <div class="flex">
+                    <span>Wartość produktów (netto):</span><span class="font-bold text-[18px]">{{ currentOrder.subTotalNetto }} zł</span>
+                  </div>
+                  <div class="flex mb-3">
+                    <span>Wartość produktów (brutto):</span><span class="font-bold text-[18px]">{{ currentOrder.subTotalGross }} zł</span>
+                  </div>
+                  <div class="flex">
+                    <span>Koszt transportu (netto):</span>
+                    <span class="font-bold text-[18px]">{{currentOrder.shippingFeeAmountNetto}} zł</span>
+                  </div>
+                  <div class="flex mb-3">
+                    <span>Koszt transportu (brutto):</span>
+                    <span class="font-bold text-[18px]">{{currentOrder.shippingFeeAmountGross}} zł</span>
+                  </div>
+                  <div class="flex">
+                    <span>Koszt zakupu (netto):</span>
+                    <span class="font-bold text-[18px]">{{currentOrder.totalNetto}} zł</span>
+                  </div>
+                  <div class="flex">
+                    <span>Koszt zakupu (brutto):</span>
+                    <span class="font-bold text-[18px]">{{currentOrder.totalGross}} zł</span>
+                  </div>
               </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
+  </div>
+  <div class="save-button w-full my-10">
+          <FormKit @click="Creat" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
+    </div>
+  </FormKit>
   </ContentContainer>
 </template>
-
 <style>
 .el-collapse-item__header {
   padding: 20px !important;

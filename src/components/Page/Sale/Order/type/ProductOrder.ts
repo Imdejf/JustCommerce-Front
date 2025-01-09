@@ -9,6 +9,7 @@ export interface ProductOrder {
     ProducerPrice?: number | null;
     Tax?: number | null;
     ShippingRule: ShippingRule;
+    NoteForProducer?: string
 }
 
 interface ShippingRule {

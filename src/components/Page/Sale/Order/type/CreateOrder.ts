@@ -29,7 +29,7 @@ export interface OrderItem {
     PriceNetto: number;
     Tax: number;
     Quantity: number;
-    DescriptionForProducer: string;
+    NoteForProducer: string;
     ProducerPriceNetto: number;
     ShippingPriceNetto: number;
     ShippingPriceGross: number;
