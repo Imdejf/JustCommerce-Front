@@ -12,8 +12,15 @@ const brand = computed(() => {
   return {
     storeId: store.selectedStore.id,
     name: '',
+    shortName: '',
     slug: '',
     description: '',
+    country: '',
+    phone: '',
+    addressLine: '',
+    postalCode: '',
+    city: '',
+    email: '',
     isPublished: true,
     brandLangs: language.languages.map((lang: LanguageDTO) => ({
       languageId: lang.id,

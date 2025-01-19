@@ -11,9 +11,9 @@ export interface CreateOrder {
     PaymentStatus: PaymentStatus;
     PaymentProvider: PaymentProvider;
     PaymentTerm?: PaymentTerm | null;
-    OrderNoteForClient: string;
-    OrderNoteForCustomer: string;
-    OrderNoteOnInvoice: string;
+    OrderNoteForClient: string | null;
+    OrderNoteForCustomer: string | null;
+    OrderNoteOnInvoice: string | null;
     ShippingFeeAmountNetto: number;
     RealShippingFeeAmountNetto: number;
     ShippingFeeAmountGross: number;

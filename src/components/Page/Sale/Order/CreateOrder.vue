@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, reactive  } from 'vue'
 import Cookies from 'universal-cookie'
 import {
   Combobox,
@@ -16,6 +17,19 @@ import { ProductOrder } from './type/ProductOrder.ts'
 import { CreateOrder, OrderItem } from './type/CreateOrder.ts'
 import jwt_decode from 'jwt-decode'
 
+const props = defineProps({
+  order: {
+    type: Object as ObjectConstructor,
+    default: () => ({} as CreateOrder)
+  },
+  updated: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const router = useRouter()
+const currentOrder = ref(props.order)
 const toast = useToast()
 const cookies = new Cookies()
 const productsList = ref<ProductOrder[]>([])
@@ -24,10 +38,18 @@ const orderProducts = ref<OrderItem[]>([])
 const token = cookies.get('Authorization')
 const decoded = jwt_decode(token)
 const stateOrProvinces = ref([] as IStateOrProvince[])
-const selectedDeliveryOption = ref(null);
-const selectedPaymentOption = ref(null);
+const isSelectedDeliveryOptionInvalid = ref(false);
+const isSelectedPaymentOptionInvalid = ref(null);
 const selectedBillingProvince = ref(null);
 const selectedShippingProvince = ref(null);
+
+const paymentOptions = [
+  { label: 'Przelew standardowy (proforma)', value: '1' },
+  { label: 'Płatność za pobraniem', value: '2' },
+  { label: 'Przelew online (P24)', value: '0' },
+  { label: 'Termin', value: '5' },
+];
+
 let query = ref('')
 
 let filteredProvince = computed(() =>
@@ -70,7 +92,7 @@ export interface ProductDTO {
   Id: string
   Quantity: number
   PriceNetto: number
-  ProducerPrice?: number | null
+  ProducerPriceNetto?: number | null
   Tax?: number | null
   ShippingPrice: number
   NoteForProducer: string
@@ -121,80 +143,6 @@ enum PaymentProvider {
 
 const users = ref([])
 
-const currentOrder = ref({
-  storeId: cookies.get('dsStore'),
-  languageId: '40beaea2-f6e4-4414-8a10-2570718f13aa',
-  createdById: decoded.sub,
-  customerId: decoded.sub,
-  orderSourceType: 5,
-  orderStatus: 100,
-  deliveryMethod: null,
-  paymentProvider: null,
-  paymentTerm: 99,
-  shippingFeeAmountNetto: 0,
-  shippingFeeAmountGross: 0, // Nowe pole
-  realShippingFeeAmountNetto: 0, // Nowe pole
-  realShippingFeeAmountGross: 0, // Nowe pole
-  subTotalGross: 0, // Nowe pole
-  subTotalNetto: 0, // Nowe pole
-  useShippingAddressAsBillingAddress: false, // Nowe pole
-  totalGross: 0,
-  totalNetto: 0,
-  isPaid: false,
-  paymentOn: null, // Nowe pole
-  userId: null,
-  billingAddress: {
-    isCompany: false,
-    firstName: '',
-    lastName: '',
-    email: '',
-    companyName: '',
-    nip: '',
-    phone: '',
-    addressLine1: '',
-    stateOrProvinceId: '',
-    city: '',
-    zipCode: '',
-    stateProvinceId: '',
-    countryId: '0b64292c-e249-4906-ab48-429441745899',
-  },
-  shippingAddress: {
-    firstName: '',
-    lastName: '',
-    email: '',
-    companyName: '',
-    nip: '',
-    phone: '',
-    addressLine1: '',
-    stateOrProvinceId: '',
-    city: '',
-    zipCode: '',
-    stateProvinceId: '',
-    countryId: '0b64292c-e249-4906-ab48-429441745899',
-  },
-  products: [
-    {
-      id: '', // UUID
-      priceNetto: 0, // Nowe pole
-      tax: 0, // Nowe pole
-      producerPrice: 0, // Nowe pole
-      quantity: 0, // Nowe pole
-      shippingPrice: 0, // Nowe pole
-      noteForProducer: '', // Nowe pole
-    },
-  ],
-  applyRules: false,
-  orderNote: '',
-  orderNoteForCustomer: '',
-  orderNoteOnInvoice: '',
-});
-
-const totalShippingPrice = computed(() => {
-  return orderProducts.value.reduce((total, product) => {
-    currentOrder.value.shippingFeeAmountNetto = +total + +product.shippingPriceNetto
-    return +total + +product.shippingPriceNetto
-  }, 0)
-})
 
 function updateGrossAndNet(product) {
   const TAX_RATE = 0.23;
@@ -330,11 +278,64 @@ const priceGross = (item) => {
   return item.price * 1.23
 }
 
-const handleCreateOrder = async () => {
-  console.log(orderProducts)
-  console.log(currentOrder.value.useShippingAddressAsBillingAddress)
-  console.log(currentOrder.value.useShippingAddressAsBillingAddress !== false)
+const handleOrder = async () => {
+  if (currentOrder.value.deliveryMethod == null) {
+    isSelectedDeliveryOptionInvalid.value = true;
+    toast.error('Proszę wybrać opcję dostawy.', {
+      timeout: 2000,
+    });
+    return;
+  }
+
+  if(currentOrder.value.paymentProvider == null) {
+    isSelectedPaymentOptionInvalid.value = true;
+    toast.error('Proszę wybrać metodę płatności', {
+      timeout: 2000,
+    });
+    return;
+  }
+  if(!selectedBillingProvince.value) {
+    toast.error('Wybierz województwo', {
+      timeout: 2000,
+    });    return;
+  }
+
+  if(!selectedShippingProvince.value && currentOrder.value.useShippingAddressAsBillingAddress) {
+    toast.error('Wybierz województwo 2', {
+      timeout: 2000,
+    });
+    return;
+  }
+  if(currentOrder.value.products.length == 0 || currentOrder.value.products == null)
+  {
+    toast.error('Musisz utworzyć koszyk', {
+      timeout: 2000,
+    });
+    return
+  }
+
+  if(currentOrder.value.paymentTerm != 99){
+    currentOrder.value.paymentProvider = 5
+  }
+
+  if (!currentOrder.value.billingAddress?.zipCode) {
+    toast.error('Kod pocztowy jest wymagany.', {
+      timeout: 2000,
+    });
+    return;
+  }
+
+  // Sprawdzenie poprawności kodu pocztowego
+  const zipCodeRegex = /^\d{2}-\d{3}$/;
+  if (!zipCodeRegex.test(currentOrder.value.billingAddress.zipCode)) {
+    toast.error('Kod pocztowy jest niepoprawny. Użyj formatu xx-xxx.', {
+      timeout: 2000,
+    });
+    return;
+  }
+console.log(currentOrder)
   const createOrderPayload: CreateOrder = {
+    Id: currentOrder.value.id,
     StoreId: currentOrder.value.storeId,
     CustomerId: currentOrder.value.customerId,
     LanguageId: currentOrder.value.languageId,
@@ -369,45 +370,41 @@ const handleCreateOrder = async () => {
           StateOrProvinceId: selectedShippingProvince.value.id,
           CountryId: currentOrder.value.shippingAddress.countryId,
         },
-    DeliveryMethod: selectedDeliveryOption.value,
+    DeliveryMethod: currentOrder.value.deliveryMethod,
     OrderStatus: currentOrder.value.orderStatus,
     OrderSourceType: currentOrder.value.orderSourceType,
     PaymentStatus: 10,
-    PaymentProvider: selectedPaymentOption.value,
+    PaymentProvider: currentOrder.value.paymentProvider,
     PaymentTerm: currentOrder.value.paymentTerm || null,
-    OrderNoteForClient: currentOrder.value.orderNoteForCustomer,
-    OrderNoteForCustomer: currentOrder.value.orderNote,
+    OrderNoteForClient: currentOrder.value.orderNoteForClient,
+    OrderNoteForCustomer: currentOrder.value.orderNoteForCustomer,
     OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice,
     ShippingFeeAmountNetto: currentOrder.value.shippingFeeAmountNetto,
     RealShippingFeeAmountNetto: currentOrder.value.realShippingFeeAmountNetto,
     ShippingFeeAmountGross: currentOrder.value.shippingFeeAmountGross,
     RealShippingFeeAmountGross: currentOrder.value.realShippingFeeAmountGross,
     SubTotalGross: currentOrder.value.subTotalGross,
-    UseShippingAddressAsBillingAddress: currentOrder.value.useShippingAddressAsBillingAddress,
+    UseShippingAddressAsBillingAddress: !currentOrder.value.useShippingAddressAsBillingAddress,
     IsPaid: currentOrder.value.isPaid,
-    Products: orderProducts.value.map((product) => ({
-      Id: product.id,
-      PriceNetto: product.priceNetto,
-      Tax: product.tax,
-      Quantity: product.quantity,
-      NoteForProducer: product.noteForProducer,
-      ProducerPriceNetto: product.producerPrice || 0,
-      ShippingPriceNetto: product.shippingPriceNetto,
-      ShippingPriceGross: product.shippingPriceGross,
-      RealShippingFeeAmountNetto: product.realShippingFeeAmountNetto,
-      RealShippingFeeAmountGross: product.realShippingFeeAmountGross,
-    })),
+    Products: currentOrder.value.products
   };
 
   try {
     const payload = {
       body: JSON.stringify(createOrderPayload),
     };
-    // await Api.orders.createOrder(payload);
-    console.log(createOrderPayload)
-    toast.success('Zamówienie zostało stworzone pomyślnie', {
-      timeout: 2000,
-    });
+    if(!props.updated) {
+      await Api.orders.createOrder(payload)
+      toast.success('Zamówienie zostało stworzone pomyślnie', {
+        timeout: 2000,
+      });
+    } else {
+      await Api.orders.updateOrder(payload)
+      toast.success('Zamówienie zostało edytowane pomyślnie', {
+        timeout: 2000,
+      });
+    }
+    // router.go(-1)
   } catch (error) {
     console.error('Błąd podczas tworzenia zamówienia:', error);
     toast.error('Nie udało się stworzyć zamówienia', {
@@ -426,35 +423,7 @@ const addProductToOrderHandle = async (item) => {
   item.realShippingFeeAmountNetto = 0
   item.realShippingFeeAmountGross = 0
   item. noteForProducer = ""
-  orderProducts.value.push(item)
-}
-
-const handleAddOrder = async () => {
-  if (selectedBillingProvince.value == null) {
-    toast.error('Wybierz województwo', {
-      timeout: 2000
-    })
-    return
-  }
-
-  currentOrder.value.products = orderProducts.value.map((product) => ({
-    id: product.id,
-    quantity: product.quantity,
-    priceNetto: product.priceNetto,
-    producerPrice: product.producerPrice ?? null,
-    tax: product.tax ?? 23,
-    shippingPrice: product.shippingPriceNetto,
-    noteForProducer: product.name
-  }));
-
-  const payload = {
-    body: JSON.stringify(currentOrder.value)
-  }
-
-  await Api.orders.createOrder(payload)
-  toast.success('Stworzono zamówienie', {
-    timeout: 2000
-  })
+  currentOrder.value.products.push(item)
 }
 
 const orderSourceOptions = computed(() => {
@@ -462,6 +431,13 @@ const orderSourceOptions = computed(() => {
     .filter(([key]) => isNaN(Number(key)))
     .map(([key, value]) => ({ label: translate(key), value }))
 })
+
+const filteredPaymentOptions = computed(() => {
+  if (currentOrder.value.paymentTerm === 99) {
+    return paymentOptions.filter(option => option.value !== '5');
+  }
+  return paymentOptions.filter(option => option.value === '5');
+});
 
 const orderStatusOptions = computed(() => {
   return Object.entries(OrderStatus)
@@ -495,8 +471,7 @@ const removeUser = () => {
 }
 
 const removeProductRelated = (productId: string) => {
-  console.log(orderProducts.value)
-  orderProducts.value = orderProducts.value.filter(product => product.id !== productId);
+  currentOrder.value.products = currentOrder.value.products.filter(product => product.id !== productId);
 };
 
 const selectUser = (user) => {
@@ -532,6 +507,7 @@ watch(filterSearchProduct.value, async (newFilterSearchProduct, oldFilterSearchP
 
       const result = await Api.products.getByNameOrCode(payload)
       productsList.value = result.data.items
+      console.log(productsList.value)
     } catch (error) {
       console.error(error)
     }
@@ -539,7 +515,7 @@ watch(filterSearchProduct.value, async (newFilterSearchProduct, oldFilterSearchP
 })
 
 watch(
-  orderProducts,
+  currentOrder.value.products,
   (newProducts) => {
     // Oblicz wartości na podstawie nowych produktów
     let subTotalNetto = 0;
@@ -594,29 +570,23 @@ onMounted(async () => {
             name: stateProvince.text
           })
         })
+
+        if(props.updated) {
+          selectedBillingProvince.value = stateOrProvinces.value.find(
+            (c) => c.id === currentOrder.value.shippingAddress.stateOrProvinceId
+          );
+        }
       }
     })
     .catch((error) => {
       console.log(error)
     })
-  // fetch(`/product/shoppingcart/GetAvilableAddresses?storeId=${cookies.get('dsStore')}`, {
-  //   method: 'GET'
-  // }).then(async (response) => {
-  //   console.log(response)
-  //   const data = await response.data
-  //   console.log(data)
-  //   response.data.value.stateOrProvinces.map((stateProvince) => {
-  //     stateOrProvinces.value.push({
-  //       id: stateProvince.value,
-  //       name: stateProvince.text
-  //     })
-  //   })
-  // })
 })
+
 </script>
 <template>
   <ContentContainer :showLanguage="false" class="!overflow-auto w-full !h-[90vh]">
-    <FormKit ref="myForm" type="form" @submit="handleCreateOrder" :actions="false">
+    <FormKit ref="myForm" type="form"  @submit="handleOrder" :actions="false">
     <div>
     <div class="inline-flex justify-center items-center w-full">
       <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
@@ -648,8 +618,8 @@ onMounted(async () => {
       <div class="flex-1">
         <FormKit
           type="textarea"
-          name="note"
-          v-model="currentOrder.orderNote"
+          name="noteForOrder"
+          v-model="currentOrder.orderNoteForClient"
           label="Dodatkowa informacja do zamówienia"
           placeholder="..."
         />
@@ -657,12 +627,15 @@ onMounted(async () => {
       <div class="flex-1">
         <FormKit
           type="textarea"
-          name="note"
+          name="noteForCustomer"
           v-model="currentOrder.orderNoteForCustomer"
           label="Dodatkowa informacja dla sprzedawcy"
           placeholder="..."
         />
       </div>
+  </div>
+  <div>
+    <FormKit type="checkbox" label="Uwzględnij odbiorcę na fakturze:" />
   </div>
   <div class="mt-2">
     <div class="inline-flex justify-center items-center w-full">
@@ -807,15 +780,15 @@ onMounted(async () => {
             />
             <div class="flex gap-2 w-full">
               <FormKit
-              type="text"
-              outer-class="hidden_name w-[50%]"
-              v-model="currentOrder.billingAddress.zipCode"
-              label="Kod pocztowy"
-              placeholder="Kod pocztowy"
-              :validation="'required'"
-              validation-visibility="live"
-              help=""
-            />
+                type="text"
+                outer-class="hidden_name w-[50%]"
+                name="zipCode"
+                v-model="currentOrder.billingAddress.zipCode"
+                label="Kod pocztowy"
+                placeholder="Kod pocztowy"
+                :validation="'required'"
+                validation-visibility="live"
+              />
               <FormKit
               type="text"
               outer-class="hidden_name w-[50%]"
@@ -827,7 +800,7 @@ onMounted(async () => {
               help=""
             />
             </div>
-            <span>Wojwództwo</span>
+            <span>Województwo</span>
             <Combobox v-model="selectedBillingProvince" >
               <div class="relative mt-1">
                 <div
@@ -963,7 +936,7 @@ onMounted(async () => {
               outer-class="hidden_name fomik_form_witdh"
               v-if="currentOrder.useShippingAddressAsBillingAddress"
               type="text"
-              v-model="currentOrder.billingAddress.phone"
+              v-model="currentOrder.shippingAddress.phone"
               label="Telefon"
               placeholder="Telefon"
               :validation="'required'"
@@ -1005,6 +978,7 @@ onMounted(async () => {
                 help=""
               />
               </div>
+              <span>Województwo</span>
               <Combobox v-model="selectedShippingProvince" >
               <div class="relative mt-1">
                 <div
@@ -1100,9 +1074,12 @@ onMounted(async () => {
 
         </div>
       </div>
-      <div class="w-[300px] mx-auto">
-        <div class="bg-white rounded-md shadow-md p-4">
-          <h2 class="text-xl font-bold my-2">2. Metoda dostawy</h2>
+      <div class="w-[300px] mx-auto ">
+        <div
+          class="bg-white rounded-md shadow-md p-4"
+          :class="{ '!border-red-500 !border-2': isSelectedDeliveryOptionInvalid }"
+        >         
+        <h2 class="text-xl font-bold my-2">2. Metoda dostawy</h2>
           <div class="flex items-center">
           <FormKit
             type="radio"
@@ -1110,24 +1087,22 @@ onMounted(async () => {
             { label: 'Kurier', value: '0' },
             { label: 'Odbiór własny', value: '1' },
             ]"         
-            v-model="selectedDeliveryOption" 
+            v-model="currentOrder.deliveryMethod" 
             outer-class="!text-xl hidden_border_formik !my-auto"
           />
           </div>
         </div>
-        <div class="bg-white rounded-md shadow-md p-4 mt-5">
+        <div class="bg-white rounded-md shadow-md p-4 mt-5"
+        :class="{ '!border-red-500 !border-2': isSelectedDeliveryOptionInvalid }"
+        >
           <h2 class="text-xl font-bold my-2">3. Metoda płatności</h2>
           <div>
             <FormKit
               type="radio"
-              :options="[
-              { label: 'Przelew standardowy (proforma)', value: '1' },
-              { label: 'Płatość za pobraniem', value: '2' },
-              { label: 'Przelew online (P24)', value: '0' },
-              { label: 'Termin', value: '5' }]"
-              v-model="selectedPaymentOption" 
+              :options="filteredPaymentOptions"
+              v-model="currentOrder.paymentProvider"
               outer-class="!text-xl hidden_border_formik !my-auto"
-              />
+            />
           </div>
         </div>
       </div>
@@ -1164,7 +1139,7 @@ onMounted(async () => {
           <h2 class="text-xl font-bold my-2">5. Podsumowanie</h2>
           <div>
               <ul>
-                <li class="my-10 border-t border-1 b-gray-400" v-for="product in orderProducts">
+                <li class="my-10 border-t border-1 b-gray-400" v-for="product in currentOrder.products">
                   <div class="flex w-1/2">
                     <img
                       class="flex-shrink-0 object-contain w-24 h-24 rounded outline-none"
@@ -1249,7 +1224,7 @@ onMounted(async () => {
                       label="Cena producenta"
                       step="0.01"
                       validation="required"
-                      v-model="product.producerPrice"
+                      v-model="product.producerPriceNetto"
                       validation-visibility="live"
                     />
                   </div>
@@ -1362,7 +1337,8 @@ onMounted(async () => {
   </div>
   </div>
   <div class="save-button w-full my-10">
-          <FormKit @click="Creat" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
+          <FormKit v-if="!updated" @click="Creat" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
+          <FormKit v-if="updated" @click="Creat" type="submit" label="Edytuj zamówienie" style="display: flex; justify-content: flex-end" />
     </div>
   </FormKit>
   </ContentContainer>

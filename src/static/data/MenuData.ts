@@ -88,5 +88,16 @@ export interface MenuItem {
           route: "/system/brand"
         },
       ]
+    },
+    {
+      id:6,
+      name: "Bezpieczeństwo",
+      route: "/",
+      subMenus: [
+        {
+          name: "Certyfikaty i Bezpieczeństwo",
+          route: "/safety/CertyficationAndSafety"
+        }
+      ]
     }
   ]

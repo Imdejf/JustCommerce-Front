@@ -12,6 +12,7 @@ import { brands } from './product/brands'
 import { rules } from './system/rule'
 import { orders } from './sale/order'
 import { users } from './user/user'
+import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
 
 export const Api = {
   stores,
@@ -28,4 +29,5 @@ export const Api = {
   brands,
   orders,
   users,
+  certyficationAndSafeties
 }

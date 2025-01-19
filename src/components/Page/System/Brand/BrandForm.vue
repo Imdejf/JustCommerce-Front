@@ -67,27 +67,88 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <ContentContainer :showLanguage="true">
-    <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
+  <ContentContainer :showLanguage="true" class="overflow-auto h-[95vh]">
+    <FormKit ref="myForm" type="form" class="overflow-auto" @submit="handleSave" :actions="false">
       <FormSection :title="'Producent'">
-
-        <FormKit
-          type="text"
-          v-model="currentBrand.name"
-          label="Nazwa producenta"
-          validation="required"
-          validation-visibility="live"
-        />
-        <FormKit
-          type="text"
-          v-model="currentBrand.slug"
-          label="Slug"
-          validation="required"
-          validation-visibility="live"
-          help=""
-        />
-        <div class="mt-7">
-          <el-button @click="slugGenerator" color="#ea580c" round>Generuj slug</el-button>
+        <div class="flex w-full">
+          <FormKit
+            type="text"
+            v-model="currentBrand.shortName"
+            label="Skrócona nazwa producenta"
+            validation="required"
+            validation-visibility="live"
+          />
+          <FormKit
+            type="text"
+            v-model="currentBrand.name"
+            label="Pełna nazwa producenta"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />
+          <FormKit
+            type="text"
+            v-model="currentBrand.slug"
+            label="Slug"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />
+          <div class="mt-7">
+            <el-button @click="slugGenerator" color="#ea580c" round>Generuj slug</el-button>
+          </div>
+        </div>
+        <div class="flex w-full">
+          <FormKit
+            type="text"
+            v-model="currentBrand.postalCode"
+            label="Kod pocztowy"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />
+          <FormKit
+            type="text"
+            v-model="currentBrand.city"
+            label="Miasto"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />
+          <FormKit
+            type="text"
+            v-model="currentBrand.addressLine"
+            label="Adres"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />
+          <FormKit
+            type="text"
+            v-model="currentBrand.country"
+            label="Kraj"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />          
+        </div>
+        <div class="flex w-full">
+          <FormKit
+            type="text"
+            v-model="currentBrand.phone"
+            label="Telefon"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />    
+          <FormKit
+            type="text"
+            v-model="currentBrand.email"
+            label="Email"
+            validation="required"
+            validation-visibility="live"
+            help=""
+          />                
         </div>
       </FormSection>
       <div v-if="!language.selectedLanguage">

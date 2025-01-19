@@ -342,6 +342,47 @@ const router = createRouter({
       },
       component: route => import(`../views/Sale/Order/[slug].vue`)
     },
+    {
+      path: '/sale/order/edit/:slug',
+      name: 'EditOrder',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Sale/Order/EditOrder.vue`)
+    },
+    //CERTIFICATION AND SAFETY
+    {
+      path: '/safety/CertyficationAndSafety',
+      name: 'CertyficationAndSafety',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Safety/CertyficationAndSafety/index.vue`)
+    },
+    {
+      path: '/safety/CertyficationAndSafety/add',
+      name: 'CreateCertyficationAndSafetyForm',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Safety/CertyficationAndSafety/CreateCertyficationAndSafetyForm.vue`)
+    },
+    {
+      path: '/safety/CertyficationAndSafety/detail/:id',
+      name: 'CertyficationAndSafetyDetail',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Safety/CertyficationAndSafety/DetailCertyficationAndSafetyForm.vue`)
+    },
+    {
+      path: '/safety/CertyficationAndSafety/edit/:id',
+      name: 'UpdateCertyficationAndSafetyForm',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Safety/CertyficationAndSafety/UpdateCertyficationAndSafetyForm.vue`)
+    },
     //SHIPMENT
     {
       path:'/sale/shipment',

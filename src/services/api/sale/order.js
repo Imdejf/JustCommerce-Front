@@ -81,11 +81,41 @@ const createOrder = (payload) => {
   })
 }
 
+const updateOrder = (payload) => {
+  fetch(`${APISettings.baseURL}administration/order/UpdateOrder`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
+const getOrderById = async (orderId) => {
+  const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (response.status !== 200) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json(); // Zwraca obiekt JSON jako Promise
+};
+
 export const orders = {
   smartTable,
   getAvilableAddresses,
   changePaidStatus,
   changeOrderStatus,
   createOrder,
+  updateOrder,
+  getOrderById,
   ...CreateBaseApiService('administration/order')
 }
