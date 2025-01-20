@@ -20,7 +20,19 @@
       :label="column.label"
       :prop="column.prop"
       :align="'center'"
+      :width="column.prop === 'filePath' ? '120px' : 'auto'"
+
     >
+    <template #default="{ row }">
+    <img 
+      v-if="column.prop === 'filePath'" 
+      :src="row[column.prop]" 
+      alt="Product image" 
+      style="width: 75px; height: 75px; object-fit: contain; border-radius: 5px;"
+    />
+    <span v-else>{{ row[column.prop] }}</span>
+  </template>
+
     </ElTableColumn>
   </ElTable>
 </template>

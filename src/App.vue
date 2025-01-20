@@ -55,11 +55,11 @@ onMounted(async () => {
   display: inline !important;
 }
 
-body{
+/* body{
   overflow:hidden;
   height: 100%;
   margin: 0;
   padding: 0;
-}
+} */
 
 </style>

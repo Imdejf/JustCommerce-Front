@@ -4,7 +4,7 @@ import TopNavbar from '../components/Page/TopNavbar.vue'
 </script>
 
 <template>
-  <div class="flex h-screen w-screen">
+  <div class="flex">
     <div class="flex border-b border-1 border-orange-500 ">
     </div>
     <div class="block w-full bg-blue-50">

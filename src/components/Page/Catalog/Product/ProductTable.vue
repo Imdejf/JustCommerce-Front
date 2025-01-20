@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
+const brands = ref([])
 
 const filter = ref({
   StoreId: cookies.get('dsStore'),
@@ -17,9 +18,10 @@ const filter = ref({
       PredicateObject: {
         Name: null,
         HasOptions: null,
-        IsVisibleIndividually: null,
+        IsVisibleIndividually: 1,
         IsPublished: null,
-        CreatedOn: null
+        CreatedOn: null,
+        BrandId: null
       }
     }
   }
@@ -33,14 +35,16 @@ if (parsedFilter) {
 }
 
 const tableColumns = [
+  { prop: 'filePath', label:'Zdjęcie'},
   { prop: 'name', label: 'Nazwa' },
   { prop: 'slug', label: 'Slug' },
-  { prop: 'availability', label: 'Dostępność' }
+  { prop: 'identificationCode', label: 'Kod produktu' }
 ]
 
 const products = ref([])
 
 onMounted(async () => {
+  allBrands()
   try {
     const payload = {
       body: JSON.stringify(filter.value)
@@ -53,8 +57,28 @@ onMounted(async () => {
   }
 })
 
+const allBrands = async () => {
+  try {
+    const result = await Api.brands.listByStoreId()
+    brands.value = [
+      { value: null, label: 'Wszyscy' },
+      ...result.items.map((item) => ({
+        value: item.id,
+        label: item.name
+      }))
+    ]
+  } catch (error) {
+    console.error('Błąd podczas pobierania producentów:', error)
+  }
+}
+
 const handleAdd = () => {
   router.push('/catalog/product/add')
+}
+
+const activeNames = ref(['1'])
+const handleCollapse = (val: CollapseModelValue) => {
+  console.log(val)
 }
 
 watch(
@@ -79,6 +103,55 @@ watch(
 </script>
 
 <template>
+  <div class="py-5 px-10">
+    <el-collapse v-model="activeNames">
+    <el-collapse-item name="1">
+      <template #title>
+        <span class="font-bold text-lg p-5">
+          <el-icon class="mr-2"><Search /></el-icon> Szukaj
+        </span>
+      </template>
+
+      <div class="px-10 py-4 bg-white rounded-lg shadow">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <FormKit type="text"  label="Nazwa produktu" placeholder="Wpisz nazwę produktu..."  v-model="filter.SmartTableParam.Search.PredicateObject.Name" />
+            <div class="mt-6">
+              <FormKit
+                label="Producenci"
+                type="select"
+                name="producer"
+                v-model="filter.SmartTableParam.Search.PredicateObject.BrandId"
+                :options="brands"
+              />
+            </div>
+            <div class="mt-6">
+              <FormKit
+                label="Główne produkty"
+                type="select"
+                name="isVisibleIndividually"
+                placeholder="Produkty"
+                v-model="filter.SmartTableParam.Search.PredicateObject.IsVisibleIndividually"
+                :options="[
+                  { label: 'Główne', value: 'true' },
+                  { label: 'Wszystkie', value: 'false' }
+                ]"
+              />
+            </div>
+            <div class="mt-6">
+              <FormKit
+                type="checkbox"
+                label="Pokaż tylko ukryte"
+                help=""
+                :value="false"
+              />
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+    </el-collapse-item>
+  </el-collapse>
+  </div>
   <DataTable :dataTable="products?.items" :columns="tableColumns" :link="'/catalog/product/detail'">
     <template #filter>
       <div className="flex section__filter flex-wrap items-center justify-end gap-x-6 gap-y-2 ">

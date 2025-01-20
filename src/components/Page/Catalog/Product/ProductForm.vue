@@ -352,8 +352,6 @@ watch(
         </FormSection>
         <FormSection :title="'Opis'">
           <HtmlEditor v-model="currentProduct.description" />
-          {{ currentProduct.description }}
-          dasds
         </FormSection>
         <FormSection :title="'Specyfikacja'">
           <HtmlEditor v-model="currentProduct.specification" />
