@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 const cookies = new Cookies()
 const router = useRouter()
 const brands = ref([])
+const categories = ref([])
 
 const filter = ref({
   StoreId: cookies.get('dsStore'),
@@ -45,6 +46,7 @@ const products = ref([])
 
 onMounted(async () => {
   allBrands()
+  allCategories()
   try {
     const payload = {
       body: JSON.stringify(filter.value)
@@ -69,6 +71,22 @@ const allBrands = async () => {
     ]
   } catch (error) {
     console.error('Błąd podczas pobierania producentów:', error)
+  }
+}
+
+const allCategories = async () => {
+  try {
+    const result = await Api.categories.listByStoreId()
+
+    categories.value = [
+      { value: null, label: 'Wszyscy' },
+      ...result.items.map((item) => ({
+        value: item.id,
+        label: item.name
+      }))
+    ]
+  } catch (error) {
+    console.error('Błąd podczas pobierania kategorii:', error)
   }
 }
 
@@ -146,6 +164,19 @@ watch(
                 :value="false"
               />
             </div>
+          </el-col>
+          <el-col :span="10">
+            <el-col>
+            <div class="">
+              <FormKit
+                label="Producenci"
+                type="select"
+                name="producer"
+                v-model="filter.SmartTableParam.Search.PredicateObject.CategoryId"
+                :options="categories"
+              />
+            </div>
+          </el-col>
           </el-col>
         </el-row>
       </div>
