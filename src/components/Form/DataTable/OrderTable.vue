@@ -319,7 +319,8 @@
             class="m-2 select__element"
             :value="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
             placeholder="Select"
-          >
+            @change="handleChangeStatus($event, prop.row.id)"
+            >
             <el-option
               v-for="item in options"
               :key="item.value"
