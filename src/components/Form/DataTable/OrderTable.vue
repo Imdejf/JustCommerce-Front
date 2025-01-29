@@ -562,7 +562,7 @@ const handleChangeStatus = async (status: number, orderId: string) => {
   const payload = {
     body: JSON.stringify(currentStatus)
   }
-
+  console.log(currentStatus)
   await Api.orders.changeOrderStatus(payload)
   toast.success('Zmieniono status zamówienia')
 }
