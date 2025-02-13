@@ -742,7 +742,7 @@ onMounted(async () => {
             <FormKit
               v-show="!currentOrder.billingAddress.IsCompany"
               type="text"
-              v-model="currentOrder.billingAddress.v-show"
+              v-model="currentOrder.billingAddress.firstName"
               outer-class="hidden_name fomik_form_witdh"
               label="Imię"
               placeholder="Imię"
