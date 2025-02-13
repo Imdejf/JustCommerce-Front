@@ -29,6 +29,10 @@ export interface MenuItem {
        {
         name:"Wysyłki",
         route: "/sale/shipment"
+       },
+       {
+        name:"Oferty",
+        route: "/sale/offer"
        }
       ]
     },

@@ -2,5 +2,7 @@
 import ShippingTable from '../../../Form/DataTable/ShippingTable.vue'
 </script>
 <template>
-  <ShippingTable />
+  <div class="">
+    <ShippingTable />
+  </div>
 </template>

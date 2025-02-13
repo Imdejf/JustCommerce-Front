@@ -18,7 +18,9 @@ export interface CreateOrder {
     RealShippingFeeAmountNetto: number;
     ShippingFeeAmountGross: number;
     RealShippingFeeAmountGross: number;
+    SubTotal: number;
     SubTotalGross: number;
+    TotalGross: number;
     UseShippingAddressAsBillingAddress: boolean;
     IsPaid: boolean;
     Products: OrderItem[];

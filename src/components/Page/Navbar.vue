@@ -55,11 +55,10 @@ function handleClickOutside(event: MouseEvent) {
             </div>
               <ul
                 v-if="showSubMenu === menuItem.id"
-                class="absolute bg-gray-900 w-[180px] text-center rounded-md mt-[21px] z-10"
+                class="absolute bg-gray-900 w-[180px] text-center rounded-md mt-[21px] z-[99]"
                 style="left: 50%; transform: translateX(-50%);"
 
               >
-              
                 <li
                   v-for="subMenu in menuItem.subMenus"
                   :key="subMenu.name"

@@ -12,6 +12,7 @@ import { brands } from './product/brands'
 import { rules } from './system/rule'
 import { orders } from './sale/order'
 import { shipping } from './sale/shipping'
+import { offers } from './sale/offer'
 import { users } from './user/user'
 import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
 
@@ -31,5 +32,6 @@ export const Api = {
   orders,
   shipping,
   users,
+  offers,
   certyficationAndSafeties
 }

@@ -333,7 +333,7 @@ const handleOrder = async () => {
     });
     return;
   }
-console.log(currentOrder)
+
   const createOrderPayload: CreateOrder = {
     Id: currentOrder.value.id,
     StoreId: currentOrder.value.storeId,
@@ -383,6 +383,8 @@ console.log(currentOrder)
     RealShippingFeeAmountNetto: currentOrder.value.realShippingFeeAmountNetto,
     ShippingFeeAmountGross: currentOrder.value.shippingFeeAmountGross,
     RealShippingFeeAmountGross: currentOrder.value.realShippingFeeAmountGross,
+    SubTotal: currentOrder.value.subTotal,
+    TotalGross: currentOrder.value.totalGross,
     SubTotalGross: currentOrder.value.subTotalGross,
     UseShippingAddressAsBillingAddress: !currentOrder.value.useShippingAddressAsBillingAddress,
     IsPaid: currentOrder.value.isPaid,
@@ -518,7 +520,7 @@ watch(
   currentOrder.value.products,
   (newProducts) => {
     // Oblicz wartości na podstawie nowych produktów
-    let subTotalNetto = 0;
+    let subTotal = 0;
     let subTotalGross = 0;
     let shippingFeeNetto = 0;
     let shippingFeeGross = 0;
@@ -529,7 +531,7 @@ watch(
       updateGrossAndNet(product);
 
       subTotalGross += parseFloat((product.priceNetto * product.quantity * 1.23).toFixed(2));
-      subTotalNetto += parseFloat((product.priceNetto * product.quantity).toFixed(2));
+      subTotal += parseFloat((product.priceNetto * product.quantity).toFixed(2));
 
       shippingFeeNetto += parseFloat(product.shippingPriceNetto);
       shippingFeeGross += parseFloat(product.shippingPriceGross);
@@ -542,9 +544,9 @@ watch(
     currentOrder.value.shippingFeeAmountGross = shippingFeeGross.toFixed(2);
     currentOrder.value.realShippingFeeAmountNetto = parseFloat(realShippingFeeNetto).toFixed(2);
     currentOrder.value.realShippingFeeAmountGross = parseFloat(realShippingFeeGross).toFixed(2);
-    currentOrder.value.subTotalNetto = parseFloat(subTotalNetto).toFixed(2);
+    currentOrder.value.subTotal = parseFloat(subTotal).toFixed(2);
     currentOrder.value.subTotalGross = parseFloat(subTotalGross).toFixed(2);
-    currentOrder.value.totalNetto = parseFloat(subTotalNetto + shippingFeeNetto).toFixed(2);
+    currentOrder.value.totalNetto = parseFloat(subTotal + shippingFeeNetto).toFixed(2);
     currentOrder.value.totalGross = parseFloat(subTotalGross + shippingFeeGross).toFixed(2);
   },
   { deep: true } // Śledzenie głębokich zmian w tablicy produktów
@@ -740,7 +742,7 @@ onMounted(async () => {
             <FormKit
               v-show="!currentOrder.billingAddress.IsCompany"
               type="text"
-              v-model="currentOrder.billingAddress.firstName"
+              v-model="currentOrder.billingAddress.v-show"
               outer-class="hidden_name fomik_form_witdh"
               label="Imię"
               placeholder="Imię"
@@ -1308,7 +1310,7 @@ onMounted(async () => {
               </ul>
               <div class="text-[16px]">
                   <div class="flex">
-                    <span>Wartość produktów (netto):</span><span class="font-bold text-[18px]">{{ currentOrder.subTotalNetto }} zł</span>
+                    <span>Wartość produktów (netto):</span><span class="font-bold text-[18px]">{{ currentOrder.subTotal }} zł</span>
                   </div>
                   <div class="flex mb-3">
                     <span>Wartość produktów (brutto):</span><span class="font-bold text-[18px]">{{ currentOrder.subTotalGross }} zł</span>

@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3">
+  <div class="p-3 h-[100%]">
   <div class="bg-[#f1f4f9] p-2  border-t-[3px] border-[#64748b] rounded-t-xl">
     <div class="flex justify-between">
       <div class="flex">
@@ -9,7 +9,7 @@
       <!-- {{filter}} -->
     </span>
     <span class="ml-4 flex hover:bg-sky-100 p-1">
-      <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-orange-500" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h8.925l-2 2H5v14h14v-6.95l2-2V19q0 .825-.587 1.413T19 21zm4-6v-4.25l9.175-9.175q.3-.3.675-.45t.75-.15q.4 0 .763.15t.662.45L22.425 3q.275.3.425.663T23 4.4t-.137.738t-.438.662L13.25 15zM21.025 4.4l-1.4-1.4zM11 13h1.4l5.8-5.8l-.7-.7l-.725-.7L11 11.575zm6.5-6.5l-.725-.7zl.7.7z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svsg" class="m-auto text-orange-500" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h8.925l-2 2H5v14h14v-6.95l2-2V19q0 .825-.587 1.413T19 21zm4-6v-4.25l9.175-9.175q.3-.3.675-.45t.75-.15q.4 0 .763.15t.662.45L22.425 3q.275.3.425.663T23 4.4t-.137.738t-.438.662L13.25 15zM21.025 4.4l-1.4-1.4zM11 13h1.4l5.8-5.8l-.7-.7l-.725-.7L11 11.575zm6.5-6.5l-.725-.7zl.7.7z"/></svg>
       <a @click="editSelectedRecord" class=" rounded-md p-1 text-xs font-semibold">Edytuj zamówienie</a>
     </span>
     </div>
@@ -23,8 +23,8 @@
       </el-input>
     </div>
   </div>
-  <div class="table-container !h-[100]">
-  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :border="true" style="width: 100%;" @row-click="handleRowClick" :row-class-name="rowClassName">
+  <div class="table-container">
+  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :border="true" style="width: 100%; min-height: 81vh;" @row-click="handleRowClick" :row-class-name="rowClassName">
     <el-table-column type="expand">
       <template #default="props">
         <div class="">
@@ -383,7 +383,8 @@
     </template>
     </el-table-column>
   </el-table>
-  <el-pagination
+</div>
+<el-pagination
       background
       layout="prev, pager, next"
       :current-page="dataTable.pageNumber"
@@ -393,7 +394,7 @@
       class="m-2"
     />
 </div>
-</div>
+
 </template>
 
 <script lang="ts" setup>
@@ -639,6 +640,11 @@ function translatePaymentProvider(value: number): string | null {
   font-weight: 500;
 }
 
+.el-scrollbar__thumb {
+  display: none !important;
+
+}
+
 .paid .el-input__wrapper {
   background: #4ade80;
 }
@@ -660,7 +666,6 @@ function translatePaymentProvider(value: number): string | null {
 }
 
 .table-container {
-  max-height: 85vh; /* Maksymalna wysokość tabeli */
   overflow-y: hidden; /* Włącz przewijanie pionowe */
   overflow-x: hidden; /* Opcjonalnie ukryj przewijanie poziome */
   border: 1px solid #d6dfe9; /* Opcjonalnie dodaj obramowanie */

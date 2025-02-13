@@ -23,7 +23,8 @@ const currentOrder = ref({
   realShippingFeeAmountNetto: 0, // Nowe pole
   realShippingFeeAmountGross: 0, // Nowe pole
   subTotalGross: 0, // Nowe pole
-  subTotalNetto: 0, // Nowe pole
+  subTotal: 0, // Nowe pole
+  totalGross: 0,
   useShippingAddressAsBillingAddress: false, // Nowe pole
   totalGross: 0,
   totalNetto: 0,

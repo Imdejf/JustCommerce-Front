@@ -391,6 +391,23 @@ const router = createRouter({
         layout: PageLayout
       },
       component: () => import('../views/Sale/Shipment/index.vue')
+    },
+    //OFFER
+    {
+      path:'/sale/offer',
+      name:'Offer',
+      meta:{
+        layout: PageLayout
+      },
+      component: () => import('../views/Sale/Offer/index.vue')
+    },
+    {
+      path:'/sale/createoffer',
+      name:'CreateOffer',
+      meta:{
+        layout: PageLayout
+      },
+      component: () => import('../views/Sale/offer/createoffer.vue')
     }
   ]
 })

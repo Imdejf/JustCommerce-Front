@@ -21,7 +21,7 @@ onMounted(async () => {
 
 <template>
   <header></header>
-  <main class="text-[#e0e8f0] bg-[#e0e8f0]">
+  <main class="text-[#e0e8f0] bg-[#e0e8f0] h-[100vh]">
     <component :is="$route.meta.layout || 'div'">
       <router-view></router-view>
     </component>
