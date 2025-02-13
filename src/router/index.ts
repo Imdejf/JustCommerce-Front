@@ -407,7 +407,7 @@ const router = createRouter({
       meta:{
         layout: PageLayout
       },
-      component: () => import('../views/Sale/offer/createoffer.vue')
+      component: () => import('../views/Sale/Offer/CreateOffer.vue')
     }
   ]
 })
