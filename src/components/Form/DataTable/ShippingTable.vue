@@ -261,7 +261,7 @@ onMounted(async () => {
     </div>
   </div>
   <div class="table-container">
-  <el-table class="pt-[1px] !bg-[#d6dfe9]" ref="tableData" :row-key="row_key" :data="dataTable.items" :border="true" style="width: 100%; min-height: 87vh;" @expand-change="test" :cell-style="cellStyle">
+  <el-table class="pt-[1px] !bg-[#d6dfe9]" ref="tableData" :row-key="row_key" :data="dataTable.items" :border="true" style="width: 100%; min-height: 87vh;" :cell-style="cellStyle">
     <el-table-column type="expand">
       <template #default="props">
         <div>

@@ -20,7 +20,13 @@ const props = defineProps({
 const toast = useToast()
 const cookies = new Cookies()
 
+const token = cookies.get('Authorization')
+
 const currentOffer = ref(props.offer)
+
+const expirationTime = ref(new Date());
+expirationTime.value.setMonth(expirationTime.value.getMonth() + 1);
+
 const isCompany = ref(true)
 const isCompanyToAnotherAddress = ref(true)
 const anotherAddressToShipment = ref(false)
@@ -266,7 +272,6 @@ const addProductToOfferHandle = async (item, index) => {
   currentItem.totalPriceNetto = 0;
   currentItem.totalPriceGross = 0;
   currentItem.shippingRule = item.shippingRule;
-  console.log(currentItem)
 }
 
 
@@ -326,7 +331,7 @@ const handleSave = async () => {
   currentOffer.value.shippingPriceGross = shippingBrutto.value;
   currentOffer.value.totalPrice = (parseFloat(totalSumBrutto.value) / (1 + taxRate)).toFixed(2);
   currentOffer.value.totalPriceGross = totalSumBrutto.value;
-
+  currentOffer.value.offerItems = previousOfferItems.value;
 
   const payload = {
       body: JSON.stringify(currentOffer.value),
@@ -349,6 +354,7 @@ const handleSave = async () => {
             <div class="border-gray-300 border-b pb-5 mb-4">
               <div class="flex gap-5">
                   <div class="w-1/5">
+                    {{ previousOfferItems }}
                       <FormKit
                           v-if="!isCustomTerm"
                           label="Termin realizacji"
@@ -389,6 +395,16 @@ const handleSave = async () => {
                           type="select"
                           :options="predefinedPaymnet"
                           v-model="currentOffer.paymentTerm"
+                      />
+                  </div>
+                  <div class="w-1/5">
+                      <span class="block font-bold text-sm mb-[2px]">Ważna do</span>
+                      <el-date-picker
+                        v-model="expirationTime"
+                        type="date"
+                        placeholder="Wybierz datę"
+                        format="DD-MM-YYYY"
+                        style="width: 150px !important;"
                       />
                   </div>
               </div>

@@ -30,8 +30,31 @@ const createOffer = (payload) => {
   })
 }
 
+const generateOrDownloadOffer = async (offerId) => {
+  try {
+    const response = await fetch(`${APISettings.baseURL}administration/offer/GenerateOffer/${offerId}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Błąd podczas generowania oferty:", error);
+    throw error;
+  }
+};
+
+
+
 export const offers = {
     smartTable,
     createOffer,
-    ...CreateBaseApiService('administration/orderShipping')
+    generateOrDownloadOffer,
+    ...CreateBaseApiService('administration/offer')
 }

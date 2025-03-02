@@ -1,13 +1,25 @@
 <script lang="ts" setup>
 import Cookies from 'universal-cookie'
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { useStoreStore } from './stores/store'
 import { useLanguageStore } from './stores/language'
+import { useOfferStore } from '/@/stores/offer'
+import OfferModal from './components/Form/Modal/OfferModal.vue'
 const cookies = new Cookies()
 
+const useOffer = useOfferStore()
 const useStore = useStoreStore()
 const language = useLanguageStore()
+
+const closeOfferHandle = () => {
+  useOffer.closeOffer();
+}
+
+const currentOffer = computed(() => {
+  return useOffer.currentOffer.data;
+})
+
 onMounted(async () => {
   const selectedStore = cookies.get('dsStore')
   if (selectedStore) {
@@ -22,6 +34,20 @@ onMounted(async () => {
 <template>
   <header></header>
   <main class="text-[#e0e8f0] bg-[#e0e8f0] h-[100vh]">
+    <!-- Sidebar Container -->
+      <!-- Transparent Background -->
+    <div v-if="useOffer.currentOffer !== null" class="absolute inset-0 bg-gray-300 opacity-60 w-full z-50"></div>
+     <div
+      v-if="useOffer.currentOffer !== null"
+      class="fixed p-4 top-0 right-0 w-2/5 h-full shadow-lg transform transition-transform duration-300 z-50 bg-white text-black "
+      >      
+      <!-- Sidebar Content -->
+      <div 
+        class="relative w-full h-auto transform transition-transform duration-300"
+      >
+        <OfferModal :offer="currentOffer" @closeOffer="closeOfferHandle"/>
+      </div>
+    </div>
     <component :is="$route.meta.layout || 'div'">
       <router-view></router-view>
     </component>

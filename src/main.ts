@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from "element-plus";
+import pl from 'element-plus/es/locale/lang/pl'
 import "element-plus/dist/index.css";
 import { plugin, defaultConfig } from '@formkit/vue'
 import config from '../formkit.config.ts'
@@ -54,7 +55,9 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(ElementPlus);
+app.use(ElementPlus, {
+    locale: pl,
+  })
 app.use(plugin, defaultConfig(config))
 app.use(DropZone)
 
