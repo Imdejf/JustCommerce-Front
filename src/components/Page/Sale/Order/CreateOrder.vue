@@ -1338,9 +1338,42 @@ onMounted(async () => {
     </div>
   </div>
   </div>
+  <div>
+  <div class="mt-4 realtive">
+      <h2 class="text-xl font-bold bg-gray-100 border-b-[1px] border-[#d6dfe9] shadow-lg p-2">Pozycje na ofercie</h2>
+      <div class="bg-white p-2">
+          <div class="grid grid-cols-11 gap-2 items-center font-semibold border-b pb-2 text-xs">
+              <span class="col-span-5">Nazwa</span>
+              <span class="col-span-1">Ilość</span>
+              <span class="col-span-1">Jednostka</span>
+              <span class="col-span-1">Cena netto</span>
+              <span class="col-span-1">VAT %</span>
+              <span class="col-span-1">Wartość netto</span>
+              <span class="col-span-1">Wartość brutto</span>
+          </div>
+          <div v-for="(item, index) in currentOrder.products" :key="index" class="grid grid-cols-11 gap-2 items-center py-2 border-b">
+            <span v-if="item.name == '' || item.name == null" class="col-span-5">
+                <FormKit
+                  :classes="{ outer: '!mt-7 offer_input' }"
+                  type="text"
+                  v-model="filterSearchProduct.SearchString"
+                  @focus="handleInputFocus(index)"
+                />
+            </span>
+            <span v-else class="col-span-5">
+                <FormKit
+                  :classes="{ outer: '!mt-7 offer_input' }"
+                  type="text"
+                  v-model="item.name"
+                />
+            </span>
+          </div>
+      </div>
+    </div>
+  </div>
   <div class="save-button w-full my-10">
-          <FormKit v-if="!updated" @click="Creat" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
-          <FormKit v-if="updated" @click="Creat" type="submit" label="Edytuj zamówienie" style="display: flex; justify-content: flex-end" />
+          <FormKit v-if="!updated" @click="Create" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
+          <FormKit v-if="updated" @click="Create" type="submit" label="Edytuj zamówienie" style="display: flex; justify-content: flex-end" />
     </div>
   </FormKit>
   </ContentContainer>

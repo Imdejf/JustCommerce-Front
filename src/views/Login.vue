@@ -10,27 +10,26 @@ const password = ref('')
 const error = ref(false)
 
 const handleLogin = () => {
-  const formData = new URLSearchParams()
-  formData.append('username', username.value)
-  formData.append('password', password.value)
-  formData.append('grant_type', 'password')
-  formData.append('client_id', 'ro.client')
-  formData.append('client_secret', 'secret')
+  const data = {
+    username: username.value,
+    password: password.value
+  }
 
-  fetch(import.meta.env.VITE_BASE_URL + 'connect/token', {
+  fetch(import.meta.env.VITE_BASE_URL + 'api/User/Identity/Login', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
+    'Content-Type': 'application/json-patch+json'
     },
-    body: formData
+    body: JSON.stringify(data)
   })
     .then(async (response) => {
-      const result = await response.json()
-      if (result?.error) {
+      var data = await response.json()
+      if (data.data.authenticationError) {
         error.value = true
-        console.log(result.error)
+        console.log(data.data.authenticationError)
       } else {
-        cookies.set('Authorization', result.access_token)
+        console.log(data.data.jwt.jwt)
+        cookies.set('Authorization', data.data.jwt.jwt)
         cookies.set("dsStore", "cdf63b0a-88d0-40b0-a31f-c63ae02f320d")
         router.push('/')
       }

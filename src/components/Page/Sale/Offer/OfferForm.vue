@@ -354,7 +354,6 @@ const handleSave = async () => {
             <div class="border-gray-300 border-b pb-5 mb-4">
               <div class="flex gap-5">
                   <div class="w-1/5">
-                    {{ previousOfferItems }}
                       <FormKit
                           v-if="!isCustomTerm"
                           label="Termin realizacji"
