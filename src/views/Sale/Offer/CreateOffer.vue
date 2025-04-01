@@ -18,7 +18,7 @@ const currentOffer = ref<Offer>({
   id: '',
   languageId: '40beaea2-f6e4-4414-8a10-2570718f13aa',
   storeId: cookies.get('dsStore'),
-  createdById: decoded.sub,
+  createdById: decoded.UserId,
   createdOn: null,
   latestUpdatedOn: null,
   expirationTime: getExpirationDate(),

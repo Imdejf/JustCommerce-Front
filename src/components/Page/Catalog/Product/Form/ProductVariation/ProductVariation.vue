@@ -153,7 +153,7 @@ const handleSaveVariation = async () => {
   try {
     const productVariation: ProductVariationInterface = {
       storeId: store.selectedStore.id,
-      userId: decoded.sub,
+      userId: decoded.UserId,
       productId: props.product.id,
       variation: currentProductVariation.value
     }
@@ -188,7 +188,7 @@ const handleSaveEdit = async () => {
   try {
     const productVariation: ProductVariationInterface = {
       storeId: store.selectedStore.id,
-      userId: decoded.sub,
+      userId: decoded.UserId,
       productId: editProductVariation.value.id,
       variation: editProductVariation.value
     }

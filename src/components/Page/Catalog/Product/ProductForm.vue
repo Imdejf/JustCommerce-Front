@@ -91,7 +91,7 @@ const handleSave = async (values) => {
 
   currentProduct.slug = diacritics.remove(currentProduct.slug)
 
-  currentProduct.currentUserId = decoded.sub
+  currentProduct.currentUserId = decoded.UserId
   currentProduct.deletedMediaIds = []
 
   console.log(currentProduct)

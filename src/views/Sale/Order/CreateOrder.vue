@@ -11,8 +11,8 @@ const decoded = jwt_decode(token)
 const currentOrder = ref({
   storeId: cookies.get('dsStore'),
   languageId: '40beaea2-f6e4-4414-8a10-2570718f13aa',
-  createdById: decoded.sub,
-  customerId: decoded.sub,
+  createdById: decoded.UserId,
+  customerId: decoded.UserId,
   orderSourceType: 5,
   orderStatus: 100,
   deliveryMethod: null,
