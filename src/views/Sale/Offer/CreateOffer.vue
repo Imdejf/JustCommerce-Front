@@ -70,19 +70,7 @@ const currentOffer = ref<Offer>({
     stateOrProvinceId: '',
     countryId: '0b64292c-e249-4906-ab48-429441745899',
   },
-  offerItems: [
-    {
-      productId: '',
-      name: '',
-      quantity: 0,
-      priceNetto: 0,
-      priceGross: 0,
-      tax: 0,
-      producerPriceNetto: 0,
-      totalPriceNetto: 0,
-      totalPriceGross: 0,
-    },
-  ]
+  products: []
 });
 </script>
 <template>

@@ -57,6 +57,20 @@ const generateOrderToManufacturer = (payload) =>
     }
 })
 
+const getByIdOrderShipping = (payload) =>
+  fetch(`${APISettings.baseURL}administration/orderShipping/GetByIdOrderShipping`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+})
+
 const changeShippingOrderState = (payload) =>
   fetch(`${APISettings.baseURL}administration/orderShipping/changeShippingOrderState`, {
     method: 'POST',
@@ -91,6 +105,7 @@ export const shipping = {
     changeOwnLabel,
     changeManufacturerOrderedDate,
     changeShippingOrderState,
+    getByIdOrderShipping,
     generateOrderToManufacturer,
     ...CreateBaseApiService('administration/orderShipping')
 }

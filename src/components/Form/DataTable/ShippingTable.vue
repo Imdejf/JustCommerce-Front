@@ -80,6 +80,25 @@ const updateDateOrderedCourier = async (row) => {
   }
 };
 
+const updateOwnLabel = async (row) => {
+  console.log(row)
+  try {
+    const payload = {
+      body: JSON.stringify({
+        productId: row.productId,
+        orderId: row.orderId,
+        ownLabel: row.ownLabel,
+      }),
+    };
+
+    // await Api.shipping.changeOwnLabel(payload);
+    toast.success("Zaktualizowano informację o etykiecie");
+  } catch (error) {
+    console.error("Błąd podczas aktualizacji etykiety:", error);
+    toast.error("Nie udało się zaktualizować etykiety");
+  }
+};
+
 const updateDateShipped = async (row) => {
   try {
     if(row.itemShipedDate !== null) {
@@ -186,6 +205,19 @@ const styleProductTable = ({ row, column }) => {
 
 function row_key(row) {
      return row.sortId
+}
+
+const generateOneOrderFromManofacturerHandle = async (order) => {
+  const object = {
+    OrderId: order.orderId,
+    ProductId: order.productId
+  }
+
+  const payload = {
+    body: JSON.stringify(object),
+  };
+
+  const result = await Api.shipping.getByIdOrderShipping(payload);
 }
 
 const generateOrderForManufacturerHandle = async () => {
@@ -365,6 +397,22 @@ onMounted(async () => {
                     style="width: 150px !important;"
                     @change="updateDateShipped(scope.row)"
                   />
+                </template>
+              </el-table-column>
+              <el-table-column label="Etykieta" width="70" class="p-5">
+                <template #default="scope">
+                  <el-checkbox
+                    v-model="scope.row.ownLabel"
+                    @change="() => updateOwnLabel(scope.row)"
+                  >
+                  </el-checkbox>
+                </template>
+              </el-table-column>
+              <el-table-column label="Generuj" width="70" class="p-5">
+                <template #default="scope">
+                  <span class="flex hover:bg-sky-100 p-1 !h-[40px]">
+                    <button @click="generateOneOrderFromManofacturerHandle(scope.row)" class=" rounded-md p-1 text-xs font-semibold"><svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-400" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5.53 17.506q-.978-1.142-1.504-2.558T3.5 12q0-3.616 2.664-6.058T12.5 3.5V2l3.673 2.75L12.5 7.5V6Q9.86 6 7.93 7.718T6 12q0 1.13.399 2.15t1.13 1.846zM11.5 22l-3.673-2.75L11.5 16.5V18q2.64 0 4.57-1.718T18 12q0-1.13-.399-2.16q-.399-1.028-1.13-1.855l1.998-1.51q.979 1.142 1.505 2.558T20.5 12q0 3.616-2.664 6.058T11.5 20.5z"/></svg></button>
+                  </span>
                 </template>
               </el-table-column>
             </el-table>

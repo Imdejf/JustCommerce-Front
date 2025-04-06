@@ -15,8 +15,8 @@ const currentOrder = ref({
   customerId: decoded.UserId,
   orderSourceType: 5,
   orderStatus: 100,
-  deliveryMethod: null,
-  paymentProvider: null,
+  deliveryMethod: 0,
+  paymentProvider: 1,
   paymentTerm: 99,
   shippingFeeAmountNetto: 0,
   shippingFeeAmountGross: 0, // Nowe pole
@@ -60,18 +60,7 @@ const currentOrder = ref({
     stateProvinceId: '',
     countryId: '0b64292c-e249-4906-ab48-429441745899',
   },
-  products: [
-    // {
-    //   id: '', // UUID
-    //   priceNetto: 0, // Nowe pole
-    //   tax: 0, // Nowe pole
-    //   producerPrice: 0, // Nowe pole
-    //   quantity: 0, // Nowe pole
-    //   shippingPrice: 0, // Nowe pole
-    //   noteForProducer: '', // Nowe pole
-    // },
-  ],
-  applyRules: false,
+  products: [],
   orderNoteForClient: '',
   orderNoteForCustomer: '',
   orderNoteOnInvoice: '',
