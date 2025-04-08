@@ -261,7 +261,10 @@ const handleOrder = async () => {
     return;
   }
 
+  console.log(currentOrder.value.billingAddress)
+
   const createOrderPayload: CreateOrder = {
+    Id: currentOrder.value.orderId,
     StoreId: currentOrder.value.storeId,
     CustomerId: currentOrder.value.customerId,
     LanguageId: currentOrder.value.languageId,
@@ -545,7 +548,7 @@ watch(
                   <div class="mt-3 text-center">
                     <h3>Zamówienie na firmę?</h3>
                     <el-switch
-                      v-model="currentOrder.billingAddress.IsCompany"
+                      v-model="currentOrder.billingAddress.isCompany"
                       class="ml-2"
                       style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
                     />
@@ -562,33 +565,44 @@ watch(
                         help=""
                       />
                         <FormKit
-                        v-show="currentOrder.billingAddress.IsCompany"
+                        v-show="currentOrder.billingAddress.isCompany"
                         outer-class="hidden_name fomik_form_witdh"
                         type="text"
                         v-model="currentOrder.billingAddress.companyName"
                         label="Nazwa firmy"
                         placeholder="Nazwa firmy"
-                        :validation="currentOrder.billingAddress.IsCompany ? 'required' : ''"
+                        :validation="currentOrder.billingAddress.isCompany ? 'required' : ''"
                         validation-visibility="live"
                         help=""
                         />
                         <FormKit
-                        v-show="!currentOrder.billingAddress.IsCompany"
+                        v-show="currentOrder.billingAddress.isCompany"
+                        outer-class="hidden_name fomik_form_witdh"
+                        type="text"
+                        v-model="currentOrder.billingAddress.nip"
+                        label="Nip"
+                        placeholder="Nip"
+                        :validation="currentOrder.billingAddress.isCompany ? 'required' : ''"
+                        validation-visibility="live"
+                        help=""
+                        />
+                        <FormKit
+                        v-show="!currentOrder.billingAddress.isCompany"
                         type="text"
                         v-model="currentOrder.billingAddress.firstName"
                         outer-class="hidden_name fomik_form_witdh"
                         label="Imię"
                         placeholder="Imię"
-                        :validation="!currentOrder.billingAddress.IsCompany ? 'required' : ''"
+                        :validation="!currentOrder.billingAddress.isCompany ? 'required' : ''"
                         />
                         <FormKit
-                          v-show="!currentOrder.billingAddress.IsCompany"
+                          v-show="!currentOrder.billingAddress.isCompany"
                           type="text"
                           v-model="currentOrder.billingAddress.lastName"
                           outer-class="hidden_name fomik_form_witdh"
                           label="Nazwisko"
                           placeholder="Nazwisko"
-                          :validation="!currentOrder.billingAddress.IsCompany ? 'required' : ''"
+                          :validation="!currentOrder.billingAddress.isCompany ? 'required' : ''"
                           help=""
                         />
                         <FormKit
@@ -739,33 +753,33 @@ watch(
                       <div v-show="currentOrder.useShippingAddressAsBillingAddress">
                         <FormKit
                             outer-class="hidden_name fomik_form_witdh"
-                            v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.IsCompany"
+                            v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.isCompany"
                             type="text"
                             v-model="currentOrder.shippingAddress.firstName"
                             label="Imię"
                             placeholder="Imię"
-                            :validation="currentOrder.billingAddress.IsCompany ? '' : 'required'"
+                            :validation="currentOrder.billingAddress.isCompany ? '' : 'required'"
                             validation-visibility="live"
                         />
                         <FormKit
                           outer-class="hidden_name fomik_form_witdh"
-                          v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.IsCompany"
+                          v-if="currentOrder.useShippingAddressAsBillingAddress && !currentOrder.billingAddress.isCompany"
                           type="text"
                           v-model="currentOrder.shippingAddress.lastName"
                           label="Nazwisko"
                           placeholder="Nazwisko"
-                          :validation="currentOrder.billingAddress.IsCompany ? '' : 'required'"
+                          :validation="currentOrder.billingAddress.isCompany ? '' : 'required'"
                           validation-visibility="live"
                           help=""
                         />
                         <FormKit
                           outer-class="hidden_name fomik_form_witdh"
-                          v-if="currentOrder.useShippingAddressAsBillingAddress && currentOrder.billingAddress.IsCompany"
+                          v-if="currentOrder.useShippingAddressAsBillingAddress && currentOrder.billingAddress.isCompany"
                           type="text"
                           v-model="currentOrder.shippingAddress.lastName"
                           label="Nazwa firmy"
                           placeholder="Nazwa firmy"
-                          :validation="currentOrder.billingAddress.IsCompany ? 'required' : ''"
+                          :validation="currentOrder.billingAddress.isCompany ? 'required' : ''"
                           validation-visibility="live"
                           help=""
                         />
@@ -909,6 +923,12 @@ watch(
                 </div>
           </div>
           <ProductTable
+          :shippingNetto="order.shippingPrice"
+          :shippingBrutto="order.shippingPriceGross"
+          :totalNetto="order.totalItemPrice"
+          :totalBrutto="order.totalItemPriceGross"
+          :totalSumBrutto="order.totalPriceGross"
+          :transportIndividualPricing="order.transportIndividualPricing"
           :items="order.products"
           @updateProductTableSummary="handleProductUpdate"/>
           <div class="save-button w-full my-10">

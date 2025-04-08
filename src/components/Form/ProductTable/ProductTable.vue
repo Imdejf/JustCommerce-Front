@@ -169,6 +169,8 @@ const updateShippingValues = (changedField: string) => {
 onMounted(() => {
   if(itemsTable.value.length === 0) {
     addNewItem()
+  } else {
+    emit('updateProductTableSummary', productTableSummary.value);
   }
 })
 

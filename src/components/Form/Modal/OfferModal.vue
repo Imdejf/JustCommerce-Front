@@ -110,7 +110,7 @@ const calculateMargin = (priceNetto: number, producerPriceNetto: number, startin
             </div>
         </div>
     </div>
-    <el-button type="warning" class="w-full my-3">Edytuj oferte</el-button>
+    <router-link :to="'/sale/offer/edit/' + offer.id" class=" rounded-md p-1 block text-center text-[14px] font-semibold p-2 w-full my-3 text-white bg-orange-400">Edytuj oferte</router-link>
     <div class="mt-10">
         <ul class="text-sm">
             <li class="flex border-b border-gray-300 pb-4" v-for="item in offer.offerItems" :key="offer.offerId">

@@ -12,6 +12,10 @@
       <svg xmlns="http://www.w3.org/2000/svsg" class="m-auto text-orange-500" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h8.925l-2 2H5v14h14v-6.95l2-2V19q0 .825-.587 1.413T19 21zm4-6v-4.25l9.175-9.175q.3-.3.675-.45t.75-.15q.4 0 .763.15t.662.45L22.425 3q.275.3.425.663T23 4.4t-.137.738t-.438.662L13.25 15zM21.025 4.4l-1.4-1.4zM11 13h1.4l5.8-5.8l-.7-.7l-.725-.7L11 11.575zm6.5-6.5l-.725-.7zl.7.7z"/></svg>
       <a @click="editSelectedRecord" class=" rounded-md p-1 text-xs font-semibold">Edytuj zamówienie</a>
     </span>
+    <span class="ml-4 flex hover:bg-sky-100 p-1">
+      <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-500" width="20" height="20" viewBox="0 0 24 24"><!-- Icon from Stash Icons by Pingback LLC - https://github.com/stash-ui/icons/blob/master/LICENSE --><path fill="currentColor" d="M17.5 14.75a2.75 2.75 0 1 0 0 5.5a2.75 2.75 0 0 0 0-5.5m-4.25 2.75a4.25 4.25 0 1 1 8.5 0a4.25 4.25 0 0 1-8.5 0m6.093-1.405a.75.75 0 0 1 0 1.06l-2.28 2.28l-1.406-1.405a.75.75 0 1 1 1.06-1.06l.346.344l1.22-1.22a.75.75 0 0 1 1.06 0" opacity=".5"/><path fill="currentColor" d="M6 2.25A2.75 2.75 0 0 0 3.25 5v14.382a1.75 1.75 0 0 0 2.533 1.565l1-.5a.25.25 0 0 1 .261.024l.906.679a1.75 1.75 0 0 0 2.1 0l.862-.647a.25.25 0 0 1 .279-.014l.673.404a.75.75 0 1 0 .772-1.286l-.674-.404a1.75 1.75 0 0 0-1.95.1l-.862.647a.25.25 0 0 1-.3 0l-.906-.68a1.75 1.75 0 0 0-1.832-.164l-1 .5a.25.25 0 0 1-.362-.224V5c0-.69.56-1.25 1.25-1.25h10c.69 0 1.25.56 1.25 1.25v5.5a.75.75 0 0 0 1.5 0V5A2.75 2.75 0 0 0 16 2.25z"/><path fill="currentColor" d="M7 6.25a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5z"/></svg>
+      <a @click="invoiceGenerate" class=" rounded-md p-1 text-xs font-semibold">Generuj fakturę</a>
+    </span>
     </div>
     <el-input
               style="border-radius: 1px !important; font-size:12px;"
@@ -476,6 +480,16 @@ const editSelectedRecord = () => {
     toast.warning("Wybierz zamówienie do edycji")
   }
 };
+
+const invoiceGenerate = async () => {
+  console.log(selectedRow.value)
+  if(!selectedRow.value.isPaid){
+    toast.warning("Zamówienie musi być opłacone")
+    return;
+  }
+  
+    const result = await Api.invoices.createInvoice(selectedRow.value.id);
+}
 
 const formatDate = (dateIso: string) => {
   const date = new Date(dateIso) // Utwórz obiekt daty

@@ -402,13 +402,21 @@ const router = createRouter({
       component: () => import('../views/Sale/Offer/index.vue')
     },
     {
-      path:'/sale/createoffer',
+      path:'/sale/offer/createoffer',
       name:'CreateOffer',
       meta:{
         layout: PageLayout
       },
       component: () => import('../views/Sale/Offer/CreateOffer.vue')
-    }
+    },
+    {
+      path: '/sale/offer/edit/:slug',
+      name: 'EditOffer',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Sale/Offer/EditOffer.vue`)
+    },
   ]
 })
 

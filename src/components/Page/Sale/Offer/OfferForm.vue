@@ -43,7 +43,7 @@ const handleProductUpdate = (summary) => {
 }
 
 const handleTermSelection = () => {
-  if (realizationTerm.value === 99) {
+  if (realizationTerm.value === "Wpisz własną wartość") {
     isCustomTerm.value = true;
     realizationTerm.value = "";
   } else {
@@ -176,8 +176,14 @@ const handleSave = async () => {
     };
     console.log(payload)
   try {
-    const response = await Api.offers.createOffer(payload);
-    toast.success('Oferta została zapisana!');
+    if(!props.updated) {
+      const response = await Api.offers.createOffer(payload);
+      toast.success('Oferta została zapisana!');
+    } else {
+      const response = await Api.offers.updateOffer(payload);
+      toast.success('Oferta została edytowana!');
+    }
+
   } catch (error) {
     toast.error('Wystąpił błąd podczas zapisu oferty.');
     console.error(error);
@@ -438,6 +444,12 @@ const handleSave = async () => {
             </div>
             <ProductTable
             :items="offer.products"
+            :shippingNetto="offer.shippingPrice"
+            :shippingBrutto="offer.shippingPriceGross"
+            :totalNetto="offer.totalItemPrice"
+            :totalBrutto="offer.totalItemPriceGross"
+            :totalSumBrutto="offer.totalPriceGross"
+            :transportIndividualPricing="offer.transportIndividualPricing"
             @updateProductTableSummary="handleProductUpdate"/>
             <div class="save-button justify-self-end my-10 mx-[10rem]">
               <FormKit v-if="!updated" type="submit" label="Utwrzów ofertę" style="display: flex; justify-content: flex-end" />
