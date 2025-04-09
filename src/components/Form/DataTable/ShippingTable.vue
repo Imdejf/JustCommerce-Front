@@ -27,6 +27,34 @@ const filter = ref({
   }
 })
 
+enum PaymentProvider {
+  Przelewy24 = 0,
+  StandardTransfer = 1,
+  CashOnDelivery = 2,
+  PayPo = 3,
+  Blik = 4,
+  Term = 5
+}
+
+function translatePaymentProvider(value: number): string | null {
+  switch (value) {
+    case PaymentProvider.Przelewy24:
+      return 'Przelewy24'
+    case PaymentProvider.StandardTransfer:
+      return 'Przelew Standardowy'
+    case PaymentProvider.CashOnDelivery:
+      return 'Płatność przy odbiorze'
+    case PaymentProvider.PayPo:
+      return 'PayPo'
+    case PaymentProvider.Blik:
+      return 'Blik'
+    case PaymentProvider.Term:
+      return 'Raty'
+    default:
+      return null // lub inny sposób obsługi nieprawidłowej wartości
+  }
+}
+
 const updateDateOrderedFromManufacturer = async (row) => {
   try {
     if(row.itemOrderedFromManufacturerDate !== null) {
@@ -81,7 +109,6 @@ const updateDateOrderedCourier = async (row) => {
 };
 
 const updateOwnLabel = async (row) => {
-  console.log(row)
   try {
     const payload = {
       body: JSON.stringify({
@@ -149,8 +176,6 @@ const fetchTableData = async () => {
     const result = await Api.shipping.getAllOrderShippingNotProcessed(payload);
 
     dataTable.value = result.data;
-
-    console.log(dataTable.value)
   } catch (error) {
     console.error('Błąd podczas pobierania danych:', error);
     toast.error('Wystąpił problem z pobraniem danych');
@@ -330,6 +355,11 @@ onMounted(async () => {
               <p>Kod pocztowy: {{ props.row.shippingAddress.zipCode }}</p>
               <p>Miasto: {{ props.row.shippingAddress.city }}</p>
               <p>Telefon: {{ props.row.shippingAddress.phone }}</p>
+            </div>
+            <div>
+              <span class="font-bold text-base">Pozostałe dane</span>
+              <p>Płatność: {{ translatePaymentProvider(props.row.paymentProvider) }}</p>
+              <p>Opłacone: {{ props.row.isPaid ? "Tak" : "Nie" }}</p>
             </div>
           </div>
 
