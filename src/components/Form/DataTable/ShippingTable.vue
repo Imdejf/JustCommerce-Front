@@ -91,7 +91,7 @@ const updateOwnLabel = async (row) => {
       }),
     };
 
-    // await Api.shipping.changeOwnLabel(payload);
+    await Api.shipping.changeOwnLabel(payload);
     toast.success("Zaktualizowano informację o etykiecie");
   } catch (error) {
     console.error("Błąd podczas aktualizacji etykiety:", error);
