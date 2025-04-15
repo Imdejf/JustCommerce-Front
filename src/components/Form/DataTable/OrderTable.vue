@@ -623,7 +623,7 @@ function translatePaymentProvider(value: number): string | null {
     case PaymentProvider.Blik:
       return 'Blik'
     case PaymentProvider.Term:
-      return 'Raty'
+      return 'Termin'
     default:
       return null // lub inny sposób obsługi nieprawidłowej wartości
   }
