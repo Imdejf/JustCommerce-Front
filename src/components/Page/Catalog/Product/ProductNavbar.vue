@@ -27,10 +27,12 @@ const handleEdit = () => {
 
 const handleRemove = async () => {
   try {
-    await Api.categories.remove(props.id)
+    await Api.products.removeProduct(props.id)
     toast.success('Usunięto produkt', {
       timeout: 2000
     })
+    removeModal.value = false;
+    router.push(`/catalog/product`)
   } catch (error) {
     toast.error('Błąd serwerowy', {
       timeout: 2000
@@ -47,7 +49,7 @@ const handleRemove = async () => {
         v-if="removeModal"
         @confirmed="handleRemove"
         @canceled="removeModal = false"
-        text="Czy chcesz usunąć kategorie?"
+        text="Czy chcesz usunąć produkt?"
       />
       <Button @click="handleEdit" variant="edit"> Edytuj </Button>
     </div>

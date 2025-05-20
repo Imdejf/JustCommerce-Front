@@ -141,6 +141,18 @@ const updateAttributeValue = (payload) =>
     }
   })
 
+  const removeProduct = (productId) =>
+    fetch(`${APISettings.baseURL}administration/product/` + productId, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    }).then(function (response) {
+      if (response.status != 200) {
+        throw response.status
+      } else {
+        return response.json()
+      }
+    })
 const updateCategory = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/ProductCategory`, {
     method: 'PUT',
@@ -163,6 +175,7 @@ export const products = {
   addOptionCombination,
   removeOptionCombination,
   addOption,
+  removeProduct,
   updateOption,
   addAttributeValue,
   updateAttributeValue,
