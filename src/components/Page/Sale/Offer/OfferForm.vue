@@ -21,6 +21,7 @@ const props = defineProps({
 
 const toast = useToast()
 const cookies = new Cookies()
+const router = useRouter()
 
 const token = cookies.get('Authorization')
 
@@ -179,9 +180,12 @@ const handleSave = async () => {
     if(!props.updated) {
       const response = await Api.offers.createOffer(payload);
       toast.success('Oferta została zapisana!');
+          router.push(`/sale/offer`);
+
     } else {
       const response = await Api.offers.updateOffer(payload);
       toast.success('Oferta została edytowana!');
+      router.push(`/sale/offer`);
     }
 
   } catch (error) {

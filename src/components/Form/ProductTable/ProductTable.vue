@@ -53,7 +53,7 @@ const searchProduct = ref('')
 const filterSearchProduct = ref({
   StoreId: cookies.get('dsStore'),
   PageNumber: 1,
-  PageSize: 5,
+  PageSize: 30,
   SearchString: searchProduct.value
 })
 

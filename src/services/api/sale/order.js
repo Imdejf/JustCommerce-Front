@@ -51,6 +51,21 @@ const changePaidStatus = (payload) => {
   })
 }
 
+const changeInvoiceStatus = (payload) => {
+  fetch(`${APISettings.baseURL}administration/order/ChangeInvoiceStatus`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
 const changeOrderStatus = (payload) => {
   fetch(`${APISettings.baseURL}administration/order/ChangeOrderStatus`, {
     method: 'PUT',
@@ -113,6 +128,7 @@ export const orders = {
   smartTable,
   getAvilableAddresses,
   changePaidStatus,
+  changeInvoiceStatus,
   changeOrderStatus,
   createOrder,
   updateOrder,

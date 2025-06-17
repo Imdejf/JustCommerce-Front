@@ -574,7 +574,6 @@ onMounted(async () => {
             <span
               class="font-bold cursor-pointer"
               v-if="prop.row.orderNote"
-              @click="handleToggleRow(prop.row)"
               >Sprwadź</span
             >
             <span v-else>-</span>

@@ -28,7 +28,7 @@
     </div>
   </div>
   <div class="table-container">
-  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :border="true" style="width: 100%; min-height: 81vh;" @row-click="handleRowClick" :row-class-name="rowClassName">
+  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :row-key="row_key" @row-click="handleRowClick" :border="true" style="width: 100%; min-height: 81vh;" :row-class-name="rowClassName" :cell-style="cellStyle">
     <el-table-column type="expand">
       <template #default="props">
         <div class="">
@@ -81,7 +81,7 @@
             </p>
           </div>
           <div class="table__product py-4 px-8">
-            <el-table :data="props.row.orderItems" :border="true">
+            <el-table :data="props.row.orderItems" :border="true" :cell-style="styleProductTable">
               <el-table-column label="Zdjęcie" width="120">
                 <template #default="prop"
                   ><a :href="'https://olmag.pl/' + prop.row.slug" target="_blank">
@@ -99,7 +99,15 @@
                   }}</a></template
                 >
               </el-table-column>
-              <el-table-column label="Data zamówienia"   width="140" prop="city" />
+              <el-table-column label="Data zamówienia" width="140" prop="itemOrderedFromManufacturerDate">
+                <template #default="scope">
+                  <span>
+                    {{ scope.row.itemOrderedFromManufacturerDate
+                      ? new Date(scope.row.itemOrderedFromManufacturerDate).toLocaleDateString('pl-PL')
+                      : '—' }}
+                  </span>
+                </template>
+              </el-table-column>
               <el-table-column label="Ilość" width="70" prop="quantity" />
               <el-table-column label="Kod" width="140" prop="identificationCode" />
               <el-table-column label="Cena producenta" width="140">
@@ -269,7 +277,6 @@
             <span
               class="font-bold cursor-pointer"
               v-if="prop.row.orderNote"
-              @click="handleToggleRow(prop.row)"
               >Sprwadź</span
             >
             <span v-else>-</span>
@@ -315,7 +322,7 @@
         </el-select>
         </div>
       </div>
-    </template>
+     </template>
       <template #default="prop">
         <el-row class="justify-center">
           <el-select
@@ -352,7 +359,7 @@
         </el-select>
         </div>
       </div>
-    </template>
+      </template>
       <template #default="prop">
         <el-row class="justify-center">
           <el-select
@@ -368,23 +375,37 @@
         </el-row>
       </template>
     </el-table-column>
-    <el-table-column label="Faktura" width="120" label-class-name="order_label">
+    <el-table-column label="Opłacone" width="120" label-class-name="order_label">
       <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Faktura</div>
+        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Opłacone</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
-            class=" select__element"
+            class="select__element"
             placeholder="Wybierz"
-            v-model="filter.SmartTableParam.Search.PredicateObject.IsInvoice"
+            v-model="filter.SmartTableParam.Search.PredicateObject.SendInvoice"
             @change="sendFilterUpdate"
+          >
+          <el-option label="Tak" :value="true"></el-option>
+          <el-option label="Nie" :value="false"></el-option>
+        </el-select>
+        </div>
+      </div>
+      </template>
+      <template #default="prop">
+        <el-row class="justify-center">
+          <el-select
+            v-model="prop.row.sendInvoice"
+            @change="handleChangeSendInvoice(prop.row.sendInvoice, prop.row.id)"
+            class="m-2 select__element"
+            placeholder="Select"
+            :class="`${prop.row.sendInvoice ? 'paid' : 'notpaid'}`"
           >
             <el-option label="Tak" :value="true"></el-option>
             <el-option label="Nie" :value="false"></el-option>
           </el-select>
-        </div>
-      </div>
-    </template>
+        </el-row>
+      </template>
     </el-table-column>
   </el-table>
 </div>
@@ -461,6 +482,11 @@ const filters = ref({
       shipmentData: null,
       orderStatus: null,
     });
+
+function row_key(row) {
+  console.log(row)
+     return row.id
+}
 
 const handleRowClick = (row) => {
   selectedRowId.value = row.id;
@@ -596,11 +622,19 @@ const handleChangePaid = async (status: boolean, orderId: string) => {
   toast.success('Zmieniono status płatności')
 }
 
-const handleToggleRow = (row) => {
-  table.value.toggleRowExpansion(row)
+const handleChangeSendInvoice = async(status: boolean, orderId: string) => {
+  const currentStatus = {
+    sendInvoice: status,
+    orderId: orderId
+  }
+
+  const payload = {
+    body: JSON.stringify(currentStatus)
+  }
+
+  await Api.orders.changeInvoiceStatus(payload)
+  toast.success('Faktura wysłana')
 }
-
-
 
 onMounted(async () => {
   try {
@@ -628,6 +662,36 @@ function translatePaymentProvider(value: number): string | null {
       return null // lub inny sposób obsługi nieprawidłowej wartości
   }
 }
+
+const cellStyle = ({ row, column }) => {
+  console.log(row)
+  if (column.type === "expand") {
+
+    // Sprawdzamy, czy wszystkie produkty są zamówione u producenta
+    const allOrdered = row.orderItems.every(item => item.itemOrderedFromManufacturer === true);
+
+    // Jeśli chociaż jeden ma `false`, ustawiamy ciemnoczerwone tło
+    if (!allOrdered) {
+      return { backgroundColor: "#FF6600" }; // Ciemnoczerwony
+    }
+
+    // Jeśli wszystkie są `true`, ustawiamy jasnozielone tło
+    return { backgroundColor: "#4ade80" }; // Jasnozielony
+  }
+
+  return {};
+};
+
+const styleProductTable = ({ row, column }) => {
+    if (!row.itemOrderedFromManufacturer) {
+      return { backgroundColor: "#FF6600" }; // Ciemnoczerwony
+    }
+
+    // Jeśli wszystkie są `true`, ustawiamy jasnozielone tło
+    return { backgroundColor: "#4ade80" }; // Jasnozielony
+
+  return {};
+};
 </script>
 
 <style>

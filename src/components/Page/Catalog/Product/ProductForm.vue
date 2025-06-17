@@ -94,8 +94,6 @@ const handleSave = async (values) => {
   currentProduct.currentUserId = decoded.UserId
   currentProduct.deletedMediaIds = []
 
-  console.log(currentProduct)
-
   try {
     const payload = {
       body: JSON.stringify(currentProduct)
@@ -151,7 +149,6 @@ const handleEditFile = (file: Object) => {
 
   files.value[index] = currentFile.value
 
-  console.log(currentFile.value)
 }
 
 const slugGenerator = () => {
