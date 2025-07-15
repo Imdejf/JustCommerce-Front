@@ -15,6 +15,7 @@ import 'dropzone-vue/dist/dropzone-vue.common.css';
 import FormSection from './components/Form/Section/FormSection.vue'
 import HtmlEditor from './components/Form/Editor/HtmlEditor.vue'
 import ConfirmModal from './components/Form/Modal/ConfirmModal.vue'
+import ImportFile from './components/Form/Modal/ImportFile.vue'
 import InfoBox from './components/Form/Box/InfoBox.vue'
 import DropDown from './components/Form/DropDown/DropDown.vue'
 import DropDownGroup from './components/Form/DropDown/DropDownGroup.vue'
@@ -71,6 +72,7 @@ app.component('ContentContainer', ContentContainer)
 app.component('FormSection', FormSection)
 app.component('HtmlEditor', HtmlEditor)
 app.component('ConfirmModal', ConfirmModal)
+app.component('ImportFile', ImportFile)
 app.component('InfoBox', InfoBox)
 app.component('DropDown', DropDown)
 app.component('DataTable', DataTable)

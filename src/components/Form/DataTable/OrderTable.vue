@@ -375,10 +375,10 @@
         </el-row>
       </template>
     </el-table-column>
-    <el-table-column label="Opłacone" width="120" label-class-name="order_label">
+    <el-table-column label="Faktura" width="120" label-class-name="order_label">
       <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Opłacone</div>
+        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Faktura</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
             class="select__element"

@@ -4,11 +4,18 @@ import { onMounted, ref, watch } from 'vue'
 import Cookies from 'universal-cookie'
 import DataTable from '/@/components/Form/DataTable/DataTable.vue'
 import { useRouter } from 'vue-router'
+import { ArrowDown } from '@element-plus/icons-vue'
+
 
 const cookies = new Cookies()
 const router = useRouter()
 const brands = ref([])
 const categories = ref([])
+const emit = defineEmits(['open-import'])
+
+function handleClick() {
+  emit('open-import')
+}
 
 const filter = ref({
   StoreId: cookies.get('dsStore'),
@@ -39,7 +46,8 @@ const tableColumns = [
   { prop: 'filePath', label:'Zdjęcie'},
   { prop: 'name', label: 'Nazwa' },
   { prop: 'slug', label: 'Slug' },
-  { prop: 'identificationCode', label: 'Kod produktu' }
+  { prop: 'identificationCode', label: 'Kod produktu' },
+  { prop: 'priceMarkup', label: 'Narzut' }
 ]
 
 const products = ref([])
@@ -97,6 +105,29 @@ const handleAdd = () => {
 const activeNames = ref(['1'])
 const handleCollapse = (val: CollapseModelValue) => {
   console.log(val)
+}
+
+const exportProductToExcel = async () => {
+  const body = {
+    storeId: cookies.get('dsStore')
+  }
+  const payload = {
+    body: JSON.stringify(body)
+  }
+  const result = await Api.products.exportProductToExcel(payload)
+  const blob = await result.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Produkty_${new Date().toISOString().replace(/[:.]/g, '_')}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+const exportProductFromExcel = () => {
+  
 }
 
 watch(
@@ -184,23 +215,36 @@ watch(
   </el-collapse>
   </div>
   <DataTable :dataTable="products?.items" :columns="tableColumns" :link="'/catalog/product/detail'">
+    <template #control>
+          <el-dropdown>
+            <el-button type="primary">
+              Akcje<el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="exportProductToExcel()">Eksportuj produkty</el-dropdown-item>
+                <el-dropdown-item @click="handleClick">Importuj produkty</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+    </template>
     <template #filter>
-      <div className="flex section__filter flex-wrap items-center justify-end gap-x-6 gap-y-2 ">
-        <FormKit
-          type="select"
-          name="country"
-          placeholder="Produkty"
-          v-model="filter.SmartTableParam.Search.PredicateObject.IsVisibleIndividually"
-          :options="[
-            { label: 'Główne', value: 'true' },
-            { label: 'Wszystkie', value: 'false' }
-          ]"
-        />
-        <FormKit
-          type="search"
-          placeholder="Szukaj..."
-          v-model="filter.SmartTableParam.Search.PredicateObject.Name"
-        />
+      <div className="flex section__filter flex-wrap items-center justify-between gap-x-6 gap-y-2 ">
+              <FormKit
+                type="select"
+                name="country"
+                placeholder="Produkty"
+                v-model="filter.SmartTableParam.Search.PredicateObject.IsVisibleIndividually"
+                :options="[
+                  { label: 'Główne', value: 'true' },
+                  { label: 'Wszystkie', value: 'false' }
+                ]"
+              />
+              <FormKit
+                type="search"
+                placeholder="Szukaj..."
+                v-model="filter.SmartTableParam.Search.PredicateObject.Name"
+              />
       </div>
     </template>
     <template #topbar>

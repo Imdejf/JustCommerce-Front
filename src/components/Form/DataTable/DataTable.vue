@@ -1,12 +1,13 @@
 <template>
-  <div class="float-right mr-5 my-2 flex">
-    <div>
-      <slot name="filter"></slot>
+<div class="flex justify-between items-center mr-5 my-2 w-full px-10">
+    <div class="flex items-center">
+      <slot name="control"></slot>
     </div>
-    <div class="ml-20">
+    <div class="flex items-center space-x-2">
+      <slot name="filter"></slot>
       <slot name="topbar"></slot>
     </div>
-  </div>
+</div>
   <ElTable
     :data="dataTable"
     :border="true"
@@ -30,6 +31,16 @@
       alt="Product image" 
       style="width: 75px; height: 75px; object-fit: contain; border-radius: 5px;"
     />
+<span
+  v-else-if="column.prop === 'priceMarkup'"
+  :class="{
+    'text-green-600': row[column.prop] > 14,
+    'text-orange-400': row[column.prop] >= 10 && row[column.prop] <= 14,
+    'text-red-500': row[column.prop] < 10
+  }"
+>
+  {{ row[column.prop] }}%
+</span>
     <span v-else>{{ row[column.prop] }}</span>
   </template>
 

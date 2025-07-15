@@ -16,6 +16,7 @@ import { offers } from './sale/offer'
 import { users } from './user/user'
 import { invoices } from './invoice/invoice.js'
 import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
+import { gusbir } from './gusbir/gusbir'
 
 export const Api = {
   stores,
@@ -35,5 +36,6 @@ export const Api = {
   users,
   invoices,
   offers,
-  certyficationAndSafeties
+  certyficationAndSafeties,
+  gusbir
 }

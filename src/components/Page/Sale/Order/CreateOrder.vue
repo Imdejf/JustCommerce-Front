@@ -85,6 +85,9 @@ const summaryProductTable = ref([])
 const selectedBillingProvince = ref(null);
 const selectedShippingProvince = ref(null);
 
+const isNipProcessing = ref(false)
+const lastQueriedNip = ref('')
+
 const filter = ref({
   StoreId: cookies.get('dsStore'),
   PageNumber: 1,
@@ -121,6 +124,40 @@ const removeUser = () => {
   currentOrder.userId = null
   selectedUser.value = null
   filter.value.SmartTableParam.Search.PredicateObject.Email = ''
+}
+
+const searchByNip = async (nip: string) => {
+  // jeżeli wciąż wysyłamy poprzednie zapytanie – wyjdź
+  if (isNipProcessing.value || !nip) return
+
+  try {
+    isNipProcessing.value = true
+
+    const result = await Api.gusbir.getByNip(nip)
+    const d = result.data
+
+    currentOrder.value.billingAddress.isCompany = true
+    currentOrder.value.billingAddress.companyName  = d.nazwa  || ''
+    currentOrder.value.billingAddress.zipCode      = d.kodPocztowy || ''
+    currentOrder.value.billingAddress.city         = d.miejscowosc || ''
+
+    const cleanStreet = (d.ulica || '').replace(/^ul\.?\s*/i, '')
+    const lokal = d.nrLokalu ? `/${d.nrLokalu}` : ''
+    currentOrder.value.billingAddress.addressLine1 =
+      `${cleanStreet} ${d.nrNieruchomosci}${lokal}`.trim()
+
+    const province = stateOrProvinces.value.find(
+      (p) => p.name.toLowerCase() === d.wojewodztwo.toLowerCase()
+    )
+    if (province) selectedBillingProvince.value = province
+
+    lastQueriedNip.value = nip
+  } catch (err) {
+    console.error('Błąd GUS/BIR:', err)
+    toast.error('Nie udało się pobrać danych z GUS/BIR')
+  } finally {
+    isNipProcessing.value = false
+  }
 }
 
 function translatePaymentProvider(key) {
@@ -395,6 +432,16 @@ watch(
   },
   { deep: true }
 )
+
+watch(
+  () => currentOrder.value.billingAddress.nip,
+  (newVal) => {
+    if (newVal !== lastQueriedNip.value) {
+      isNipProcessing.value = false
+    }
+  }
+)
+
 </script>
 <template>
     <ContentContainer :showLanguage="false" class="offer_input !overflow-auto w-full !h-[90vh]">
@@ -575,17 +622,35 @@ watch(
                         validation-visibility="live"
                         help=""
                         />
-                        <FormKit
-                        v-show="currentOrder.billingAddress.isCompany"
-                        outer-class="hidden_name fomik_form_witdh"
-                        type="text"
-                        v-model="currentOrder.billingAddress.nip"
-                        label="Nip"
-                        placeholder="Nip"
-                        :validation="currentOrder.billingAddress.isCompany ? 'required' : ''"
-                        validation-visibility="live"
-                        help=""
-                        />
+                        <div class="flex gap-3">
+                          <!-- FormKit zajmuje całą dostępną szerokość (flex‑1) -->
+                          <FormKit
+                            v-show="currentOrder.billingAddress.isCompany"
+                            outer-class="hidden_name fomik_form_witdh flex-1"
+                            type="text"
+                            v-model="currentOrder.billingAddress.nip"
+                            label="Nip"
+                            placeholder="Nip"
+                            :validation="currentOrder.billingAddress.isCompany ? 'required' : ''"
+                            validation-visibility="live"
+                            help=""
+                          />
+                          <el-button
+                            v-show="currentOrder.billingAddress.isCompany"
+                            @click="searchByNip(currentOrder.billingAddress.nip)"
+                            class="w-1/4 mt-5"
+                            type="primary"
+                            round
+                            :disabled="isNipProcessing || currentOrder.billingAddress.nip === lastQueriedNip"
+                          >
+                            <template v-if="isNipProcessing">
+                              <i class="el-icon-loading mr-1" /> Szukam...
+                            </template>
+                            <template v-else>
+                              Uzupełnij
+                            </template>
+                          </el-button>
+                        </div>
                         <FormKit
                         v-show="!currentOrder.billingAddress.isCompany"
                         type="text"

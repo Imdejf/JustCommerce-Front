@@ -65,7 +65,7 @@ const rowClassName = ({ row }) => {
 const editSelectedRecord = () => {
   if (selectedRowId.value) {
     const selectedId = selectedRowId.value;
-    router.push(`/sale/order/edit/${selectedId}`);
+    router.push(`/sale/offer/edit/${selectedId}`);
   }
   else {
     toast.warning("Wybierz ofertę do edycji")

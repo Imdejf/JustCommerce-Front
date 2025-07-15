@@ -39,6 +39,9 @@ const summaryProductTable = ref([])
 const realizationTerm = ref(currentOffer.value.realizationTerm || "2-3 dni");
 const isCustomTerm = ref(realizationTerm.value === 99);
 
+const isNipProcessing = ref(false)
+const lastQueriedNip = ref('')
+
 const handleProductUpdate = (summary) => {
   summaryProductTable.value = summary;
 }
@@ -62,6 +65,16 @@ const handleCustomTermBackspace = (event) => {
 watch(realizationTerm, (newValue) => {
   currentOffer.value.realizationTerm = newValue;
 });
+
+watch(
+  () => currentOffer.value.billingAddress.nip,
+  (newNip) => {
+    if (newNip !== lastQueriedNip.value) {
+      isNipProcessing.value = false
+    }
+  }
+)
+
 
 const predefinedTerms = ref([
   { label: "2-3 dni", value: 0 },
@@ -114,24 +127,35 @@ const predefinedPaymnet = ref([
     }
 ]);
 
-// const validateOfferItems = () => {
-//   let isValid = true;
-//   offerItems.value.forEach((item, index) => {
-//     if (!item.name || item.name.trim() === '') {
-//       toast.error(`Produkt w wierszu ${index + 1} musi mieć nazwę.`);
-//       isValid = false;
-//     }
-//     if (!item.quantity || item.quantity <= 0) {
-//       toast.error(`Produkt "${item.name}" (wiersz ${index + 1}) musi mieć ilość większą od 0.`);
-//       isValid = false;
-//     }
-//     if (!item.priceNetto || item.priceNetto <= 0) {
-//       toast.error(`Produkt "${item.name}" (wiersz ${index + 1}) musi mieć cenę netto większą od 0.`);
-//       isValid = false;
-//     }
-//   });
-//   return isValid;
-// };
+const searchByNip = async (nip: string) => {
+  // brak NIP‑u lub trwa poprzednie wyszukiwanie
+  if (!nip || isNipProcessing.value) return
+  // nie wysyłaj ponownie tego samego NIP‑u
+  if (nip === lastQueriedNip.value) return
+
+  try {
+    isNipProcessing.value = true
+    const { data: d } = await Api.gusbir.getByNip(nip)
+
+    isCompany.value = true
+    currentOffer.value.billingAddress.companyName = d.nazwa || ''
+    currentOffer.value.billingAddress.zipCode     = d.kodPocztowy || ''
+    currentOffer.value.billingAddress.city        = d.miejscowosc || ''
+
+    const street = (d.ulica || '').replace(/^ul\.?\s*/i, '')
+    const lokal  = d.nrLokalu ? `/${d.nrLokalu}` : ''
+    currentOffer.value.billingAddress.addressLine1 =
+      `${street} ${d.nrNieruchomosci}${lokal}`.trim()
+
+    lastQueriedNip.value = nip
+    toast.success('Dane firmy uzupełnione z GUS/BIR')
+  } catch (err) {
+    console.error('Błąd GUS/BIR:', err)
+    toast.error('Nie udało się pobrać danych z GUS/BIR')
+  } finally {
+    isNipProcessing.value = false
+  }
+}
 
 const handleSave = async () => {
   // if (!validateOfferItems()) {
@@ -334,12 +358,29 @@ const handleSave = async () => {
                         help=""
                     />
                 </div>
+                <div class="flex gap-3">
                     <FormKit
-                        type="text"
-                        label="NIP"
-                        v-model="currentOffer.billingAddress.nip"
-                        help=""
+                      type="text"
+                      outer-class="hidden_name fomik_form_witdh flex-1"
+                      label="NIP"
+                      v-model="currentOffer.billingAddress.nip"
+                      help=""
                     />
+                    <el-button
+                      @click="searchByNip(currentOffer.billingAddress.nip)"
+                      class="w-1/4 mt-5"
+                      type="primary"
+                      round
+                      :disabled="isNipProcessing || currentOffer.billingAddress.nip === lastQueriedNip"
+                    >
+                      <template v-if="isNipProcessing">
+                        <i class="el-icon-loading mr-1" /> Szukam...
+                      </template>
+                      <template v-else>
+                        Uzupełnij
+                      </template>
+                    </el-button>
+                  </div>
                     <FormKit
                         type="text"
                         label="Ulica i nr"

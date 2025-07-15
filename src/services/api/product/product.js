@@ -167,6 +167,28 @@ const updateCategory = (payload) =>
     }
   })
 
+const exportProductToExcel = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/exportProductToExcel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  });
+
+  const importProductFromExcel = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/exportProductToExcel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
 export const products = {
   smartTable,
   getByNameOrCode,
@@ -180,5 +202,7 @@ export const products = {
   addAttributeValue,
   updateAttributeValue,
   updateCategory,
+  exportProductToExcel,
+  importProductFromExcel,
   ...CreateBaseApiService('administration/product')
 }
