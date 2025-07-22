@@ -5,19 +5,32 @@ import { RouterLink, RouterView } from 'vue-router'
 import { useStoreStore } from './stores/store'
 import { useLanguageStore } from './stores/language'
 import { useOfferStore } from '/@/stores/offer'
+import { useOrderStore } from '/@/stores/order'
+
 import OfferModal from './components/Form/Modal/OfferModal.vue'
+import OrderModal from './components/Form/Modal/OrderModal.vue'
+
 const cookies = new Cookies()
 
 const useOffer = useOfferStore()
 const useStore = useStoreStore()
 const language = useLanguageStore()
+const useOrder = useOrderStore()
 
 const closeOfferHandle = () => {
   useOffer.closeOffer();
 }
 
+const closeOrderHandle = () => {
+  useOrder.closeOrder();
+}
+
 const currentOffer = computed(() => {
   return useOffer.currentOffer.data;
+})
+
+const currentOrder = computed(() => {
+  return useOrder.currentOrder.data;
 })
 
 onMounted(async () => {
@@ -47,7 +60,19 @@ onMounted(async () => {
       >
         <OfferModal :offer="currentOffer" @closeOffer="closeOfferHandle"/>
       </div>
-    </div>
+      </div>
+      <div v-if="useOrder.currentOrder !== null" class="absolute inset-0 bg-gray-300 opacity-60 w-full z-50"></div>
+      <div
+        v-if="useOrder.currentOrder !== null"
+        class="fixed p-4 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5 shadow-lg transition-transform overflow-y-auto duration-300 z-50 bg-white text-black"
+      >      
+        <!-- Modal Content -->
+        <div 
+          class="relative w-auto h-[70vh] transition-transform duration-300"
+        >
+          <OrderModal :order="currentOrder" @closeOrder="closeOrderHandle" />
+        </div>
+      </div>
     <component :is="$route.meta.layout || 'div'">
       <router-view></router-view>
     </component>

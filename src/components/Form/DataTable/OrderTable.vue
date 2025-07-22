@@ -28,7 +28,7 @@
     </div>
   </div>
   <div class="table-container">
-  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :row-key="row_key" @row-click="handleRowClick" :border="true" style="width: 100%; min-height: 81vh;" :row-class-name="rowClassName" :cell-style="cellStyle">
+  <el-table class="pt-[1px] !bg-[#d6dfe9]" ef="table" :data="dataTable.items" :row-key="row_key" @row-click="handleRowClick" @row-dblclick="showOrderHandle" :border="true" style="width: 100%; min-height: 81vh;" :row-class-name="rowClassName" :cell-style="cellStyle">
     <el-table-column type="expand">
       <template #default="props">
         <div class="">
@@ -428,6 +428,7 @@ import { onMounted, ref } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
+import { useOrderStore } from '/@/stores/order'
 
 enum PaymentProvider {
   Przelewy24 = 0,
@@ -469,6 +470,7 @@ const toast = useToast()
 const cookies = new Cookies()
 const selectedRow = ref(null);
 const selectedRowId = ref(null);
+const order = useOrderStore();
 const table = ref(null)
 const dataTable = ref([])
 const parentBorder = ref(false)
@@ -606,6 +608,11 @@ const handleChangeStatus = async (status: number, orderId: string) => {
   console.log(currentStatus)
   await Api.orders.changeOrderStatus(payload)
   toast.success('Zmieniono status zamówienia')
+}
+
+const showOrderHandle = async (orderId: string) => {
+    await order.showOrder(selectedRowId.value)
+
 }
 
 const handleChangePaid = async (status: boolean, orderId: string) => {

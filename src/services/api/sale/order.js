@@ -124,6 +124,22 @@ const getOrderById = async (orderId) => {
   return response.json(); // Zwraca obiekt JSON jako Promise
 };
 
+const uploadPurchaseInvoice = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/UploadPurchaseInvoice`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
+
 export const orders = {
   smartTable,
   getAvilableAddresses,
@@ -133,5 +149,6 @@ export const orders = {
   createOrder,
   updateOrder,
   getOrderById,
+  uploadPurchaseInvoice,
   ...CreateBaseApiService('administration/order')
 }
