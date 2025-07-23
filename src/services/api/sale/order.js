@@ -139,6 +139,21 @@ const uploadPurchaseInvoice = (payload) => {
   })
 }
 
+const uploadInvoice = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/UploadInvoice`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
 
 export const orders = {
   smartTable,
@@ -150,5 +165,6 @@ export const orders = {
   updateOrder,
   getOrderById,
   uploadPurchaseInvoice,
+  uploadInvoice,
   ...CreateBaseApiService('administration/order')
 }

@@ -13,13 +13,17 @@ const props = defineProps({
     },
 });
 
+const invoicePurchasePath = ref<string | null>(null)
 const invoicePath = ref<string | null>(null)
-
 
 const emit = defineEmits(['closeOrder'])
 
 const closeOfferHandle = () => {
     emit('closeOrder')
+}
+
+const sendInvoice = async () => {
+  await Api.invoices.sendInvoice(props.order.id)
 }
 
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
@@ -45,6 +49,38 @@ const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
     };
 
     var response = await Api.orders.uploadPurchaseInvoice(payload)
+    invoicePurchasePath.value = response.data
+      toast.success('Faktura zakupowa została przesłana')
+
+  } catch (error) {
+    console.error('Błąd przesyłania faktury:', error)
+    console.log('Błąd przesyłania faktury')
+  }
+}
+
+const handleUploadInvoice = async (uploadInfo: any) => {
+  const file = uploadInfo.raw || uploadInfo.file?.raw
+  if (!file) {
+    console.warn('Brak pliku')
+    return
+  }
+
+  try {
+    const base64String = await toBase64(file)
+    const cleanBase64 = base64String.split(',')[1]
+
+    const dataInovice = {
+      orderId: props.order.id,
+      base64File: {
+        base64String: cleanBase64,
+      },
+    }
+
+    const payload = {
+      body: JSON.stringify(dataInovice),
+    };
+
+    var response = await Api.orders.uploadInvoice(payload)
     invoicePath.value = response.data
       toast.success('Faktura zakupowa została przesłana')
 
@@ -64,12 +100,10 @@ const toBase64 = (file: File): Promise<string> => {
     reader.onerror = reject
   })
 }
-onMounted(async () => {
-  console.log(props.order.invoicePurchasePath)
-})
 
 onMounted(() => {
-  invoicePath.value = props.order?.invoicePurchasePath || null
+  invoicePurchasePath.value = props.order?.invoicePurchasePath || null
+  invoicePath.value = props.order?.invoicePath || null
 })
 </script>
 <template>
@@ -124,23 +158,38 @@ onMounted(() => {
           <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-4 rounded">
             Generuj fakturę
           </button>
-          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
+          <button @click="sendInvoice()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
             Wyślij fakturę
           </button>
           <!-- Drop zone -->
           <el-upload
             class="upload-demo w-full"
             drag
-            multiple
-          >
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".pdf"
+            @change="handleUploadInvoice"
+            >
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
-              Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
+                Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
             </div>
             <template #tip>
-              <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
+                <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
             </template>
-          </el-upload>
+            </el-upload>
+            <div v-if="invoicePath" class="mt-2">
+            <a
+                :href="invoicePath"
+                target="_blank"
+                class="text-blue-600 underline text-sm flex items-center gap-1"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16">
+                <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zm1 7H8V8h7zm0 4H8v-1h7zm-3 4H8v-1h4zM13 3.5L18.5 9H14z"/>
+                </svg>
+                Zobacz wgraną fakturę
+            </a>
+            </div>
         </div>
 
         <!-- Prawa kolumna: faktura zakupowa -->
@@ -163,9 +212,9 @@ onMounted(() => {
                 <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
             </template>
             </el-upload>
-            <div v-if="invoicePath" class="mt-2">
+            <div v-if="invoicePurchasePath" class="mt-2">
             <a
-                :href="invoicePath"
+                :href="invoicePurchasePath"
                 target="_blank"
                 class="text-blue-600 underline text-sm flex items-center gap-1"
             >
