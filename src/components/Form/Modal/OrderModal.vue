@@ -13,7 +13,7 @@ const props = defineProps({
     },
 });
 
-const invoicePurchasePath = ref<string | null>(null)
+const invoicePurchasePaths = ref<string[]>([])
 const invoicePath = ref<string | null>(null)
 
 const emit = defineEmits(['closeOrder'])
@@ -22,9 +22,40 @@ const closeOfferHandle = () => {
     emit('closeOrder')
 }
 
+
 const sendInvoice = async () => {
   await Api.invoices.sendInvoice(props.order.id)
 }
+
+const removePurchaseInvoice = async (invoiceId: string) => {
+  try {
+    const data = {
+      orderId: props.order.id,
+      purchaseInvoiceId: invoiceId,
+    }
+
+    const payload = {
+      body: JSON.stringify(data),
+    }
+
+    await Api.orders.removePurchaseInvoice(payload)
+
+    // Usuń z oryginalnego obiektu zamówienia
+    props.order.purchaseInvoices = props.order.purchaseInvoices.filter(
+      (pi) => pi.purchaseInvoiceId !== invoiceId
+    )
+
+    invoicePurchasePaths.value = props.order.purchaseInvoices.map(
+      (pi) => pi.purchaseInvoiceFilePath
+    )
+
+    toast.success('Faktura została usunięta')
+  } catch (error) {
+    console.error('Błąd usuwania faktury:', error)
+    toast.error('Nie udało się usunąć faktury')
+  }
+}
+
 
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
@@ -37,26 +68,43 @@ const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
     const base64String = await toBase64(file)
     const cleanBase64 = base64String.split(',')[1]
 
-    const dataPurchaseInovice = {
+    const dataPurchaseInvoice = {
       orderId: props.order.id,
       base64File: {
         base64String: cleanBase64,
       },
+      fileName: file.name
     }
 
     const payload = {
-      body: JSON.stringify(dataPurchaseInovice),
-    };
+      body: JSON.stringify(dataPurchaseInvoice),
+    }
 
-    var response = await Api.orders.uploadPurchaseInvoice(payload)
-    invoicePurchasePath.value = response.data
-      toast.success('Faktura zakupowa została przesłana')
+    // Backend zwraca PurchaseInvoiceEntity
+    const response = await Api.orders.uploadPurchaseInvoice(payload)
+
+    // Upewniamy się, że lista istnieje
+    if (!props.order.purchaseInvoices) {
+      props.order.purchaseInvoices = []
+    }
+
+    // Dodajemy nową fakturę bez odpytywania backendu
+    props.order.purchaseInvoices.push({
+      purchaseInvoiceId: response.data.purchaseInvoiceId,
+      purchaseInvoiceFilePath: response.data.purchaseInvoiceFilePath
+    })
+
+    // Aktualizujemy ścieżki do wyświetlenia
+    invoicePurchasePaths.value = props.order.purchaseInvoices.map(p => p.purchaseInvoiceFilePath)
+
+    toast.success('Faktura zakupowa została przesłana')
 
   } catch (error) {
     console.error('Błąd przesyłania faktury:', error)
-    console.log('Błąd przesyłania faktury')
+    toast.error('Błąd przesyłania faktury zakupowej')
   }
 }
+
 
 const handleUploadInvoice = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
@@ -69,11 +117,11 @@ const handleUploadInvoice = async (uploadInfo: any) => {
     const base64String = await toBase64(file)
     const cleanBase64 = base64String.split(',')[1]
 
-    const dataInovice = {
+   const dataInovice = {
       orderId: props.order.id,
       base64File: {
         base64String: cleanBase64,
-      },
+      }
     }
 
     const payload = {
@@ -102,7 +150,7 @@ const toBase64 = (file: File): Promise<string> => {
 }
 
 onMounted(() => {
-  invoicePurchasePath.value = props.order?.invoicePurchasePath || null
+  invoicePurchasePaths.value = props.order?.purchaseInvoices?.map(p => p.purchaseInvoiceFilePath) || []
   invoicePath.value = props.order?.invoicePath || null
 })
 </script>
@@ -194,36 +242,50 @@ onMounted(() => {
 
         <!-- Prawa kolumna: faktura zakupowa -->
         <div class="w-1/2 border rounded shadow p-4 flex flex-col gap-4">
-          <h2 class="text-lg font-semibold mb-2">Faktura zakupowa za towar</h2>
-          <!-- Drop zone -->
-          <el-upload
+        <h2 class="text-lg font-semibold mb-2">Faktura zakupowa za towar</h2>
+
+        <el-upload
             class="upload-demo w-full"
             drag
             :auto-upload="false"
             :show-file-list="false"
             accept=".pdf"
             @change="handlePurchaseInvoiceUpload"
-            >
+        >
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
-                Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
+            Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
             </div>
             <template #tip>
-                <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
+            <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
             </template>
-            </el-upload>
-            <div v-if="invoicePurchasePath" class="mt-2">
-            <a
-                :href="invoicePurchasePath"
+        </el-upload>
+
+        <div v-if="invoicePurchasePaths.length > 0" class="mt-2 flex flex-col gap-2">
+          <template v-for="(pi, index) in props.order.purchaseInvoices" :key="pi.purchaseInvoiceId">
+            <div class="flex items-center justify-between gap-2">
+                <a
+                :href="pi.purchaseInvoiceFilePath"
                 target="_blank"
                 class="text-blue-600 underline text-sm flex items-center gap-1"
-            >
+                >
                 <svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16">
-                <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zm1 7H8V8h7zm0 4H8v-1h7zm-3 4H8v-1h4zM13 3.5L18.5 9H14z"/>
+                    <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zm1 7H8V8h7zm0 4H8v-1h7zm-3 4H8v-1h4zM13 3.5L18.5 9H14z" />
                 </svg>
-                Zobacz wgraną fakturę zakupową
-            </a>
+                {{ pi.purchaseInvoiceName || `Faktura ${index + 1}` }}
+                </a>
+                    <button
+                    @click="removePurchaseInvoice(pi.purchaseInvoiceId)"
+                    class="text-red-500 hover:text-red-700 p-1"
+                    title="Usuń fakturę"
+                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path fill="currentColor" d="M9 3V4H4V6H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V6H20V4H15V3H9ZM7 6H17V19H7V6ZM9 8V17H11V8H9ZM13 8V17H15V8H13Z"/>
+                    </svg>
+                </button>
             </div>
+            </template>
+        </div>
         </div>
       </div>
     </div>

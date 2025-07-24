@@ -154,6 +154,21 @@ const uploadInvoice = (payload) => {
   })
 }
 
+const removePurchaseInvoice = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/removePurchaseInvoice` , {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+    }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
 
 export const orders = {
   smartTable,
@@ -166,5 +181,6 @@ export const orders = {
   getOrderById,
   uploadPurchaseInvoice,
   uploadInvoice,
+  removePurchaseInvoice,
   ...CreateBaseApiService('administration/order')
 }
