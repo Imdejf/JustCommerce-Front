@@ -80,7 +80,15 @@ const cookies = new Cookies()
 const users = ref([])
 const selectedUser = ref(null)
 const stateOrProvinces = ref([] as IStateOrProvince[])
-const summaryProductTable = ref([])
+const summaryProductTable = ref({
+  items: [] as any[],
+  shippingNetto: 0,
+  shippingBrutto: 0,
+  totalNetto: 0,
+  totalBrutto: 0,
+  totalSumBrutto: 0,
+  transportIndividualPricing: false
+})
 
 const selectedBillingProvince = ref(null);
 const selectedShippingProvince = ref(null);
@@ -278,14 +286,14 @@ const handleOrder = async () => {
     return;
   }
   
-  if(currentOrder.value.products.length == 0 || currentOrder.value.products == null)
-  {
-    toast.error('Musisz utworzyć koszyk', {
-      timeout: 2000,
-    });
-    return
-  }
+const itemsFromTable = Array.isArray(summaryProductTable.value?.items)
+  ? summaryProductTable.value.items
+  : [];
 
+if (itemsFromTable.length === 0) {
+  toast.error('Dodaj co najmniej jedną pozycję do zamówienia.', { timeout: 2000 });
+  return;
+}
   if(currentOrder.value.paymentTerm != 99){
     currentOrder.value.paymentProvider = 5
   }
@@ -307,6 +315,7 @@ const handleOrder = async () => {
     CustomerId: currentOrder.value.customerId,
     LanguageId: currentOrder.value.languageId,
     CreatedById: currentOrder.value.createdById,
+    UseShippingAddressAsBillingAddress: !currentOrder.value.useShippingAddressAsBillingAddress,
     BillingAddress: {
       IsCompany: currentOrder.value.billingAddress.isCompany,
       FirstName: currentOrder.value.billingAddress.firstName,
@@ -346,15 +355,13 @@ const handleOrder = async () => {
     OrderNoteForClient: currentOrder.value.orderNoteForClient,
     OrderNoteForCustomer: currentOrder.value.orderNoteForCustomer,
     OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice,
-    ShippingFeeAmountNetto: summaryProductTable.value.shippingNetto,
-    ShippingFeeAmountGross: summaryProductTable.value.shippingBrutto,
-    SubTotal: summaryProductTable.value.totalNetto,
-    TotalGross: summaryProductTable.value.totalSumBrutto,
-    SubTotalGross: summaryProductTable.value.totalBrutto,
-    UseShippingAddressAsBillingAddress: !currentOrder.value.useShippingAddressAsBillingAddress,
-    IsPaid: currentOrder.value.isPaid,
-    TransportIndividualPricing: summaryProductTable.value.transportIndividualPricing,
-    Products: summaryProductTable.value.items
+    ShippingFeeAmountNetto: Number(summaryProductTable.value.shippingNetto) || 0,
+    ShippingFeeAmountGross: Number(summaryProductTable.value.shippingBrutto) || 0,
+    SubTotal:              Number(summaryProductTable.value.totalNetto) || 0,
+    SubTotalGross:         Number(summaryProductTable.value.totalBrutto) || 0,
+    TotalGross:            Number(summaryProductTable.value.totalSumBrutto) || 0,
+    TransportIndividualPricing: !!summaryProductTable.value.transportIndividualPricing,
+    Products: itemsFromTable
   };
   console.log(createOrderPayload)
 
@@ -367,11 +374,14 @@ const handleOrder = async () => {
       toast.success('Zamówienie zostało stworzone pomyślnie', {
         timeout: 2000,
       });
+
+      await router.push('/sale/order');
     } else {
       await Api.orders.updateOrder(payload)
       toast.success('Zamówienie zostało edytowane pomyślnie', {
         timeout: 2000,
       });
+      await router.push('/sale/order');
     }
     // router.go(-1)
   } catch (error) {

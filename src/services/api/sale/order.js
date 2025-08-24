@@ -81,35 +81,45 @@ const changeOrderStatus = (payload) => {
   })
 }
 
-const createOrder = (payload) => {
-  fetch(`${APISettings.baseURL}administration/order/CreateOrder`, {
+const createOrder = async (payload) => {
+  const res = await fetch(`${APISettings.baseURL}administration/order/CreateOrder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    ...payload
-  }).then(function (response) {
-    if (response.status != 200) {
-      throw response.status
-    } else {
-      return response.json()
-    }
-  })
-}
+    ...payload, // np. { body: JSON.stringify(data) }
+  });
 
-const updateOrder = (payload) => {
-  fetch(`${APISettings.baseURL}administration/order/UpdateOrder`, {
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '');
+    throw new Error(msg || `CreateOrder failed (${res.status})`);
+  }
+
+  if (res.status === 204) return null;
+
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? await res.json() : await res.text();
+};
+
+
+const updateOrder = async (payload) => {
+  const res = await fetch(`${APISettings.baseURL}administration/order/UpdateOrder`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    ...payload
-  }).then(function (response) {
-    if (response.status != 200) {
-      throw response.status
-    } else {
-      return response.json()
-    }
-  })
-}
+    ...payload, // np. { body: JSON.stringify(data) }
+  });
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '');
+    throw new Error(msg || `UpdateOrder failed (${res.status})`);
+  }
+
+  if (res.status === 204) return null;
+
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? await res.json() : await res.text();
+};
+
 
 const getOrderById = async (orderId) => {
   const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}`, {
