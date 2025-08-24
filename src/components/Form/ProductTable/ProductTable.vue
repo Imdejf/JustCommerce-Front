@@ -32,12 +32,11 @@ const taxRate = 0.23;
 const shippingNetto = ref(props.shippingNetto);
 const shippingBrutto = ref(props.shippingBrutto);
 const totalNetto = ref(props.totalNetto);
-const totalBrutto = ref(props.totalNetto);
+const totalBrutto = ref(props.totalBrutto);
 const totalSumBrutto = ref(props.totalSumBrutto);
 const transportIndividualPricing = ref(props.transportIndividualPricing);
 const activeRowIndex = ref<number | null>(null)
-const itemsTable = ref(props.items)
-
+const itemsTable = ref([])
 const productTableSummary = computed(() => ({
   items: itemsTable.value,
   shippingNetto: shippingNetto.value,
@@ -71,9 +70,10 @@ const updateTotalSums = () => {
   totalSumBrutto.value = (parseFloat(totalBrutto.value) + parseFloat(shippingBrutto.value)).toFixed(2);
 }
 
-const removeProductHandle = (product) => {
-  itemsTable.value = itemsTable.value.filter(item => item.productId !== product.productId);
+const removeProductHandle = (rowIndex: number) => {
+  itemsTable.value.splice(rowIndex, 1);
 };
+
 
 const addNewItem = () => {
   itemsTable.value.push({
@@ -85,9 +85,30 @@ const addNewItem = () => {
     tax: taxRate * 100,
     producerPriceNetto: 0,
     totalPriceNetto: 0,
+    shippingPriceGross: 0,
     totalPriceGross: 0,
     shippingRule: null
   });
+};
+
+const addCustomItem = () => {
+  itemsTable.value.push({
+    productId: null,
+    name: '',
+    sku: '',
+    brandId: null,
+    quantity: 1,
+    priceNetto: 0,
+    priceGross: 0,
+    tax: taxRate * 100,
+    producerPriceNetto: 0,
+    totalPriceNetto: 0,
+    totalPriceGross: 0,
+    shippingPriceGross: 0,
+    noteForProducer: '',
+    shippingRule: null
+  });
+  activeRowIndex.value = itemsTable.value.length - 1;
 };
 
 const addProductToListHandle = async (item, index) => {
@@ -104,28 +125,35 @@ const addProductToListHandle = async (item, index) => {
   currentItem.totalPriceNetto = 0;
   currentItem.totalPriceGross = 0;
   currentItem.shippingRule = item.shippingRule;
+  currentItem.shippingPriceGross = currentItem.shippingPriceGross ?? 0
 }
 
 const calculateShipping = () => {
   let totalShippingNetto = 0;
   let totalShippingBrutto = 0;
 
+  // 1) reguły wysyłki dla produktów sklepowych
   itemsTable.value.forEach((item) => {
     if (!item.shippingRule) return;
-
     const shippingCost = calculatePalletsAndCardboards(item);
     const shippingAmountNetto = shippingCost / (1 + taxRate);
-
-    item.realShippingFeeAmountNetto = shippingAmountNetto.toFixed(2);
-    item.realShippingFeeAmountGross = shippingCost.toFixed(2);
-
     totalShippingNetto += shippingAmountNetto;
     totalShippingBrutto += shippingCost;
   });
 
+  // 2) koszty wpisane ręcznie dla pozycji customowych
+  itemsTable.value.forEach((item) => {
+    if (item.productId !== null) return; // nie custom
+    const customGross = parseFloat(item.shippingPriceGross || 0);
+    if (!isNaN(customGross) && customGross > 0) {
+      totalShippingBrutto += customGross;
+      totalShippingNetto += customGross / (1 + taxRate);
+    }
+  });
+
   shippingNetto.value = totalShippingNetto.toFixed(2);
   shippingBrutto.value = totalShippingBrutto.toFixed(2);
-}
+};
 
 const calculatePalletsAndCardboards = (product) => {
   let shippingPrice = 0
@@ -166,15 +194,32 @@ const updateShippingValues = (changedField: string) => {
   }
 }
 
-onMounted(() => {
-  if(itemsTable.value.length === 0) {
-    addNewItem()
-  } else {
-    emit('updateProductTableSummary', productTableSummary.value);
+const brands = ref<{ value: string | null; label: string }[]>([]);
+
+const loadBrands = async () => {
+  try {
+    const result = await Api.brands.listByStoreId();
+    brands.value = [
+      { value: null, label: 'Producent' },
+      ...result.items.map((x: any) => ({
+        value: x.id,
+        label: x.name
+      }))
+    ];
+  } catch (e) {
+    console.error(e);
   }
-})
+};
+
+
+onMounted(() => {
+  emit('updateProductTableSummary', productTableSummary.value);
+  loadBrands();
+});
+
 
 const productsList = ref([])
+
 
 watch(filterSearchProduct.value, async (newFilterSearchProduct, oldFilterSearchProduct) => {
   if (newFilterSearchProduct.SearchString) {
@@ -213,6 +258,20 @@ const updateItemValues = (item: OfferItem, changedField: string) => {
 };
 
 const previousOfferItems = ref<OfferItemTable[]>(JSON.parse(JSON.stringify(itemsTable.value)));
+watch(
+  () => props.items,
+  (list) => {
+    itemsTable.value = JSON.parse(JSON.stringify(list || []))
+    // jeśli używasz previousOfferItems do porównań – uzupełnij też je:
+    previousOfferItems.value = JSON.parse(JSON.stringify(itemsTable.value))
+    // przelicz sumy i wyemituj podsumowanie
+    updateTotalSums()
+    emit('updateProductTableSummary', productTableSummary.value)
+  },
+  { immediate: true, deep: true }
+)
+
+
 watch(
   itemsTable,
   (newItems, oldItems) => {
@@ -261,17 +320,54 @@ watch(
         <span class="col-span-1">Wartość netto</span>
         <span class="col-span-1">Wartość brutto</span>
       </div>
-      <div v-for="(item, index) in itemsTable" :key="index" class="grid grid-cols-11 gap-2 items-center py-2 border-b">
-        <span v-if="!item.name" class="col-span-4">
+      <div v-for="(item, index) in itemsTable" :key="index" class="grid grid-cols-11 gap-2 items-center py-2 border-b !items-start">
+        <span class="col-span-4">
+          <!-- CUSTOM: nazwa + wiersz pomocniczy -->
+          <div v-if="item.productId === null" class="space-y-2">
+            <FormKit
+              :classes="{ outer: 'offer_input' }"
+              type="text"
+              v-model="item.name"
+              placeholder="Nazwa pozycji (własna)"
+            />
+
+            <!-- wiersz pomocniczy pod nazwą -->
+            <div class="grid grid-cols-3 gap-2">
+              <!-- SKU -->
+              <FormKit
+                type="text"
+                v-model="item.sku"
+                placeholder="SKU"
+                :classes="{ outer: 'offer_input !mt-0' }"
+              />
+
+              <!-- PRODUCENT (szerzej: 2/3) -->
+              <div class="col-span-2">
+              <el-select v-model="item.brandId" filterable clearable placeholder="Wybierz producenta" class="w-full">
+                <el-option
+                  v-for="(b, idx) in brands"
+                  :key="b.value ?? `null-${idx}`"
+                  :label="b.label"
+                  :value="b.value"
+                />
+              </el-select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wyszukiwarka gdy produkt nie wybrany -->
           <FormKit
+            v-else-if="!item.name"
             :classes="{ outer: 'offer_input' }"
             type="text"
             v-model="filterSearchProduct.SearchString"
             @focus="handleInputFocus(index)"
+            placeholder="Szukaj produktu..."
           />
-        </span>
-        <span v-else class="col-span-4">
+
+          <!-- Produkt wybrany (sklepowy) -->
           <FormKit
+            v-else
             :classes="{ outer: 'offer_input' }"
             type="text"
             v-model="item.name"
@@ -298,7 +394,7 @@ watch(
         <span class="col-span-1">
           <FormKit v-model="item.totalPriceGross" type="number" step="0.01" />
         </span>
-        <div v-if="item.name" @click="removeProductHandle(item)" class="absolute cursor-pointer right-[-18px] mb-[12px]  bg-red-600 rounded-md h-7 w-7 flex items-center justify-center">
+        <div v-if="item.name" @click="removeProductHandle(index)" class="absolute cursor-pointer right-[-18px] mb-[12px]  bg-red-600 rounded-md h-7 w-7 flex items-center justify-center">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -332,6 +428,7 @@ watch(
         </div>
       </div>
       <el-button @click="addNewItem" type="primary" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Dodaj pozycję</el-button>
+      <el-button @click="addCustomItem" type="success" class="mt-4 px-4">Dodaj pozycję własną</el-button>
       <div class="flex gap-4 justify-end w-[1/1]">
         <div class="mt-12 check_box_offer">
           <FormKit

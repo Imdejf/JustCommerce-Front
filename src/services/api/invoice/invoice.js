@@ -33,10 +33,24 @@ const createInvoice = (invoiceId) => {
       return response.json()
     }
   })
+};
+
+const generateProforma = (orderId) => {
+  return fetch(`${APISettings.baseURL}administration/invoice/GenerateProformaInvoice/` + orderId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`)
+    }
+    return response.json()
+  })
 }
 
 export const invoices = {
   createInvoice,
   sendInvoice,
+  generateProforma,
   ...CreateBaseApiService('administration/invoice')
 }

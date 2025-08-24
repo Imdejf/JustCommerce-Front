@@ -1,14 +1,18 @@
-export interface OfferItemTable {
-    productId: string;
-    quantity: number;
-    priceNetto: number;
-    priceGross: number;
-    tax: number;
-    producerPriceNetto: number;
-    totalPriceNetto: number;
-    totalPriceGross: number;
-    shippingRule?: ShippingRule | null;
-  }
+export type OfferItemTable = {
+  productId: string | null;
+  name: string;
+  sku?: string | null;
+  brandId?: string | null;
+  quantity: number;
+  priceNetto: number;
+  priceGross: number;
+  tax: number; // 23 itp.
+  producerPriceNetto: number;
+  totalPriceNetto: number;
+  totalPriceGross: number;
+  noteForProducer?: string | null;
+  shippingRule?: any | null;
+};
 
   export interface ShippingRule {
     shippingRuleId: string;

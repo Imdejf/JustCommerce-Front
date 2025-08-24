@@ -15,6 +15,7 @@ const props = defineProps({
 
 const invoicePurchasePaths = ref<string[]>([])
 const invoicePath = ref<string | null>(null)
+const proformaPath = ref<string | null>(null)
 
 const emit = defineEmits(['closeOrder'])
 
@@ -56,6 +57,17 @@ const removePurchaseInvoice = async (invoiceId: string) => {
   }
 }
 
+const generateProforma = async () => {
+  try {
+    const { data } = await Api.invoices.generateProforma(props.order.id)
+    proformaPath.value = data
+    if (props.order) props.order.proformaPath = data
+    toast.success('Proforma została wygenerowana')
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się wygenerować proformy')
+  }
+}
 
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
@@ -157,7 +169,10 @@ onMounted(() => {
 <template>
  <div>
     <!-- Zamknięcie -->
-    <div class="flex justify-end border-b pb-2">
+    <div class="flex justify-between border-b pb-2">
+      <div class="right">
+        <h1 class="text-xl font-semibold">Zamówienie: {{ order.orderNumber }}</h1>
+      </div>
       <div class="left">
         <a @click="closeOfferHandle" class="cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">
@@ -167,7 +182,32 @@ onMounted(() => {
         </a>
       </div>
     </div>
+    <!-- Zarządzaj -->
+    <div class="mt-5">
+      <h2 class="text-xl font-semibold">Zarządzaj</h2>
+      <div class="flex gap-4 mt-5">
+        <button
+          @click="generateProforma"
+          class="bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold py-1 px-4 rounded"
+        >
+          Wyślij proformę
+        </button>
 
+        <div v-if="proformaPath" class="flex items-center gap-2">
+          <a
+            :href="proformaPath"
+            target="_blank"
+            class="text-blue-600 underline text-sm flex items-center gap-1"
+          >
+            <!-- ikona PDF -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zM8 8h7v1H8zm0 4h7v1H8zm0 4h4v1H8zM13 3.5 18.5 9H14z"/>
+            </svg>
+            Zobacz proformę
+          </a>
+        </div>
+      </div>
+    </div>
     <!-- Rozliczenie & Dostawa -->
     <div class="mt-5">
       <h2 class="text-xl font-semibold">Rozliczenie & Dostawa</h2>

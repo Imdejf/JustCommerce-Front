@@ -80,6 +80,8 @@ onMounted(async () => {
       taxAmount: item.taxAmount,
       taxPercent: item.taxPercent,
       startingPriceNetto: item.startingPriceNetto,
+      brandId: item.brandId ?? null,
+      sku: item.sku ?? null,
       priceNetto: item.priceNetto,
       priceGross: item.priceGross,
       tax: item.tax,
@@ -87,7 +89,8 @@ onMounted(async () => {
       totalPriceNetto: item.totalPriceNetto,
       totalPriceGross: item.totalPriceGross,
       noteForProducer: item.noteForProducer,
-      shippingRule: {
+        shippingRule: item.shippingRule
+    ? {
         shippingRuleId: item.shippingRule.shippingRuleId,
         name: item.shippingRule.name,
         orderValue: item.shippingRule.orderValue,
@@ -102,6 +105,7 @@ onMounted(async () => {
         conditionMinForQuantityPallet: item.shippingRule.conditionMinForQuantityPallet,
         conditionMaxForQuantityPallet: item.shippingRule.conditionMaxForQuantityPallet
       }
+    : null
     }))
   }
 })

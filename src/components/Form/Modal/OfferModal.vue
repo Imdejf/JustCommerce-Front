@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Api } from '/@/services/api'
+import { useRouter } from 'vue-router'
 
 
 const props = defineProps({
@@ -10,6 +11,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['closeOffer'])
+const router = useRouter()
 
 const closeOfferHandle = () => {
     emit('closeOffer')
@@ -76,6 +78,9 @@ const calculateMargin = (priceNetto: number, producerPriceNetto: number, startin
     return `${margin1.toFixed(2)}% / ${margin2.toFixed(2)}%`;
 };
 
+const createOrderFromOffer = (offerId: string) => {
+  router.push({ name: 'CreateOrder', params: { offerId } }) 
+}
 </script>
 <template>
     <div class="w-full h-auto !border-b">
@@ -93,7 +98,7 @@ const calculateMargin = (priceNetto: number, producerPriceNetto: number, startin
         <el-button type="info">Kontakt(0)</el-button>
         <el-button type="info">Status</el-button>
         <el-button type="info" @click="generateOrDownloadOfferHandle(offer.id)">{{ offer.filePath ? 'Pobierz ofertę' : 'Generuj ofertę' }}</el-button>
-        <el-button type="info">Utwórz zamówienie</el-button>
+        <el-button type="info" @click="createOrderFromOffer(offer.id)">Utwórz zamówienie</el-button>
         <el-button type="info">Kopiuj</el-button>
         </div>
     </div>

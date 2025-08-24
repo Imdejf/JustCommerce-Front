@@ -67,7 +67,7 @@ watch(realizationTerm, (newValue) => {
 });
 
 watch(
-  () => currentOffer.value.billingAddress.nip,
+  () => currentOffer.value.billingAddress?.nip,
   (newNip) => {
     if (newNip !== lastQueriedNip.value) {
       isNipProcessing.value = false
@@ -158,63 +158,105 @@ const searchByNip = async (nip: string) => {
 }
 
 const handleSave = async () => {
-  // if (!validateOfferItems()) {
-  //   return;
-  // }
   const taxRate = 0.23;
 
+  // — helpers —
+  const toNumber = (v: any, def = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : def;
+  };
+  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+  // Termin realizacji (jeśli wybrano z listy)
   if (realizationTerm.value !== 99) {
-    const selectedOption = predefinedTerms.value.find(term => term.label === realizationTerm.value);
+    const selectedOption = predefinedTerms.value.find(
+      t => t.label === realizationTerm.value
+    );
     if (selectedOption) {
       currentOffer.value.realizationTerm = selectedOption.label;
-      console.log(currentOffer.value.realizationTerm)
-
     }
   }
 
+  // Flagi i pola sum
   currentOffer.value.useShippingAddressAsBillingAddress = !anotherAddressToShipment.value;
   currentOffer.value.billingAddress.isCompany = isCompany.value;
   currentOffer.value.realizationTerm = realizationTerm.value;
-  currentOffer.value.totalItemPrice = parseFloat(summaryProductTable.value.totalNetto);
-  currentOffer.value.totalItemPriceGross = parseFloat(summaryProductTable.value.totalBrutto);
-  currentOffer.value.shippingPrice = parseFloat(summaryProductTable.value.shippingNetto || 0);
-  currentOffer.value.shippingPriceGross = parseFloat(summaryProductTable.value.shippingBrutto || 0);
 
-  currentOffer.value.totalPrice = (summaryProductTable.value.totalSumBrutto / (1 + taxRate)).toFixed(2);
-  currentOffer.value.totalPriceGross = summaryProductTable.value.totalSumBrutto;
+  currentOffer.value.totalItemPrice      = round2(toNumber(summaryProductTable.value.totalNetto));
+  currentOffer.value.totalItemPriceGross = round2(toNumber(summaryProductTable.value.totalBrutto));
+  currentOffer.value.shippingPrice       = round2(toNumber(summaryProductTable.value.shippingNetto || 0));
+  currentOffer.value.shippingPriceGross  = round2(toNumber(summaryProductTable.value.shippingBrutto || 0));
 
-  // Mapowanie items na OfferItem
-  currentOffer.value.offerItems = summaryProductTable.value.items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-    priceNetto: parseFloat(item.priceNetto),
-    priceGross: parseFloat(item.priceGross),
-    producerPriceNetto: parseFloat(item.producerPriceNetto),
-    totalPriceNetto: parseFloat(item.totalPriceNetto),
-    totalPriceGross: parseFloat(item.totalPriceGross),
-    noteForProducer: null, // brak danych, ustawiamy domyślnie
-  }));
+  const totalSumBrutto = round2(toNumber(summaryProductTable.value.totalSumBrutto));
+  currentOffer.value.totalPriceGross = totalSumBrutto;
+  currentOffer.value.totalPrice      = round2(totalSumBrutto / (1 + taxRate));
 
+  // Data ważności (ISO)
+  currentOffer.value.expirationTime =
+    expirationTime.value?.toISOString?.() ?? new Date().toISOString();
 
-  const payload = {
-      body: JSON.stringify(currentOffer.value),
-    };
-    console.log(payload)
+  // — Mapowanie pozycji na Create/UpdateOfferCommand.OfferItem (product + custom) —
+  currentOffer.value.offerItems = summaryProductTable.value.items
+    // odfiltruj puste wiersze: brak productId i brak nazwy custom
+    .filter((item: any) => {
+      const hasProduct = !!item.productId && String(item.productId).length > 0;
+      const hasCustom  =
+        (item.productId === null || item.productId === '' || item.productId === undefined) &&
+        !!(item.name && String(item.name).trim());
+      return hasProduct || hasCustom;
+    })
+    .map((item: any) => {
+      const isCustom = item.productId === null || item.productId === '' || item.productId === undefined;
+
+      const quantity        = toNumber(item.quantity, 1);
+      const priceNetto      = round2(toNumber(item.priceNetto));
+      const priceGross      = round2(toNumber(item.priceGross) || priceNetto * (1 + taxRate));
+      const totalPriceNetto = round2(toNumber(item.totalPriceNetto) || quantity * priceNetto);
+      const totalPriceGross = round2(toNumber(item.totalPriceGross) || totalPriceNetto * (1 + taxRate));
+      const taxPercent      = toNumber(item.tax, 23) || 23;
+
+      const mapped: any = {
+        // kluczowe rozróżnienie product vs custom:
+        productId: isCustom ? null : item.productId,                 // Guid? dla backendu
+        brandId:   isCustom ? (item.brandId ?? null) : null,         // tylko dla customów
+        customName: isCustom ? (String(item.name || '').trim()) : null,
+        customSku:  isCustom ? (item.sku ? String(item.sku).trim() : null) : null,
+
+        quantity,
+        priceNetto,
+        priceGross,
+        taxPercent,                                                  // int? (backend ma default 23)
+        producerPriceNetto: round2(toNumber(item.producerPriceNetto)),
+        totalPriceNetto,
+        totalPriceGross,
+
+        noteForProducer: item.noteForProducer ?? null
+      };
+
+      // tryb edycji: jeśli masz id pozycji, dołącz je
+      if (props.updated && item.id) {
+        mapped.id = item.id;
+      }
+
+      return mapped;
+    });
+
+  // — Wyślij do backendu i czekaj na wynik —
+  const payload = { body: JSON.stringify(currentOffer.value) };
+
   try {
-    if(!props.updated) {
-      const response = await Api.offers.createOffer(payload);
+    if (!props.updated) {
+      await Api.offers.createOffer(payload);  // czeka na backend
       toast.success('Oferta została zapisana!');
-          router.push(`/sale/offer`);
-
     } else {
-      const response = await Api.offers.updateOffer(payload);
+      await Api.offers.updateOffer(payload);  // czeka na backend
       toast.success('Oferta została edytowana!');
-      router.push(`/sale/offer`);
     }
 
-  } catch (error) {
-    toast.error('Wystąpił błąd podczas zapisu oferty.');
+    await router.push('/sale/offer');         // czeka na nawigację
+  } catch (error: any) {
     console.error(error);
+    toast.error(error?.message || 'Wystąpił błąd podczas zapisu oferty.');
   }
 };
 

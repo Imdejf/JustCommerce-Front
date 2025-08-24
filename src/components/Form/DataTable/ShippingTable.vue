@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { onMounted, ref, computed, defineProps } from 'vue'
+import { onMounted, ref, computed, defineProps, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
@@ -20,12 +20,23 @@ const producer = ref(null)
 const filter = ref({
   StoreId: cookies.get('dsStore'),
   SmartTableParam: {
+    Page: 1,
+    PageSize: 50,
     Search: {
       PredicateObject: {
+        // NumberOrder: '',
+        // ShipmentData: '',
+        // ClientData: '',
+        // BrandId: null,
+        // IsCOD: null, // true/false/null
+        // IsPaid: null,
+        // MinTotal: null,
+        // MaxTotal: null,
       }
     }
   }
-})
+});
+
 
 enum PaymentProvider {
   Przelewy24 = 0,
@@ -65,8 +76,7 @@ const updateDateOrderedFromManufacturer = async (row) => {
     }
 
     const currentStatus = {
-      productId: row.productId,
-      orderId: row.orderId,
+      orderItemId: row.orderItemId,
       itemOrderedFromManufacturerDate: row.itemOrderedFromManufacturerDate
     }
 
@@ -91,8 +101,7 @@ const updateDateOrderedCourier = async (row) => {
     }
 
     const currentStatus = {
-      productId: row.productId,
-      orderId: row.orderId,
+      orderItemId: row.orderItemId,
       orderedCourierDate: row.orderedCourierDate
     }
 
@@ -112,8 +121,7 @@ const updateOwnLabel = async (row) => {
   try {
     const payload = {
       body: JSON.stringify({
-        productId: row.productId,
-        orderId: row.orderId,
+        orderItemId: row.orderItemId,
         ownLabel: row.ownLabel,
       }),
     };
@@ -136,8 +144,7 @@ const updateDateShipped = async (row) => {
     }
 
     const currentStatus = {
-      productId: row.productId,
-      orderId: row.orderId,
+      orderItemId: row.orderItemId,
       itemShipedDate: row.itemShipedDate
     }
 
@@ -234,7 +241,7 @@ function row_key(row) {
 
 const generateOneOrderFromManofacturerHandle = async (order) => {
   const object = {
-    OrderId: order.orderId,
+    OrderItemId: order.orderItemId,
     ProductId: order.productId
   }
 
@@ -282,6 +289,11 @@ const allBrands = async () => {
     console.error('Błąd podczas pobierania producentów:', error)
   }
 }
+
+watch(producer, (val) => {
+  filter.value.SmartTableParam.Search.PredicateObject.BrandId = val || null;
+  sendFilterUpdate();
+});
 
 onMounted(async () => {
   try {
@@ -360,6 +372,7 @@ onMounted(async () => {
               <span class="font-bold text-base">Pozostałe dane</span>
               <p>Płatność: {{ translatePaymentProvider(props.row.paymentProvider) }}</p>
               <p>Opłacone: {{ props.row.isPaid ? "Tak" : "Nie" }}</p>
+              <p class="text-orange-500">Wartość zamówienia: <span class="text-[16px] font-bold ">{{ props.row.orderPriceGross }} zł</span></p>
             </div>
           </div>
 
@@ -526,6 +539,7 @@ onMounted(async () => {
     </template>
     </el-table-column> -->
     <el-table-column label="Adres wysyłki" width="300" prop="" label-class-name="order_label">
+      
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px]  border-[#d6dfe9] search_input h-[60px] content-center">Adres wysyłki</div>
@@ -555,9 +569,11 @@ onMounted(async () => {
           </template>
         </el-input>
       </div>
-
         </div>
       </div>
+    </template>
+    <template #default="{ row }">
+      <span class="text-[12px] font-bold whitespace-pre-line">{{ row.shippingAdres }}</span>
     </template>
     </el-table-column>
     <el-table-column label="Informacje dodatkowe"  label-class-name="order_label">
@@ -581,18 +597,42 @@ onMounted(async () => {
         </el-row>
       </template>
     </el-table-column>
-    <el-table-column label="Zamówiono u producenta" width="180" label-class-name="order_label">
+    <el-table-column label="Pobranie" width="120" label-class-name="order_label">
   <template #header>
     <div class="header-content">
-      <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Zamówiono u producenta</div>
-      <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
-        <el-select class="select__element" placeholder="Wybierz">
-          <el-option label="Tak" :value="true"></el-option>
-          <el-option label="Nie" :value="false"></el-option>
-        </el-select>
+      <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
+        Pobranie
       </div>
+      <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block"></div>
     </div>
   </template>
+  <template #default="{ row }">
+    <el-checkbox
+      :model-value="row.paymentProvider === PaymentProvider.CashOnDelivery"
+      disabled
+      class="checkbox-cod"
+    >
+    </el-checkbox>
+  </template>
+</el-table-column>
+    <el-table-column label="Zamówiono u producenta" width="180" label-class-name="order_label">
+  <template #header>
+  <div class="header-content">
+    <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Pobranie</div>
+    <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
+      <el-select
+        v-model="filter.SmartTableParam.Search.PredicateObject.IsCOD"
+        class="select__element"
+        placeholder="Wybierz"
+        @change="sendFilterUpdate"
+        clearable
+      >
+        <el-option label="Tak" :value="true"></el-option>
+        <el-option label="Nie" :value="false"></el-option>
+      </el-select>
+    </div>
+  </div>
+</template>
   <template #default="{ row }">
     <el-select
       :model-value="checkIfAllOrdered(row) ? true : false"
@@ -717,6 +757,31 @@ onMounted(async () => {
 
 .table__product .el-table__row {
   overflow: none !important;
+}
+
+/* Powiększony checkbox */
+.checkbox-cod .el-checkbox__inner {
+  width: 22px;   /* większy kwadrat */
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid #fb923c;
+}
+
+/* Kolor w stanie zaznaczenia */
+.checkbox-cod .el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: #fb923c !important;
+  border-color: #fb923c !important;
+}
+
+/* Ptaszek */
+.checkbox-cod .el-checkbox__input.is-checked .el-checkbox__inner::after {
+  border-color: white !important;
+  border-width: 3px !important; /* grubość ramion ptaszka */
+  left: 5px;   /* wyrównanie poziome */
+  top:-1px;
+  width: 6px;  /* szerokość ramienia */
+  height: 14px; /* długość ramienia */
+  transform: rotate(45deg) scale(1); /* rotacja jak w oryginale */
 }
 
 .cell {

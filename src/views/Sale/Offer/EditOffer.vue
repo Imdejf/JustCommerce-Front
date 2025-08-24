@@ -89,6 +89,8 @@ onMounted(async () => {
   products: result.data.offerItems.map(item => ({
     id: item.id,
     productId: item.productId,
+    brandId: item.brandId,
+    sku: item.sku,
     slug: item.slug,
     name: item.productName,
     productImage: item.productImage,

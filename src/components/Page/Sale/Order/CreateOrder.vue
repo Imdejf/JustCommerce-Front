@@ -220,6 +220,7 @@ function translateOrderStatus(key) {
 
 const handleProductUpdate = (summary) => {
   summaryProductTable.value = summary;
+  console.log(summaryProductTable.value)
 }
 
 const orderSourceOptions = computed(() => {

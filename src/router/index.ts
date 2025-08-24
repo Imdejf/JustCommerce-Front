@@ -327,11 +327,9 @@ const router = createRouter({
       component: () => import('../views/Sale/Order/index.vue')
     }, 
     {
-      path: '/sale/order/createorder',
+      path: '/sale/order/createorder/:offerId?',
       name: 'CreateOrder',
-      meta: {
-        layout: PageLayout
-      },
+      meta: { layout: PageLayout },
       component: () => import('../views/Sale/Order/CreateOrder.vue')
     },
     {
