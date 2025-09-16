@@ -95,6 +95,20 @@ const generateOrDownloadOffer = async (offerId) => {
 };
 
 
+const changeOfferStatus = (payload) => {
+  fetch(`${APISettings.baseURL}administration/offer/ChangeStatusOffer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
 
 export const offers = {
     smartTable,
@@ -102,5 +116,6 @@ export const offers = {
     createOffer,
     updateOffer,
     generateOrDownloadOffer,
+    changeOfferStatus,
     ...CreateBaseApiService('administration/offer')
 }

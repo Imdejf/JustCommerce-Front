@@ -36,38 +36,58 @@ async function submitFile() {
   isLoading.value = true
 
   try {
-    const arrayBuffer = await file.value.arrayBuffer()
-    const byteArray = Array.from(new Uint8Array(arrayBuffer))
+  const arrayBuffer = await file.value.arrayBuffer()
+  const byteArray = Array.from(new Uint8Array(arrayBuffer))
 
-    const payload = {
-      fileBytes: byteArray
-    }
-
-    const response = await fetch(`${basePath}administration/product/ImportProductFromExcel`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Błąd serwera: ${errorText}`)
-    }
-
-    const result = await response.json()
-    console.log('Odpowiedź serwera:', result)
-    file.value = null
-    emit('close')
-  } catch (error) {
-    file.value = null
-    console.error('Błąd podczas wysyłania pliku:', error)
-    alert('Wystąpił błąd podczas przesyłania pliku.')
-  } finally {
-    isLoading.value = false
-    file.value = null
+  const payload = {
+    fileBytes: byteArray
   }
+
+  // 1️⃣ Wyślij do administration
+  const adminResponse = await fetch(`${basePath}administration/product/ImportProductFromExcel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+
+  if (!adminResponse.ok) {
+    const errorText = await adminResponse.text()
+    throw new Error(`Błąd serwera (administration): ${errorText}`)
+  }
+
+  const adminResult = await adminResponse.json()
+  console.log('Odpowiedź administration:', adminResult)
+
+  // 2️⃣ Wyślij do product
+  const productResponse = await fetch(`${basePath}product/ImportProductFromExcel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+
+  if (!productResponse.ok) {
+    const errorText = await productResponse.text()
+    throw new Error(`Błąd serwera (product): ${errorText}`)
+  }
+
+  const productResult = await productResponse.json()
+  console.log('Odpowiedź product:', productResult)
+
+  // Zamknij modal/okno
+  file.value = null
+  emit('close')
+} catch (error) {
+  file.value = null
+  console.error('Błąd podczas wysyłania pliku:', error)
+  alert('Wystąpił błąd podczas przesyłania pliku.')
+} finally {
+  isLoading.value = false
+  file.value = null
+}
 }
 </script>
 

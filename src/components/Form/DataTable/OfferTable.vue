@@ -17,23 +17,40 @@ const selectedRowId = ref(null);
 const filter = ref({
   StoreId: cookies.get('dsStore'),
   PageNumber: 1,
-  PageSize: 12,
+  PageSize: 15,
   SmartTableParam: {
     Search: {
       PredicateObject: {
-        NumberOrder: null,
+        OfferNumber: null,
         AmountMin: null,
         AmountMax: null,
         DateRange: null,
         ClientData: null,
-        ShipmentData: null,
-        OrderStatus: null,
+        OfferStatus: null,
         InvoceStatus: null,
         ProductName: null
       }
     }
   }
 })
+
+enum OfferStatus {
+  PendingShipment = 0,
+  ShippedToCustomer = 1,
+  WaitingForDecision = 2,
+  Completed = 3,
+  Rejected = 4,
+  Canceled = 5
+}
+
+const options = [
+  { value: OfferStatus.PendingShipment, label: 'Oczekuje na wysłanie' },
+  { value: OfferStatus.ShippedToCustomer, label: 'Wysłane do klienta' },
+  { value: OfferStatus.WaitingForDecision, label: 'Oczekuje na decyzje' },
+  { value: OfferStatus.Completed, label: 'Zaakceptowana' },
+  { value: OfferStatus.Rejected, label: 'Odrzucona' },
+  { value: OfferStatus.Canceled, label: 'Anulowana' },
+]
 
 const formatDate = (dateIso: string) => {
   const date = new Date(dateIso) // Utwórz obiekt daty
@@ -48,6 +65,38 @@ const formatDate = (dateIso: string) => {
 
   return date.toLocaleDateString('pl-PL', options)
 }
+
+const handleChangeStatus = async (status: number, offerId: string) => {
+  const currentStatus = {
+    offerStatus: status,
+    offerId: offerId
+  }
+
+  const payload = {
+    body: JSON.stringify(currentStatus)
+  }
+  console.log(currentStatus)
+  await Api.offers.changeOfferStatus(payload)
+  toast.success('Zmieniono status zamówienia')
+}
+
+const sendFilterUpdate = async () => {
+  try {
+    const payload = {
+      body: JSON.stringify(filter.value),
+    };
+
+    // Wykonanie żądania do backendu
+    const result = await Api.offers.smartTable(payload);
+
+    // Aktualizacja danych tabeli
+    dataTable.value = result.data; // Przypisanie nowych danych do `dataTable`
+    toast.success('Dane zostały zaktualizowane');
+  } catch (error) {
+    console.error('Błąd podczas wysyłania danych filtrowania:', error);
+    toast.error('Wystąpił problem z aktualizacją danych');
+  }
+};
 
 const handleRowClick = (row) => {
   selectedRowId.value = row.offerId;
@@ -90,6 +139,11 @@ const fetchTableData = async () => {
     console.error('Błąd podczas pobierania danych:', error);
     toast.error('Wystąpił problem z pobraniem danych');
   }
+};
+
+const handlePageChange = async (page) => {
+  filter.value.PageNumber = page;
+  await fetchTableData();
 };
 
 onMounted(async () => {
@@ -153,7 +207,7 @@ onMounted(async () => {
     <el-table-column label="Kwota"  width="180" label-class-name="order_label">
       <template #header>
         <div class="header-content">
-          <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Data zamówienia</div>
+          <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Data utworzenia</div>
           <div class="bg-[#e0e8f0] h-[50px] py-1 px-2 block">
             <el-date-picker
               v-model="filter.SmartTableParam.Search.PredicateObject.DateRange"
@@ -208,13 +262,13 @@ onMounted(async () => {
     <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
     <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane klienta</div>
+        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane wysyłki</div>
         <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
               class="!font-s m-auto"
-              v-model="filter.SmartTableParam.Search.PredicateObject.ClientData"
+              v-model="filter.SmartTableParam.Search.PredicateObject.ShipmentData"
               @blur="sendFilterUpdate"
             >
           <!-- Ikona SVG jako prefix -->
@@ -236,28 +290,6 @@ onMounted(async () => {
         </div>
       </div>
     </template>
-    </el-table-column>
-    <el-table-column label="Informacje dodatkowe" width="90" label-class-name="order_label">
-      <template #header>
-      <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] h-[60px] content-center border-[#d6dfe9] search_input">Informacje dodatkowe</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
-        </div>
-      </div>
-    </template>
-      <template #default="prop">
-        <el-row class="justify-center">
-          <div class="text-center">
-            <span
-              class="font-bold cursor-pointer"
-              v-if="prop.row.offerNote"
-              @click="handleToggleRow(prop.row)"
-              >Sprwadź</span
-            >
-            <span v-else>-</span>
-          </div>
-        </el-row>
-      </template>
     </el-table-column>
     <el-table-column label="Kwota" prop="orderTotal" width="180" label-class-name="order_label">
       <template #header>
@@ -282,10 +314,10 @@ onMounted(async () => {
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Status</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
-          v-model="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
+          v-model="filter.SmartTableParam.Search.PredicateObject.OfferStatus"
           clearable
           placeholder="Wybierz status"
-          :value="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
+          :value="filter.SmartTableParam.Search.PredicateObject.OfferStatus"
           @change="sendFilterUpdate"
         >
           <el-option
@@ -301,11 +333,11 @@ onMounted(async () => {
       <template #default="prop">
         <el-row class="justify-center">
           <el-select
-            v-model="prop.row.orderStatus"
+            v-model="prop.row.offerStatus"
             class="m-2 select__element"
-            :value="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
+            :value="filter.SmartTableParam.Search.PredicateObject.OfferStatus"
             placeholder="Select"
-            @change="handleChangeStatus($event, prop.row.id)"
+            @change="handleChangeStatus($event, prop.row.offerId)"
             >
             <el-option
               v-for="item in options"
