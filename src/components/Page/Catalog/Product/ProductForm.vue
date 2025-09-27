@@ -218,6 +218,76 @@ watch(
   },
   { deep: true }
 )
+
+const PRODUCT_FIELDS = [
+  'name',
+  'metaTitle',
+  'metaKeywords',
+  'metaDescription',
+  'shortDescription',
+  'description',
+  'specification'
+] as const
+
+const THUMBNAIL_FIELDS = [
+  'seoFileName',
+  'altAttribute',
+  'titleAttribute'
+] as const
+
+// 🔹 Synchronizacja pól produktu
+watch(
+  () => ({
+    name: currentProduct.name,
+    metaTitle: currentProduct.metaTitle,
+    metaKeywords: currentProduct.metaKeywords,
+    metaDescription: currentProduct.metaDescription,
+    shortDescription: currentProduct.shortDescription,
+    description: currentProduct.description,
+    specification: currentProduct.specification
+  }),
+  (newVals, oldVals) => {
+    currentProduct.productLangs.forEach((lang: Record<string, any>) => {
+      PRODUCT_FIELDS.forEach((key) => {
+        const newVal = newVals[key]
+        const oldVal = oldVals?.[key]
+        if (
+          newVal !== undefined &&
+          (lang[key] == null || lang[key] === '' || lang[key] === oldVal)
+        ) {
+          lang[key] = newVal
+        }
+      })
+    })
+  },
+  { deep: false, immediate: true }
+)
+
+// 🔹 Synchronizacja pól SEO obrazka
+watch(
+  () => ({
+    seoFileName: currentProduct.thumbnailImage.seoFileName,
+    altAttribute: currentProduct.thumbnailImage.altAttribute,
+    titleAttribute: currentProduct.thumbnailImage.titleAttribute
+  }),
+  (newVals, oldVals) => {
+    currentProduct.thumbnailImage.mediaLangs.forEach((lang: Record<string, any>) => {
+      THUMBNAIL_FIELDS.forEach((key) => {
+        const newVal = newVals[key]
+        const oldVal = oldVals?.[key]
+        if (
+          newVal !== undefined &&
+          (lang[key] == null || lang[key] === '' || lang[key] === oldVal)
+        ) {
+          lang[key] = newVal
+        }
+      })
+    })
+  },
+  { deep: false, immediate: true }
+)
+
+
 </script>
 
 <template>
