@@ -366,15 +366,18 @@ watch(
           />
         </FormSection>
         <FormSection :title="'Zdjęcia'" class="formsection_width_full">
-          <MediaArea
-            :filesValue="files"
-            :editFile="currentFile"
-            @handleAdd="handleAddFile"
-            @handleEdit="handleEditFile"
-            @handleRemove="handleRemoveFile"
-            :folder="1"
-            :watermark="true"
-          />
+            <MediaArea
+              :filesValue="files"
+              :editFile="currentFile"
+              @handleAdd="handleAddFile"
+              @handleEdit="handleEditFile"
+              @handleRemove="handleRemoveFile"
+              :folder="1"
+              :watermark="true"
+              :baseSeo="currentProduct.thumbnailImage.seoFileName"
+              :baseAlt="currentProduct.thumbnailImage.altAttribute"
+              :baseTitle="currentProduct.thumbnailImage.titleAttribute"
+            />
         </FormSection>
         <FormSection :title="'SEO'">
           <FormKit

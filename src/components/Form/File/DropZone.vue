@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineProps, defineComponent, ref } from 'vue'
+import { defineProps, defineComponent, ref, watch } from 'vue'
 import { DropZone } from 'dropzone-vue'
 import type { FileDTO } from '/@/types/file/File'
 import { useToast } from 'vue-toastification'
@@ -7,66 +7,53 @@ import Cookies from 'universal-cookie'
 
 export default defineComponent({
   props: {
-    fileInfo: {
-      type: Object as () => FileDTO,
-      default: null
-    },
-    url: {
-      type: String,
-      default: ''
-    },
-    showSaveButton: {
-      type: Boolean,
-      default: true
-    }
+    fileInfo: { type: Object as () => FileDTO, default: null },
+    url: { type: String, default: '' },
+    showSaveButton: { type: Boolean, default: true },
+    // ⬇ NOWE: base64 dostarczony z zewnątrz (np. batch drag&drop)
+    externalBase64: { type: String, default: '' }
   },
-  components: {
-    DropZone
-  },
+  components: { DropZone },
   name: 'App',
   setup(props, { emit }) {
     const toast = useToast()
     const cookies = new Cookies()
     const dropzone = ref(null)
     const base64String = ref('')
+
+    // jeśli dostaniemy base64 z zewnątrz – ustaw i zaznacz zmianę
+    watch(
+      () => props.externalBase64,
+      (val) => {
+        if (val) {
+          base64String.value = val
+          emit('changeFile', true)
+        }
+      },
+      { immediate: true }
+    )
+
     const sendFileToServer = async () => {
       if (!base64String.value) {
-        toast.error('Dodaj plik', {
-          timeout: 2000
-        })
+        toast.error('Dodaj plik', { timeout: 2000 })
         return
       }
-      if (props.fileInfo === null) {
-        toast.error('Błędna nazwa pliku', {
-          timeout: 2000
-        })
+      if (!props.fileInfo || !props.fileInfo.media?.seoFileName) {
+        toast.error('Błędna nazwa pliku', { timeout: 2000 })
         return
       }
-      if (!props.fileInfo || !props.fileInfo.media.seoFileName) {
-        toast.error('Błędna nazwa pliku', {
-          timeout: 2000
-        })
-        return
-      }
-
-      const mediaLangs = props.fileInfo.media.mediaLangs
-      for (const mediaLang of mediaLangs) {
+      for (const mediaLang of props.fileInfo.media.mediaLangs || []) {
         if (!mediaLang.seoFileName) {
-          toast.error('Błędna nazwa pliku', {
-            timeout: 2000
-          })
+          toast.error('Błędna nazwa pliku', { timeout: 2000 })
           return
         }
       }
 
-      const fileToSave = props.fileInfo
-
+      const fileToSave: any = { ...props.fileInfo }
       fileToSave.storeId = cookies.get('dsStore')
-      fileToSave.base64File = {
-        base64String: base64String.value
-      }
-      const defaultString = import.meta.env.VITE_API_URL
+      fileToSave.base64File = { base64String: base64String.value }
 
+      const defaultString = import.meta.env.VITE_API_URL
       try {
         const response = await fetch(defaultString + 'administration/file', {
           method: 'POST',
@@ -74,44 +61,31 @@ export default defineComponent({
           body: JSON.stringify(fileToSave)
         })
         const data = await response.json()
-
         emit('update:modelValue', data.data)
-
-        toast.success('Dodano zdjęcie', {
-          timeout: 2000
-        })
+        toast.success('Dodano zdjęcie', { timeout: 2000 })
       } catch (error) {
-        toast.success('Błąd dodawania zdjęcia', {
-          timeout: 2000
-        })
+        toast.error('Błąd dodawania zdjęcia', { timeout: 2000 })
         console.log(error)
       }
     }
 
-    const onFileAdd = (file) => {
+    const onFileAdd = (file: any) => {
       fileToBase64(file.file)
-        .then((base64Data) => {
-          base64String.value = base64Data
+        .then((b64) => {
+          base64String.value = b64
           emit('changeFile', true)
         })
-        .catch((error) => {
-          console.error('Błąd przetwarzania pliku:', error)
-        })
+        .catch((err) => console.error('Błąd przetwarzania pliku:', err))
     }
 
-    const fileToBase64 = (file) => {
-      return new Promise((resolve, reject) => {
+    const fileToBase64 = (file: File) =>
+      new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
-        reader.onload = () => {
-          const base64Data = reader.result.split(',')[1]
-          resolve(base64Data)
-        }
-        reader.onerror = (error) => {
-          reject(error)
-        }
+        reader.onload = () => resolve(String(reader.result).split(',')[1])
+        reader.onerror = (e) => reject(e)
         reader.readAsDataURL(file)
       })
-    }
+
     return { dropzone, base64String, onFileAdd, fileToBase64, sendFileToServer }
   }
 })
@@ -123,7 +97,7 @@ export default defineComponent({
       ref="dropzone"
       @addedFile="onFileAdd"
       class="h-full"
-      :maxFiles="Number(1)"
+      :maxFiles="1"
       :uploadOnDrop="false"
       :multipleUpload="false"
       :parallelUpload="3"
@@ -131,7 +105,7 @@ export default defineComponent({
     >
       <template #message>
         <div v-if="!url" class="">Upuść plik</div>
-        <img v-if="url" class="absolute w-full h-full mx-auto" :src="url" />
+        <img v-else class="absolute w-full h-full mx-auto" :src="url" />
       </template>
     </DropZone>
     <div v-if="showSaveButton" class="flex justify-center mt-2">
@@ -141,33 +115,10 @@ export default defineComponent({
 </template>
 
 <style>
-.dropzone__item-thumbnail {
-  height: 100%;
-  width: 100%;
-}
-
-.dropzone__item-thumbnail img {
-  height: 100% !important;
-}
-
-.dropzone__progress {
-  display: none;
-}
-
-.dropzone__message {
-  background: white;
-}
-
-.dropzone {
-  padding: 0;
-  height: 80%;
-  border: 1px solid gray;
-}
-
-.dropzone__item {
-  margin: 0;
-  display: contents;
-}
+.dropzone__item-thumbnail { height: 100%; width: 100%; }
+.dropzone__item-thumbnail img { height: 100% !important; }
+.dropzone__progress { display: none; }
+.dropzone__message { background: white; }
+.dropzone { padding: 0; height: 80%; border: 1px solid gray; }
+.dropzone__item { margin: 0; display: contents; }
 </style>
-
-<!-- https://github.com/darknessnerd/drop-zone -->
