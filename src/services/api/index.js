@@ -17,6 +17,7 @@ import { users } from './user/user'
 import { invoices } from './invoice/invoice.js'
 import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
 import { gusbir } from './gusbir/gusbir'
+import { chatGpt } from './chatGpt/chatGpt'
 
 export const Api = {
   stores,
@@ -37,5 +38,6 @@ export const Api = {
   invoices,
   offers,
   certyficationAndSafeties,
-  gusbir
+  gusbir,
+  chatGpt
 }

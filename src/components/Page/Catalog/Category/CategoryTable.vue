@@ -8,9 +8,10 @@ import { useRouter } from 'vue-router'
 const cookies = new Cookies()
 const router = useRouter()
 const tableColumns = [
-  { prop: 'name', label: 'Name' },
+  { prop: 'name', label: 'Nazwa' },
   { prop: 'slug', label: 'Slug' },
-  { prop: 'isPublished', label: 'isPublished' }
+  { prop: 'isPublished', label: 'Aktywne' },
+  { prop: 'main', label: 'Kategoria głowna' },
 ]
 
 const categories = ref([])

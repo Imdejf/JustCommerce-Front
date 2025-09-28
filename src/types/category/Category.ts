@@ -21,6 +21,7 @@ export interface CategoryDTO {
     storeId: string;
     childCategories: CategoryDTO[];
     categoryLangs: CategoryLangDTO[];
+    categoryBlogItems: CategoryBlogItemDTO[]; 
   }
   
   export interface CategoryLangDTO {
@@ -32,6 +33,11 @@ export interface CategoryDTO {
     metaTitle: string;
     categoryId: string;
     languageId: string;
+  }
+
+  export interface CategoryBlogItemDTO {
+    categoryId: string;
+    blogId: string;
   }
 
   interface MediaDTO {

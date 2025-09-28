@@ -5,17 +5,33 @@ import { Api } from '/@/services/api'
 import type { CategoryDTO } from '/@/types/category/Category.ts'
 import ContentContainer from '/@/layouts/ContentContainer.vue'
 import CategoryDetailNavbar from '/@/components/Page/Catalog/Category/CategoryDetailNavbar.vue'
+import CategoryWithPostTab from '../../../components/Page/Catalog/Category/Tabs/CategoryBlogItem.vue'
+
+
 const route = useRoute()
 const category = ref<CategoryDTO | null>(null)
+const isLoading = ref(false)
 
 const getById = (id: string) => {
   return Api.categories.get(id)
 }
 
+const tabs = [
+  {
+    id: 'categoryWithPost',
+    title: 'Posty kategorii',
+    component: CategoryWithPostTab,
+    props: {
+        category: category,
+      }
+  }
+]
+
 onMounted(async () => {
   const id = route.params.id
   const result = await getById(id.toString())
   category.value = result.data
+  isLoading.value = true
 })
 </script>
 
@@ -57,5 +73,8 @@ onMounted(async () => {
         <FormKit type="text" :label="'Nazwa'" :placeholder="category.name" :disabled="true" />
       </InfoBox>
     </div>
+    <template #tabs>
+      <TabsView :tabs="tabs" v-if="isLoading" />
+    </template>
   </ContentContainer>
 </template>
