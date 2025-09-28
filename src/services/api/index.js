@@ -17,7 +17,7 @@ import { users } from './user/user'
 import { invoices } from './invoice/invoice.js'
 import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
 import { gusbir } from './gusbir/gusbir'
-import { chatGpt } from './chatGpt/chatGpt'
+import { chatGpt } from './chatgpt/chatgpt'
 
 export const Api = {
   stores,
