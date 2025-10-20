@@ -18,6 +18,8 @@ import { invoices } from './invoice/invoice.js'
 import { certyficationAndSafeties } from './certyficationAndSafety/certyficationAndSafeties'
 import { gusbir } from './gusbir/gusbir'
 import { chatGpt } from './chatgpt/chatgpt'
+import { productValuePrice } from './product/productValuePrice'
+
 
 export const Api = {
   stores,
@@ -39,5 +41,6 @@ export const Api = {
   offers,
   certyficationAndSafeties,
   gusbir,
-  chatGpt
+  chatGpt,
+  productValuePrice
 }

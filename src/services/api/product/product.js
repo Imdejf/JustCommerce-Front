@@ -127,6 +127,20 @@ const addAttributeValue = (payload) =>
     }
   })
 
+const removeAttributeValue = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/RemoveProductAttributeValue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+
 const updateAttributeValue = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
     method: 'PUT',
@@ -204,5 +218,6 @@ export const products = {
   updateCategory,
   exportProductToExcel,
   importProductFromExcel,
+  removeAttributeValue,
   ...CreateBaseApiService('administration/product')
 }

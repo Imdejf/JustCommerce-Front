@@ -5,7 +5,7 @@ import { useStoreStore } from '/@/stores/store'
 import { ref } from 'vue'
 import { Api } from '/@/services/api'
 import { useLanguageStore } from '/@/stores/language'
-import { ArrowDown, Check, Edit, Delete, Close } from '@element-plus/icons-vue'
+import { Check, Edit, Delete, Close } from '@element-plus/icons-vue'
 
 interface ProductAttribute {
   productId: string
@@ -141,6 +141,24 @@ function findItemsById(idToFind: string) {
     }
   }
   return undefined // Nie znaleziono pasującego elementu
+}
+
+const handleRemoveAddedAttribute = async (attribute: ProductAttributeDTO) => {
+  const backup = [...addedAttributeList.value]
+  addedAttributeList.value = addedAttributeList.value.filter(a => a.id !== attribute.id)
+
+  try {
+    const payload = {
+      body: JSON.stringify({
+        productId: props.product.id,
+        productAttributeValueId: attribute.attributeValueId // <- ID wartości atrybutu
+      })
+    }
+    await Api.products.removeAttributeValue(payload)
+  } catch (err) {
+    addedAttributeList.value = backup
+    console.error('Nie udało się usunąć atrybutu:', err)
+  }
 }
 
 const handleSaveAttribute = async (attribute: ProductAttributeDTO) => {
@@ -358,7 +376,7 @@ onMounted(async () => {
                   type="danger"
                   :icon="Delete"
                   circle
-                  @click="handleRemoveCurrentAttribute(attribute.id)"
+                  @click="handleRemoveAddedAttribute(attribute)"
                 />
                 <el-button
                   v-if="currentToEdit?.id === attribute.id"

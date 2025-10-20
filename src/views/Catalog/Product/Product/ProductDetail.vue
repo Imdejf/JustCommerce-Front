@@ -4,6 +4,7 @@ import ProductCategoryTab from '../../../../components/Page/Catalog/Product/Tabs
 import ProductRelatedTab from '../../../../components/Page/Catalog/Product/Tabs/ProductRelated.vue'
 import ProductVariationTab from '../../../../components/Page/Catalog/Product/Tabs/ProductVariation.vue'
 import ProductAttributeTab from '../../../../components/Page/Catalog/Product/Tabs/ProductAttribute.vue'
+import ProductVolumePricing from '../../../../components/Page/Catalog/Product/Tabs/ProductValuePrice.vue'
 
 import { ProductOptionDTO } from '/@/types/product/ProductOption'
 import { onMounted, ref } from 'vue'
@@ -48,7 +49,16 @@ const tabs = [
     props: {
       product: product
     }
-  }
+  },
+  {
+    id: 'productVolumePricing',
+    title: 'Rabatowanie',
+    component: ProductVolumePricing,
+    props: {
+      product: product,
+      initialTiers: []
+    }
+  },
 ]
 
 const getById = (id: string) => {
