@@ -33,6 +33,7 @@ const brands = ref<{ id: number; name: string }[]>([])
 const rules = ref<{ id: number; name: string }[]>([])
 const test = ref<any>(null)
 const productAvailableList = ref<{ id: any; name: string }[]>([])
+const deletedMediaIds = ref<string[]>([])
 
 // --- Panel AI ---
 const aiCollapse = ref<string[]>(['ai'])
@@ -131,10 +132,16 @@ for (const id in translationsProductAvailable) {
 
 const handleRemoveFile = async (id: string) => {
   try {
-    files.value = files.value.filter((file) => file.id !== id)
+    files.value = files.value.filter((file: any) => file.mediaId !== id)
+
+    if (!deletedMediaIds.value.includes(id)) {
+      deletedMediaIds.value.push(id)
+    }
+
     toast.success('Usunięto zdjęcie', { timeout: 2000 })
-  } catch {
-    toast.error('Błąd serwerowy', { timeout: 2000 })
+  } catch (e) {
+    console.error(e)
+    toast.error('Błąd podczas usuwania zdjęcia', { timeout: 2000 })
   }
 }
 
@@ -155,7 +162,7 @@ const handleSave = async () => {
 
   currentProduct.slug = diacritics.remove(currentProduct.slug)
   currentProduct.currentUserId = decoded.UserId
-  currentProduct.deletedMediaIds = []
+  currentProduct.deletedMediaIds = deletedMediaIds.value
 
   try {
     const payload = { body: JSON.stringify(currentProduct) }
@@ -333,7 +340,6 @@ watch(
       </el-collapse-item>
     </el-collapse>
 
-    <!-- Reszta formularza identycznie jak u Ciebie -->
     <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
       <FormSection :title="'Zdjęcie produktu'">
         <DropZone

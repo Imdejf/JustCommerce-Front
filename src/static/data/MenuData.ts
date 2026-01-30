@@ -33,6 +33,10 @@ export interface MenuItem {
        {
         name:"Oferty",
         route: "/sale/offer"
+       },
+       {
+        name:"Statystyki",
+        route: "/sale/statistics"
        }
       ]
     },

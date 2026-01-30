@@ -129,12 +129,12 @@
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Nr. zam.</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
+        <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
               v-model="filter.SmartTableParam.Search.PredicateObject.NumberOrder"
-              class="!font-s m-auto"
+              class="filter-compact"
               @blur="sendFilterUpdate"
             >
           <!-- Ikona SVG jako prefix -->
@@ -157,54 +157,55 @@
       </div>
     </template>
     </el-table-column>
-    <el-table-column label="Kwota" prop="orderTotal" width="180" label-class-name="order_label">
-  <template #header>
-    <div class="header-content">
-      <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Data zamówienia</div>
-      <div class="bg-[#e0e8f0] h-[50px] py-1 px-2 block">
-        <el-date-picker
-          v-model="filter.SmartTableParam.Search.PredicateObject.DateRange"
-          type="daterange"
-          range-separator="-"
-          start-placeholder="Od"
-          end-placeholder="Do"
-          :unlink-panels="true"
-          format="YYYY-MM-DD"
-          class="h-5 !w-[170px] !p-1 mt-1"
-          @change="sendFilterUpdate"
-          />
-      </div>
+    <el-table-column label="Kwota" prop="orderTotal" width="140" label-class-name="order_label">
+<template #header>
+  <div class="header-content">
+    <!-- GÓRA -->
+    <div
+      class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center"
+    >
+      Data zamówienia
     </div>
-  </template>
+
+    <!-- DÓŁ -->
+    <div class="bg-[#e0e8f0] h-[50px] px-1 flex flex-col justify-center gap-[4px]">
+      <el-date-picker
+        v-model="filter.SmartTableParam.Search.PredicateObject.DateFrom"
+        type="date"
+        placeholder="Od"
+        format="YYYY-MM-DD"
+        class="filter-compact"
+        @change="sendFilterUpdate"
+      />
+      <el-date-picker
+        v-model="filter.SmartTableParam.Search.PredicateObject.DateTo"
+        type="date"
+        placeholder="Do"
+        format="YYYY-MM-DD"
+        class="filter-compact"
+        @change="sendFilterUpdate"
+      />
+    </div>
+  </div>
+</template>
   <template #default="prop">
     {{ formatDate(prop.row.createdOn) }}
   </template>
 </el-table-column>
-    <el-table-column label="Zamówienie" width="95" label-class-name="order_label">
-      <template #header>
-      <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] h-[60px] content-center border-[#d6dfe9] search_input">Zamówienie</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
-        </div>
-      </div>
-    </template>
-      <template #default="prop">
-        <div class="text-center">
-          <router-link :to="`/sale/order/${prop.row.id}`" target="_blank" class="font-bold"
-            >Pokaż</router-link
-          >
-        </div>
-      </template>
-    </el-table-column>
     <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
+  <template #default="{ row }">
+    <div class="cell-tight">
+      {{ row.billingData }}
+    </div>
+  </template>
     <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane klienta</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
+        <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
-              class="!font-s m-auto"
+              class="filter-compact"
               v-model="filter.SmartTableParam.Search.PredicateObject.ClientData"
               @blur="sendFilterUpdate"
             >
@@ -229,15 +230,20 @@
     </template>
     </el-table-column>
     <el-table-column label="Adres wysyłki" prop="shippingData" label-class-name="order_label">
+      <template #default="{ row }">
+        <div class="cell-tight">
+          {{ row.shippingData }}
+        </div>
+      </template>
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px]  border-[#d6dfe9] search_input h-[60px] content-center">Adres wysyłki</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center ">
+        <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1 ">
           <div class="m-auto">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
-              class="!font-s"
+              class="filter-compact"
               v-model="filter.SmartTableParam.Search.PredicateObject.ShipmentData"
               @blur="sendFilterUpdate"
             >
@@ -267,7 +273,7 @@
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] h-[60px] content-center border-[#d6dfe9] search_input">Informacje dodatkowe</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
+        <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1">
         </div>
       </div>
     </template>
@@ -284,22 +290,42 @@
         </el-row>
       </template>
     </el-table-column>
-    <el-table-column label="Kwota" prop="orderTotal" width="180" label-class-name="order_label">
-      <template #header>
+    <el-table-column label="Kwota" prop="orderTotal" width="120" label-class-name="order_label">
+    <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Kwota</div>
-        <div class=" bg-[#e0e8f0]  h-[50px] py-1 px-2 block">
-          <el-input-number class="h-5 " placeholder="Od" :controls="false" :precision="2" :step="0.1" :max="9999999" 
-          v-model="filter.SmartTableParam.Search.PredicateObject.AmountMin"
-          @blur="sendFilterUpdate"
-          />
-          <el-input-number class="h-5" placeholder="Do" :controls="false" :precision="2" :step="0.1" :max="9999999" 
-          v-model="filter.SmartTableParam.Search.PredicateObject.AmountMax"
-          @blur="sendFilterUpdate"
-          />
+        <!-- GÓRA -->
+        <div
+          class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center"
+        >
+          Kwota
         </div>
-      </div>
-    </template>
+
+        <!-- DÓŁ -->
+        <div class="bg-[#e0e8f0] h-[50px] px-1 flex flex-col justify-center gap-[4px]">
+            <el-input-number
+              class="filter-compact"
+              placeholder="Od"
+              :controls="false"
+              :precision="2"
+              :step="0.1"
+              :max="9999999"
+              v-model="filter.SmartTableParam.Search.PredicateObject.AmountMin"
+              @blur="sendFilterUpdate"
+            />
+
+            <el-input-number
+              class="filter-compact"
+              placeholder="Do"
+              :controls="false"
+              :precision="2"
+              :step="0.1"
+              :max="9999999"
+              v-model="filter.SmartTableParam.Search.PredicateObject.AmountMax"
+              @blur="sendFilterUpdate"
+            />
+          </div>
+        </div>
+      </template>
     </el-table-column>
     <el-table-column label="Status" width="200" label-class-name="order_label">
       <template #header>
@@ -309,6 +335,7 @@
           <el-select
           v-model="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
           clearable
+          class="filter-compact"
           placeholder="Wybierz status"
           :value="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
           @change="sendFilterUpdate"
@@ -327,7 +354,7 @@
         <el-row class="justify-center">
           <el-select
             v-model="prop.row.orderStatus"
-            class="m-2 select__element"
+            class="filter-compact"
             :value="filter.SmartTableParam.Search.PredicateObject.OrderStatus"
             placeholder="Select"
             @change="handleChangeStatus($event, prop.row.id)"
@@ -349,7 +376,7 @@
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Opłacone</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
-            class="select__element"
+            class="filter-compact"
             placeholder="Wybierz"
             v-model="filter.SmartTableParam.Search.PredicateObject.IsPaid"
             @change="sendFilterUpdate"
@@ -365,7 +392,7 @@
           <el-select
             v-model="prop.row.isPaid"
             @change="handleChangePaid(prop.row.isPaid, prop.row.id)"
-            class="m-2 select__element"
+            class="filter-compact"
             placeholder="Select"
             :class="`${prop.row.isPaid ? 'paid' : 'notpaid'}`"
           >
@@ -381,7 +408,7 @@
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Faktura</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
-            class="select__element"
+            class="filter-compact"
             placeholder="Wybierz"
             v-model="filter.SmartTableParam.Search.PredicateObject.SendInvoice"
             @change="sendFilterUpdate"
@@ -397,7 +424,7 @@
           <el-select
             v-model="prop.row.sendInvoice"
             @change="handleChangeSendInvoice(prop.row.sendInvoice, prop.row.id)"
-            class="m-2 select__element"
+            class="filter-compact"
             placeholder="Select"
             :class="`${prop.row.sendInvoice ? 'paid' : 'notpaid'}`"
           >
@@ -424,7 +451,7 @@
 
 <script lang="ts" setup>
 import { useRoute, useRouter } from 'vue-router'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
@@ -465,6 +492,7 @@ const options = [
   { value: OrderStatus.WorkOrder, label: 'Zamówienie robocze' } // Dodaj nowy status, jeśli jest taki dostępny
 ]
 
+const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const cookies = new Cookies()
@@ -538,7 +566,7 @@ const formatDate = (dateIso: string) => {
 const filter = ref({
   StoreId: cookies.get('dsStore'),
   PageNumber: 1,
-  PageSize: 12,
+  PageSize: 15,
   SmartTableParam: {
     Search: {
       PredicateObject: {
@@ -555,6 +583,14 @@ const filter = ref({
     }
   }
 })
+
+const getPageFromQuery = () => {
+  const raw = route.query.page
+  const p = Number(raw)
+  return Number.isFinite(p) && p > 0 ? p : 1
+}
+
+filter.value.PageNumber = getPageFromQuery()
 
 const fetchTableData = async () => {
   try {
@@ -574,6 +610,15 @@ const fetchTableData = async () => {
 
 const sendFilterUpdate = async () => {
   try {
+    filter.value.PageNumber = 1
+
+    router.replace({
+      query: {
+        ...route.query,
+        page: '1'
+      }
+    })
+    
     const payload = {
       body: JSON.stringify(filter.value),
     };
@@ -591,10 +636,17 @@ const sendFilterUpdate = async () => {
 };
 
 
-const handlePageChange = async (page) => {
-  filter.value.PageNumber = page;
-  await fetchTableData();
-};
+const handlePageChange = async (page: number) => {
+  filter.value.PageNumber = page
+  router.replace({
+    query: {
+      ...route.query,
+      page: String(page)
+    }
+  })
+
+  await fetchTableData()
+}
 
 const handleChangeStatus = async (status: number, orderId: string) => {
   const currentStatus = {
@@ -699,12 +751,35 @@ const styleProductTable = ({ row, column }) => {
 
   return {};
 };
+
+watch(
+  () => route.query.page,
+  async () => {
+    const page = getPageFromQuery()
+    if (page !== filter.value.PageNumber) {
+      filter.value.PageNumber = page
+      await fetchTableData()
+    }
+  }
+)
 </script>
 
 <style>
 .cell {
   text-align: center;
   font-size: 11px;
+}
+
+.cell-tight {
+  font-size: 11px;
+  line-height: 16px;      /* ← TU ZMNIEJSZAMY SZPARĘ */
+  padding: 2px 4px;       /* mniej powietrza */
+  white-space: pre-line; /* zachowuje łamanie linii */
+}
+
+/* usuń dodatkowy padding narzucany przez el-table */
+.el-table .cell .cell-tight {
+  margin: 0;
 }
 
 .el-range-input {
@@ -771,4 +846,88 @@ const styleProductTable = ({ row, column }) => {
 .selected-row {
   background-color: #cce7ff !important; /* Kolor podświetlenia */
 }
+/* ===== KOMPAKTOWA TABELA ===== */
+.el-table .cell {
+  font-size: 11px;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+/* Header – mniejsze odstępy, żeby było równo i zgrabnie */
+.header-content > div:first-child {
+  padding: 6px !important;
+  font-size: 11px !important;
+}
+
+/* Wiersz filtrów w headerze */
+.search-row--compact {
+  padding: 2px 6px !important;
+}
+
+/* ===== KOMPAKTOWE FILTRY: input / select / date / number ===== */
+.filter-compact {
+  width: 100% !important;
+}
+
+/* input wrapper dla wszystkich kontrolek */
+.filter-compact .el-input__wrapper,
+.filter-compact.el-date-editor .el-input__wrapper,
+.filter-compact.el-select .el-input__wrapper,
+.filter-compact.el-input-number .el-input__wrapper {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+}
+
+/* tekst w środku */
+.filter-compact .el-input__inner,
+.filter-compact.el-date-editor .el-input__inner,
+.filter-compact.el-select .el-input__inner {
+  height: 22px !important;
+  line-height: 22px !important;
+  font-size: 11px !important;
+}
+
+/* daterange – zmniejsz inputy zakresu */
+.filter-compact.el-date-editor .el-range-input {
+  font-size: 11px !important;
+  line-height: 22px !important;
+}
+
+/* input-number: wyłącz przyciski i dopnij wysokość */
+.filter-compact.el-input-number {
+  height: 22px !important;
+}
+.filter-compact.el-input-number .el-input-number__increase,
+.filter-compact.el-input-number .el-input-number__decrease {
+  display: none !important;
+}
+
+/* prefix (lupa) – bliżej i mniejszy */
+.filter-compact .el-input__prefix {
+  margin-right: 4px !important;
+}
+.filter-compact .el-input__icon,
+.filter-compact .el-select__caret {
+  font-size: 14px !important;
+}
+
+.filter-compact {
+  width: 100% !important;
+}
+
+.filter-compact .el-input__wrapper,
+.filter-compact.el-date-editor .el-input__wrapper {
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 6px !important;
+}
+
+.filter-compact .el-input__inner {
+  height: 20px !important;
+  line-height: 20px !important;
+  font-size: 11px !important;
+  text-align: center;
+}
+
 </style>

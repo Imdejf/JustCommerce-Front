@@ -415,6 +415,15 @@ const router = createRouter({
       },
       component: route => import(`../views/Sale/Offer/EditOffer.vue`)
     },
+    //STATISTICS
+    {
+      path: '/sale/statistics',
+      name: 'Statistics',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Sale/Statistics/index.vue`)
+    },
   ]
 })
 

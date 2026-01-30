@@ -47,6 +47,8 @@ const tableColumns = [
   { prop: 'name', label: 'Nazwa' },
   { prop: 'slug', label: 'Slug' },
   { prop: 'identificationCode', label: 'Kod produktu' },
+    { prop: 'price', label: 'Cena' },
+  { prop: 'producentPrice', label: 'Cena producenta' },
   { prop: 'priceMarkup', label: 'Narzut' }
 ]
 

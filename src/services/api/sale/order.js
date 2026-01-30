@@ -15,6 +15,68 @@ const smartTable = (payload) =>
     }
   })
 
+const getOrderRaport = (query) => {
+  return new Promise((resolve, reject) => {
+    const qs = new URLSearchParams()
+
+    // wymagane
+    qs.set('From', query.from) // "YYYY-MM-DD" albo ISO
+    qs.set('To', query.to)
+
+    // opcjonalne
+    if (query.storeId) qs.set('StoreId', query.storeId)
+    if (query.isPaid !== null && query.isPaid !== undefined) qs.set('IsPaid', String(query.isPaid))
+    if (query.isShipped !== null && query.isShipped !== undefined) qs.set('IsShipped', String(query.isShipped))
+
+    if (query.deliveryMethod !== null && query.deliveryMethod !== undefined) qs.set('DeliveryMethod', String(query.deliveryMethod))
+    if (query.paymentProvider !== null && query.paymentProvider !== undefined) qs.set('PaymentProvider', String(query.paymentProvider))
+    if (query.orderSourceType !== null && query.orderSourceType !== undefined) qs.set('OrderSourceType', String(query.orderSourceType))
+
+    if (query.productId) qs.set('ProductId', query.productId)
+    if (query.brandId) qs.set('BrandId', query.brandId)
+
+    const url = `${APISettings.baseURL}administration/order/OrderRaport?${qs.toString()}`
+
+    fetch(url, {
+      method: 'POST',
+      credentials: 'include'
+    })
+      .then(async (response) => {
+        if (response.status !== 200) {
+          reject(response.status)
+          return
+        }
+        const json = await response.json()
+        // ApiResponse.Success(200, result) -> zwykle json.data
+        resolve(json.data ?? json)
+      })
+      .catch(reject)
+  })
+}
+
+const getOrderDashboard = (query) => {
+  const qs = new URLSearchParams(
+    Object.entries(query)
+      .filter(([_, v]) => v !== null && v !== undefined && v !== '')
+      .reduce((acc, [k, v]) => {
+        acc[k] = String(v)
+        return acc
+      }, {})
+  ).toString()
+
+  return fetch(`${APISettings.baseURL}administration/order/Dashboard?${qs}`, {
+    method: 'POST',
+    credentials: 'include',
+  }).then(async (response) => {
+    if (response.status !== 200) throw response.status
+    const json = await response.json()
+    return json.data
+  })
+}
+
+
+
+
 const getAvilableAddresses = (storeId) => {
   return new Promise((resolve, reject) => {
     const url = `${APISettings.baseURL}product/shoppingcart/GetAvilableAddresses?storeId=${storeId}`
@@ -189,6 +251,8 @@ export const orders = {
   createOrder,
   updateOrder,
   getOrderById,
+  getOrderRaport,
+  getOrderDashboard,
   uploadPurchaseInvoice,
   uploadInvoice,
   removePurchaseInvoice,

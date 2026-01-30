@@ -129,7 +129,7 @@ const addAttributeValue = (payload) =>
 
 const removeAttributeValue = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/RemoveProductAttributeValue`, {
-    method: 'POST',
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     ...payload

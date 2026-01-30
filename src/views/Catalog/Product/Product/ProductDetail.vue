@@ -104,27 +104,9 @@ onMounted(async () => {
         <template #picture>
           <img :src="product.thumbnailImage.filePath" />
         </template>
-
-        <FormKit type="text" :label="'Nazwa'" :placeholder="product.name" :disabled="true" />
-        <FormKit type="text" label="Meta tytuł" :placeholder="product.metaTitle" :disabled="true" />
-        <FormKit
-          type="textarea"
-          label="Meta opis"
-          rows="5"
-          :placeholder="product.metaDescription"
-          :disabled="true"
-        />
-        <FormKit
-          type="textarea"
-          label="Meta opis"
-          rows="10"
-          :placeholder="product.description"
-          :disabled="true"
-        />
-        <FormKit type="text" :label="'Nazwa'" :placeholder="product.name" :disabled="true" />
-        <FormKit type="text" :label="'Nazwa'" :placeholder="product.name" :disabled="true" />
-        <FormKit type="text" :label="'Nazwa'" :placeholder="product.name" :disabled="true" />
-        <FormKit type="text" :label="'Nazwa'" :placeholder="product.name" :disabled="true" />
+        <FormKit type="text" label="Nazwa" :placeholder="product.name" :disabled="true" />
+        <FormKit type="text" label="Cena producenta (netto)" :placeholder="product.producerPrice" :disabled="true" />
+        <FormKit type="text" label="Cena (netto)" :placeholder="product.price" :disabled="true" />
       </InfoBox>
     </div>
     <template #tabs>

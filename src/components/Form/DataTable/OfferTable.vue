@@ -86,11 +86,9 @@ const sendFilterUpdate = async () => {
       body: JSON.stringify(filter.value),
     };
 
-    // Wykonanie żądania do backendu
     const result = await Api.offers.smartTable(payload);
 
-    // Aktualizacja danych tabeli
-    dataTable.value = result.data; // Przypisanie nowych danych do `dataTable`
+    dataTable.value = result.data;
     toast.success('Dane zostały zaktualizowane');
   } catch (error) {
     console.error('Błąd podczas wysyłania danych filtrowania:', error);
@@ -173,21 +171,21 @@ onMounted(async () => {
   </div>
   <div class="table-container">
     <el-table class="pt-[1px] !bg-[#d6dfe9]" ref="tableData" :row-key="row_key" :data="dataTable.items" :border="true" @row-click="handleRowClick" @row-dblclick="showOfferHandle" style="width: 100%;" :row-class-name="rowClassName">
-      <el-table-column  label="Nr. zam." label-class-name="order_label" prop="offerNumber" width="130">
+      <el-table-column  label="Nr. zam." label-class-name="order_label" prop="offerNumber" width="100">
       <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Nr. oferty</div>
+        <div class="p-2 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Nr. oferty</div>
         <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
               v-model="filter.SmartTableParam.Search.PredicateObject.OfferNumber"
-              class="!font-s m-auto"
+              class="!font-s m-auto filter-small"
               @blur="sendFilterUpdate"
             >
           <template #prefix>
             <span class="flex items-center pl-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 32 32" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="currentColor">
                 <g fill="none">
                   <path
                     clip-rule="evenodd"
@@ -204,45 +202,60 @@ onMounted(async () => {
       </div>
     </template>
     </el-table-column>
-    <el-table-column label="Kwota"  width="180" label-class-name="order_label">
-      <template #header>
-        <div class="header-content">
-          <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Data utworzenia</div>
-          <div class="bg-[#e0e8f0] h-[50px] py-1 px-2 block">
-            <el-date-picker
-              v-model="filter.SmartTableParam.Search.PredicateObject.DateRange"
-              type="daterange"
-              range-separator="-"
-              start-placeholder="Od"
-              end-placeholder="Do"
-              :unlink-panels="true"
-              format="YYYY-MM-DD"
-              class="h-5 !w-[170px] !p-1 mt-1"
-              @change="sendFilterUpdate"
-              />
-          </div>
-        </div>
-      </template>
-      <template #default="prop">
-        {{ formatDate(prop.row.createdOn) }}
-      </template>
-    </el-table-column>
-    <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
+    
+<el-table-column label="Data" width="100" label-class-name="order_label">
+  <template #header>
+    <div class="header-content">
+      <div
+        class="p-1 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center text-center"
+      >
+        Data utworzenia
+      </div>
+      <div class="bg-[#e0e8f0] h-[50px] px-2 block">
+        <el-date-picker
+          v-model="filter.SmartTableParam.Search.PredicateObject.DateFrom"
+          type="date"
+          placeholder="Od"
+          format="YYYY-MM-DD"
+          class="filter-small"
+          @change="sendFilterUpdate"
+        />
+        <el-date-picker
+          v-model="filter.SmartTableParam.Search.PredicateObject.DateTo"
+          type="date"
+          placeholder="Do"
+          format="YYYY-MM-DD"
+          class="filter-small"
+          @change="sendFilterUpdate"
+        />
+      </div>
+    </div>
+  </template>
+
+  <template #default="{ row }">
+    {{ formatDate(row.createdOn) }}
+  </template>
+</el-table-column>
+  <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
+  <template #default="{ row }">
+    <div class="cell-tight">
+      {{ row.billingData }}
+    </div>
+  </template>
     <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane Firmy</div>
+        <div class="p-2 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane Firmy</div>
         <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
-              class="!font-s m-auto"
+              class="!font-s m-auto filter-small"
               v-model="filter.SmartTableParam.Search.PredicateObject.ClientData"
               @blur="sendFilterUpdate"
             >
-          <!-- Ikona SVG jako prefix -->
           <template #prefix>
             <span class="flex items-center pl-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 32 32" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="currentColor">
                 <g fill="none">
                   <path
                     clip-rule="evenodd"
@@ -260,21 +273,25 @@ onMounted(async () => {
     </template>
     </el-table-column>
     <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
+    <template #default="{ row }">
+      <div class="cell-tight">
+        {{ row.billingData }}
+      </div>
+    </template>
     <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane wysyłki</div>
+        <div class="p-2 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane wysyłki</div>
         <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
-              class="!font-s m-auto"
+              class="!font-s m-auto filter-small"
               v-model="filter.SmartTableParam.Search.PredicateObject.ShipmentData"
               @blur="sendFilterUpdate"
             >
-          <!-- Ikona SVG jako prefix -->
           <template #prefix>
             <span class="flex items-center pl-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 32 32" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="currentColor">
                 <g fill="none">
                   <path
                     clip-rule="evenodd"
@@ -291,16 +308,16 @@ onMounted(async () => {
       </div>
     </template>
     </el-table-column>
-    <el-table-column label="Kwota" prop="orderTotal" width="180" label-class-name="order_label">
+    <el-table-column label="Kwota" prop="totalPriceGross" width="100" label-class-name="order_label">
       <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Kwota</div>
-        <div class=" bg-[#e0e8f0]  h-[50px] py-1 px-2 block">
-          <el-input-number class="h-5 " placeholder="Od" :controls="false" :precision="2" :step="0.1" :max="9999999" 
+        <div class="p-2 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Kwota</div>
+        <div class=" bg-[#e0e8f0]  h-[50px] py-1 px-2 block ">
+          <el-input-number class="h-5 filter-small" placeholder="Od" :controls="false" :precision="2" :step="0.1" :max="9999999" 
           v-model="filter.SmartTableParam.Search.PredicateObject.AmountMin"
           @blur="sendFilterUpdate"
           />
-          <el-input-number class="h-5" placeholder="Do" :controls="false" :precision="2" :step="0.1" :max="9999999" 
+          <el-input-number class="h-5 filter-small" placeholder="Do" :controls="false" :precision="2" :step="0.1" :max="9999999" 
           v-model="filter.SmartTableParam.Search.PredicateObject.AmountMax"
           @blur="sendFilterUpdate"
           />
@@ -311,9 +328,10 @@ onMounted(async () => {
     <el-table-column label="Status" width="200" label-class-name="order_label">
       <template #header>
       <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Status</div>
+        <div class="p-2 text-[9px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Status</div>
         <div class=" bg-[#e0e8f0]  h-[50px] py-2 px-2 block">
           <el-select
+          clas="filter-small"
           v-model="filter.SmartTableParam.Search.PredicateObject.OfferStatus"
           clearable
           placeholder="Wybierz status"
@@ -334,7 +352,7 @@ onMounted(async () => {
         <el-row class="justify-center">
           <el-select
             v-model="prop.row.offerStatus"
-            class="m-2 select__element"
+            class="m-2 select__element filter-small"
             :value="filter.SmartTableParam.Search.PredicateObject.OfferStatus"
             placeholder="Select"
             @change="handleChangeStatus($event, prop.row.offerId)"
@@ -365,11 +383,69 @@ onMounted(async () => {
 
 <style>
 .table__product .el-table {
-  --el-table-border-color:2px solid #fafbfd !important ; /* Ustaw kolor obramowania */
+  --el-table-border-color:2px solid #fafbfd !important ;
   --el-table-border: 2px solid #fafbfd !important;
-  --el-border-width: 1px; /* Ustaw grubość obramowania */
+  --el-border-width: 1px;
   --el-table-row-hover-bg-color: none !important;
   --el-fill-color-lighter: #f1f4f9
+}
+
+.filter-small {
+  width: 100% !important;
+}
+
+.cell-tight {
+  line-height: 13px;
+  font-size: 11px;
+  padding: 2px 4px;
+  white-space: pre-line;
+}
+
+.el-table .cell .cell-tight {
+  margin: 0;
+}
+
+.filter-small .el-input__wrapper,
+.filter-small.el-date-editor .el-input__wrapper,
+.filter-small.el-select .el-input__wrapper,
+.filter-small.el-input-number .el-input__wrapper {
+  height: 18px !important;
+  min-height: 18px !important;
+  padding: 0 6px !important;
+}
+
+.filter-small.el-date-editor {
+  height: 10px !important;
+}
+
+/* Tekst w środku */
+.filter-small .el-input__inner,
+.filter-small.el-date-editor .el-input__inner,
+.filter-small.el-select .el-input__inner {
+  height: 18px !important;
+  line-height: 18px !important;
+  font-size: 9px !important;
+  text-align: center;
+}
+
+/* Input-number: usuń dodatkowe odstępy i dopnij wysokość */
+.filter-small.el-input-number {
+  height: 18px !important;
+}
+.filter-small.el-input-number .el-input-number__decrease,
+.filter-small.el-input-number .el-input-number__increase {
+  display: none !important;
+}
+
+/* Ikonki (lupa, kalendarz, caret) – żeby nie rozpychały */
+.filter-small .el-input__icon,
+.filter-small .el-select__caret {
+  font-size: 12px !important;
+}
+
+/* Twoja obecna search-row ma padding 0, więc ok — ale usuń za duży padding kontenera */
+.search-row {
+  padding: 2px 4px !important;
 }
 
 .non-clickable-select {
