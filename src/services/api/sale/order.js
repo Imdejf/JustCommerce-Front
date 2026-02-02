@@ -74,6 +74,24 @@ const getOrderDashboard = (query) => {
   })
 }
 
+const addInvoiceToOrder = async (payload) => {
+  const response = await fetch(
+    `${APISettings.baseURL}administration/order/AddInvoiceToOrder`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`)
+  }
+
+  return await response.json()
+}
+
 
 
 
@@ -255,6 +273,7 @@ export const orders = {
   getOrderDashboard,
   uploadPurchaseInvoice,
   uploadInvoice,
+  addInvoiceToOrder,
   removePurchaseInvoice,
   ...CreateBaseApiService('administration/order')
 }

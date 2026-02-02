@@ -21,6 +21,21 @@ const sendInvoice = async (invoiceId) => {
   }
 };
 
+const getInvoicesThisMonth = async () => {
+  const response = await fetch(`${APISettings.baseURL}administration/invoice/InvoiceThisMonth`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data
+}
+
 const createInvoice = (invoiceId) => {
   fetch(`${APISettings.baseURL}administration/invoice/CreateInvoice/` + invoiceId, {
     method: 'POST',
@@ -52,5 +67,6 @@ export const invoices = {
   createInvoice,
   sendInvoice,
   generateProforma,
+  getInvoicesThisMonth,
   ...CreateBaseApiService('administration/invoice')
 }

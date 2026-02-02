@@ -6,9 +6,12 @@ import { useStoreStore } from './stores/store'
 import { useLanguageStore } from './stores/language'
 import { useOfferStore } from '/@/stores/offer'
 import { useOrderStore } from '/@/stores/order'
+import { useInvoiceStore } from '/@/stores/invoice'
+
 
 import OfferModal from './components/Form/Modal/OfferModal.vue'
 import OrderModal from './components/Form/Modal/OrderModal.vue'
+import InvoicePickerModal from './components/Form/Modal/InvoicePickerModal.vue'
 
 const cookies = new Cookies()
 
@@ -23,6 +26,12 @@ const closeOfferHandle = () => {
 
 const closeOrderHandle = () => {
   useOrder.closeOrder();
+}
+
+const invoiceStore = useInvoiceStore()
+
+const closeInvoiceHandle = () => {
+  invoiceStore.close()
 }
 
 const currentOffer = computed(() => {
@@ -71,6 +80,17 @@ onMounted(async () => {
           class="relative w-auto h-[70vh] transition-transform duration-300"
         >
           <OrderModal :order="currentOrder" @closeOrder="closeOrderHandle" />
+        </div>
+      </div>
+      <div v-if="invoiceStore.isOpen" class="absolute inset-0 bg-gray-300 opacity-60 w-full z-50"></div>
+      <div
+        v-if="invoiceStore.isOpen"
+        class="fixed p-4 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/5 shadow-lg transition-transform overflow-y-auto duration-300 z-50 bg-white text-black"
+      >
+        <div class="relative w-auto h-[70vh] transition-transform duration-300">
+          <InvoicePickerModal
+            @close="closeInvoiceHandle"
+          />
         </div>
       </div>
     <component :is="$route.meta.layout || 'div'">

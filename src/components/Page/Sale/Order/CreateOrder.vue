@@ -352,9 +352,9 @@ if (itemsFromTable.length === 0) {
     PaymentStatus: 10,
     PaymentProvider: currentOrder.value.paymentProvider,
     PaymentTerm: currentOrder.value.paymentTerm || null,
-    OrderNoteForClient: currentOrder.value.orderNoteForClient,
-    OrderNoteForCustomer: currentOrder.value.orderNoteForCustomer,
-    OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice,
+    OrderNoteForClient: currentOrder.value.orderNoteForClient ?? '',
+    OrderNoteForCustomer: currentOrder.value.orderNoteForCustomer ?? '',
+    OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice ?? '',
     ShippingFeeAmountNetto: Number(summaryProductTable.value.shippingNetto) || 0,
     ShippingFeeAmountGross: Number(summaryProductTable.value.shippingBrutto) || 0,
     SubTotal:              Number(summaryProductTable.value.totalNetto) || 0,
@@ -377,6 +377,7 @@ if (itemsFromTable.length === 0) {
 
       await router.push('/sale/order');
     } else {
+      alert()
       await Api.orders.updateOrder(payload)
       toast.success('Zamówienie zostało edytowane pomyślnie', {
         timeout: 2000,

@@ -16,6 +16,14 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-500" width="20" height="20" viewBox="0 0 24 24"><!-- Icon from Stash Icons by Pingback LLC - https://github.com/stash-ui/icons/blob/master/LICENSE --><path fill="currentColor" d="M17.5 14.75a2.75 2.75 0 1 0 0 5.5a2.75 2.75 0 0 0 0-5.5m-4.25 2.75a4.25 4.25 0 1 1 8.5 0a4.25 4.25 0 0 1-8.5 0m6.093-1.405a.75.75 0 0 1 0 1.06l-2.28 2.28l-1.406-1.405a.75.75 0 1 1 1.06-1.06l.346.344l1.22-1.22a.75.75 0 0 1 1.06 0" opacity=".5"/><path fill="currentColor" d="M6 2.25A2.75 2.75 0 0 0 3.25 5v14.382a1.75 1.75 0 0 0 2.533 1.565l1-.5a.25.25 0 0 1 .261.024l.906.679a1.75 1.75 0 0 0 2.1 0l.862-.647a.25.25 0 0 1 .279-.014l.673.404a.75.75 0 1 0 .772-1.286l-.674-.404a1.75 1.75 0 0 0-1.95.1l-.862.647a.25.25 0 0 1-.3 0l-.906-.68a1.75 1.75 0 0 0-1.832-.164l-1 .5a.25.25 0 0 1-.362-.224V5c0-.69.56-1.25 1.25-1.25h10c.69 0 1.25.56 1.25 1.25v5.5a.75.75 0 0 0 1.5 0V5A2.75 2.75 0 0 0 16 2.25z"/><path fill="currentColor" d="M7 6.25a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5zm0 3a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5z"/></svg>
       <a @click="invoiceGenerate" class=" rounded-md p-1 text-xs font-semibold">Generuj fakturę</a>
     </span>
+    <span class="ml-4 flex hover:bg-sky-100 p-1">
+      <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-purple-500" width="20" height="20" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M7 18q-.825 0-1.412-.587T5 16V4q0-.825.588-1.412T7 2h7l5 5v9q0 .825-.587 1.413T17 18zm6-10V3.5L17.5 8zM7 20q-.825 0-1.412-.587T5 18v-1.5h2V18h10v2zm4-6q-.425 0-.712-.288T10 13t.288-.712T11 12h5q.425 0 .713.288T17 13t-.288.713T16 14z"/>
+      </svg>
+      <a @click="openExistingInvoiceModal" class="rounded-md p-1 text-xs font-semibold">
+        Dodaj istniejącą fakturę
+      </a>
+    </span>
     </div>
     <el-input
               style="border-radius: 1px !important; font-size:12px;"
@@ -456,6 +464,7 @@ import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
 import { useOrderStore } from '/@/stores/order'
+import { useInvoiceStore } from '/@/stores/invoice'
 
 enum PaymentProvider {
   Przelewy24 = 0,
@@ -498,6 +507,7 @@ const toast = useToast()
 const cookies = new Cookies()
 const selectedRow = ref(null);
 const selectedRowId = ref(null);
+const invoiceStore = useInvoiceStore()
 const order = useOrderStore();
 const table = ref(null)
 const dataTable = ref([])
@@ -607,6 +617,14 @@ const fetchTableData = async () => {
     toast.error('Wystąpił problem z pobraniem danych');
   }
 };
+
+const openExistingInvoiceModal = async () => {
+  if (!selectedRow.value) {
+    toast.warning('Wybierz zamówienie')
+    return
+  }
+  await invoiceStore.open(selectedRow.value)
+}
 
 const sendFilterUpdate = async () => {
   try {

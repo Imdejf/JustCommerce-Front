@@ -268,7 +268,7 @@ onMounted(() => {
             </el-upload>
             <div v-if="invoicePath" class="mt-2">
             <a
-                :href="invoicePath"
+                :href="invoicePath + '?inline=yes'"
                 target="_blank"
                 class="text-blue-600 underline text-sm flex items-center gap-1"
             >
