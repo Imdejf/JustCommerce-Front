@@ -228,7 +228,6 @@ function translateOrderStatus(key) {
 
 const handleProductUpdate = (summary) => {
   summaryProductTable.value = summary;
-  console.log(summaryProductTable.value)
 }
 
 const orderSourceOptions = computed(() => {
@@ -307,8 +306,6 @@ if (itemsFromTable.length === 0) {
     return;
   }
 
-  console.log(currentOrder.value.billingAddress)
-
   const createOrderPayload: CreateOrder = {
     Id: currentOrder.value.orderId,
     StoreId: currentOrder.value.storeId,
@@ -363,7 +360,6 @@ if (itemsFromTable.length === 0) {
     TransportIndividualPricing: !!summaryProductTable.value.transportIndividualPricing,
     Products: itemsFromTable
   };
-  console.log(createOrderPayload)
 
   try {
     const payload = {
@@ -404,7 +400,6 @@ onMounted(async () => {
   })
     .then(async function (response) {
       if (response.status != 200) {
-        console.log(response.status)
       } else {
         const json = await response.json()
         json.stateOrProvinces.map((stateProvince) => {

@@ -22,7 +22,6 @@ const generateOrDownloadOfferHandle = async (offerId: string) => {
         const response = await Api.offers.generateOrDownloadOffer(offerId);
 
         if (response.data && response.data.base64String && response.data.fileExtension) {
-            console.log("Otrzymano dane pliku:", response);
             saveBase64File(response.data.base64String, response.data.fileExtension);
         } else {
             console.error("Brak poprawnych danych pliku.");
@@ -56,8 +55,6 @@ const saveBase64File = (base64String: string, fileExtension: string) => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
-        console.log(`Plik ${fileName} został pobrany.`);
     } catch (error) {
         console.error("Błąd podczas zapisywania pliku:", error);
     }

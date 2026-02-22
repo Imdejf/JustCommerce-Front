@@ -91,7 +91,6 @@ const slugGenerator = () => {
 watch(
   currentCategoryBlog.thumbnailImage,
   (newThumbnailImage, oldThumbnailImage) => {
-    console.log(newThumbnailImage)
     file.value = {
       media: {
         seoFileName: newThumbnailImage.seoFileName,

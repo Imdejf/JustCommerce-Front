@@ -224,7 +224,6 @@ const existProductVariation = () => {
 
 onMounted(() => {
   existProductVariation()
-  console.log(productVariationList)
 })
 </script>
 

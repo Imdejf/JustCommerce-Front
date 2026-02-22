@@ -180,7 +180,6 @@ export default {
     toggleView() {
       if (this.isSourceMode) {
         this.storedHTML = this.editor.getText()
-        console.log(this.removeEncodedTags(this.editor.getHTML()))
         this.editor.commands.setContent(this.storedHTML, false)
       } else {
         this.storedHTML = this.editor.getHTML()
@@ -221,7 +220,6 @@ export default {
       reader.onload = async () => {
         this.imageBase64 = reader.result.split(',')[1]
         const path = await this.saveContent()
-        console.log(path)
       }
       reader.readAsDataURL(file)
     },

@@ -67,8 +67,6 @@ const handleSave = async (values) => {
         timeout: 2000
       })
     } else {
-      console.log('HERE')
-      console.log(payload)
       await Api.categories.update(payload)
       toast.success('Edytowano kategorie', {
         timeout: 2000

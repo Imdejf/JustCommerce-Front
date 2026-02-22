@@ -18,7 +18,6 @@ onMounted(async () => {
   const id = route.params.id
   const result = await getById(id.toString())
   category.value = result.data
-  console.log(category.value)
 })
 </script>
 <template>

@@ -524,7 +524,6 @@ const filters = ref({
     });
 
 function row_key(row) {
-  console.log(row)
      return row.id
 }
 
@@ -548,7 +547,6 @@ const editSelectedRecord = () => {
 };
 
 const invoiceGenerate = async () => {
-  console.log(selectedRow.value)
   if(!selectedRow.value.isPaid){
     toast.warning("Zamówienie musi być opłacone")
     return;
@@ -675,7 +673,6 @@ const handleChangeStatus = async (status: number, orderId: string) => {
   const payload = {
     body: JSON.stringify(currentStatus)
   }
-  console.log(currentStatus)
   await Api.orders.changeOrderStatus(payload)
   toast.success('Zmieniono status zamówienia')
 }
@@ -741,7 +738,6 @@ function translatePaymentProvider(value: number): string | null {
 }
 
 const cellStyle = ({ row, column }) => {
-  console.log(row)
   if (column.type === "expand") {
 
     // Sprawdzamy, czy wszystkie produkty są zamówione u producenta

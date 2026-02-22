@@ -125,11 +125,10 @@ const attachInvoiceToOrder = async (invoice: any) => {
     
     const payload = {
       orderId: store.orderContext.orderId,
-      invoiceId: String(invoice.id), // long -> string
+      invoiceId: String(invoice.id),
       number: invoice.number,
-      token: invoice.token // świadomie przenosisz token z DTO
+      token: invoice.token 
     }
-    console.log(invoice.id)
 
     await Api.orders.addInvoiceToOrder(payload)
 

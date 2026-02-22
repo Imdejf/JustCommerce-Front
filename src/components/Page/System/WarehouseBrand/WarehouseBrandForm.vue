@@ -78,7 +78,6 @@ const handleSave = async () => {
 
     // dopnij storeId przy create/update jeśli DTO ma takie pole
     ;(currentWarehouse.value as any).storeId = storeId.value
-    console.log(currentWarehouse.value)
     const payload = { body: JSON.stringify(currentWarehouse.value) }
 
     if (!props.updated) {

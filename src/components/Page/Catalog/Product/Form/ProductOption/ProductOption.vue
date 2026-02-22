@@ -96,7 +96,6 @@ const dynamicTags = ref([])
 const TagRef = ref<InstanceType<typeof ElInput>>()
 
 const handleSelect = (id: string) => {
-  console.log(id)
 }
 
 const handleClose = (id: string, tag: string) => {
@@ -183,7 +182,6 @@ const removeOption = async (optionId: string) => {
   }
 
   await Api.products.removeOptionCombination(payload)
-  console.log('remove')
 }
 
 function findNextUniqueIndex(addedOptions: ProductOptionDTO[]) {

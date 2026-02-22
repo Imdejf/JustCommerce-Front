@@ -26,9 +26,7 @@ const handleLogin = () => {
       var data = await response.json()
       if (data.data.authenticationError) {
         error.value = true
-        console.log(data.data.authenticationError)
       } else {
-        console.log(data.data.jwt.jwt)
         cookies.set('Authorization', data.data.jwt.jwt)
         cookies.set("dsStore", "cdf63b0a-88d0-40b0-a31f-c63ae02f320d")
         router.push('/')

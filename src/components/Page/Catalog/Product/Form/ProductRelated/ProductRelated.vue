@@ -74,7 +74,6 @@ const removeProductRelated = (relatedId: string) => {
 watch(
   filter.value,
   async (newFilter, oldFilter) => {
-    console.log(newFilter)
     try {
       const payload = {
         body: JSON.stringify(newFilter)

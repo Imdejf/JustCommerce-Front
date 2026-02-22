@@ -58,7 +58,6 @@ async function submitFile() {
   }
 
   const adminResult = await adminResponse.json()
-  console.log('Odpowiedź administration:', adminResult)
 
   // 2️⃣ Wyślij do product
   const productResponse = await fetch(`${basePath}product/ImportProductFromExcel`, {
@@ -75,7 +74,6 @@ async function submitFile() {
   }
 
   const productResult = await productResponse.json()
-  console.log('Odpowiedź product:', productResult)
 
   // Zamknij modal/okno
   file.value = null

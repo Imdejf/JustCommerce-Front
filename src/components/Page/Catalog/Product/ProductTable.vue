@@ -63,7 +63,6 @@ onMounted(async () => {
     }
     const result = await Api.products.smartTable(payload)
     products.value = result.data
-    console.log(products.value)
   } catch (error) {
     console.error(error)
   }
@@ -106,7 +105,6 @@ const handleAdd = () => {
 
 const activeNames = ref(['1'])
 const handleCollapse = (val: CollapseModelValue) => {
-  console.log(val)
 }
 
 const exportProductToExcel = async () => {

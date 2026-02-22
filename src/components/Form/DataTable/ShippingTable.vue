@@ -368,7 +368,6 @@ function row_key(row) {
 
 
 const generateOneOrderFromManofacturerHandle = async (order) => {
-  console.log(order)
   const object = {
     OrderItemId: order.orderItemId,
     ProductId: order.productId

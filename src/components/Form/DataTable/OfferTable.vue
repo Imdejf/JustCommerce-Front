@@ -75,7 +75,6 @@ const handleChangeStatus = async (status: number, offerId: string) => {
   const payload = {
     body: JSON.stringify(currentStatus)
   }
-  console.log(currentStatus)
   await Api.offers.changeOfferStatus(payload)
   toast.success('Zmieniono status zamówienia')
 }
@@ -102,7 +101,6 @@ const handleRowClick = (row) => {
 
 const showOfferHandle = async (row) => {
   await offer.showOffer(selectedRowId.value)
-  console.log(offer.currentOffer)
 }
 
 const rowClassName = ({ row }) => {

@@ -17,7 +17,6 @@ const rules = ref([])
 onMounted(async () => {
   try {
     rules.value = await Api.rules.filterList(cookies.get('dsStore'), '', 1, 999)
-    console.log(rules)
   } catch (error) {
     console.error(error)
   }

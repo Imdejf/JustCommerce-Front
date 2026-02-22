@@ -146,13 +146,11 @@ const handleUploadInvoice = async (uploadInfo: any) => {
 
   } catch (error) {
     console.error('Błąd przesyłania faktury:', error)
-    console.log('Błąd przesyłania faktury')
   }
 }
 
 
 const toBase64 = (file: File): Promise<string> => {
-    console.log(file)
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
