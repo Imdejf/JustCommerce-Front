@@ -762,7 +762,7 @@ const cellStyle = ({ row, column }) => {
 const styleProductTable = ({ row, column }) => {
     if (!row.itemOrderedFromManufacturer) {
       return { backgroundColor: "#FF6600" }; // Ciemnoczerwony
-    }
+    } 
 
     // Jeśli wszystkie są `true`, ustawiamy jasnozielone tło
     return { backgroundColor: "#4ade80" }; // Jasnozielony

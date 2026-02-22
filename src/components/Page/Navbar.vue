@@ -35,7 +35,7 @@ function handleClickOutside(event: MouseEvent) {
             <li
               v-for="menuItem in menuData"
               :key="menuItem.id"
-              class="m-3  bg-opacity-40 p-2 rounded-lg relative "
+              class="m-3 bg-opacity-40 p-1 rounded-lg relative text-[12px]"
             >
             <div class="flex">
               <router-link

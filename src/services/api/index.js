@@ -19,6 +19,7 @@ import { certyficationAndSafeties } from './certyficationAndSafety/certyfication
 import { gusbir } from './gusbir/gusbir'
 import { chatGpt } from './chatgpt/chatgpt'
 import { productValuePrice } from './product/productValuePrice'
+import { tracking } from './tracking/tracking'
 
 
 export const Api = {
@@ -42,5 +43,6 @@ export const Api = {
   certyficationAndSafeties,
   gusbir,
   chatGpt,
-  productValuePrice
+  productValuePrice,
+  tracking
 }

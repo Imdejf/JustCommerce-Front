@@ -317,6 +317,40 @@ const router = createRouter({
       },
       component: () => import('../views/System/Brand/DetailBrand.vue')
     },  
+    // BRANDWAREHOUSE
+      {
+        path: '/system/warehouseBrand',
+        name: 'WarehouseBrand',
+        meta: {
+          layout: PageLayout
+        },
+        component: () => import('../views/System/WarehouseBrand/index.vue')
+      },
+      {
+        path: '/system/warehouseBrand/detail/:id',
+        name: 'DetailWarehouseBrand',
+        meta: {
+          layout: PageLayout
+        },
+        component: () => import('../views/System/WarehouseBrand/DetailWarehouseBrand.vue')
+      },  
+      {
+        path: '/system/warehouseBrand/add',
+        name: 'CreateWarehouseBrand',
+        meta: {
+          layout: PageLayout
+        },
+        component: () => import('../views/System/WarehouseBrand/CreateWarehouseBrand.vue')
+      }, 
+      {
+        path: '/system/warehouseBrand/edit/:id',
+        name: 'UpdateWarehouseBrand',
+        meta: {
+          layout: PageLayout
+        },
+        component: () => import('../views/System/WarehouseBrand/UpdateWarehouseBrand.vue')
+    }, 
+      
     //ORDER
     {
       path: '/sale/order',
@@ -347,6 +381,15 @@ const router = createRouter({
         layout: PageLayout
       },
       component: route => import(`../views/Sale/Order/EditOrder.vue`)
+    },
+    //COURIER
+    {
+      path: '/courier/orders',
+      name: 'CourierOrders',
+      meta: {
+        layout: PageLayout
+      },
+      component: route => import(`../views/Courier/Orders/index.vue`)
     },
     //CERTIFICATION AND SAFETY
     {
@@ -389,6 +432,15 @@ const router = createRouter({
         layout: PageLayout
       },
       component: () => import('../views/Sale/Shipment/index.vue')
+    },
+    //TRACKING
+    {
+      path:'/tracking/user',
+      name:'Tracking',
+      meta:{
+        layout: PageLayout
+      },
+      component: () => import('../views/Tracking/User/index.vue')
     },
     //OFFER
     {

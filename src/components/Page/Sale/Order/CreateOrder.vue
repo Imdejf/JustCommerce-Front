@@ -377,7 +377,6 @@ if (itemsFromTable.length === 0) {
 
       await router.push('/sale/order');
     } else {
-      alert()
       await Api.orders.updateOrder(payload)
       toast.success('Zamówienie zostało edytowane pomyślnie', {
         timeout: 2000,

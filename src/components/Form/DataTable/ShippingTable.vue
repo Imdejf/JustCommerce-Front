@@ -4,11 +4,20 @@ import { onMounted, ref, computed, defineProps, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
+import CreateShipmentModal from '../Modal/CreateShipmentModal.vue'
 
+enum ShipmentProvider {
+  Unknown = 0,
+  Dpd = 1,
+  Geodis = 2,
+  Gls = 3,
+  Jas = 4
+}
 
 const router = useRouter()
 const toast = useToast()
 const cookies = new Cookies()
+const ShipmentProviderEnum = ShipmentProvider
 
 const dataTable = ref([])
 const selectedRow = ref(null);
@@ -16,6 +25,8 @@ const selectedRowId = ref(null)
 const storeId = cookies.get('dsStore')
 const brands = ref([])
 const producer = ref(null)
+const tableRef = ref<any>(null)
+const selectedOrders = ref<any[]>([])
 
 const filter = ref({
   StoreId: cookies.get('dsStore'),
@@ -37,6 +48,72 @@ const filter = ref({
   }
 });
 
+const shipmentModalOpen = ref(false)
+const shipmentProvider = ref<ShipmentProvider | null>(null)
+const shipmentOrder = ref<any>(null)
+const selectedOrderItems = ref<Record<string, Set<string>>>({})
+
+
+const shipmentForm = ref({
+  reference: '',
+  pickupDate: '',
+  weightKg: 1,
+  lengthCm: 10,
+  widthCm: 10,
+  heightCm: 10,
+
+  geodisPallets: 1,
+})
+
+const handleSelectionChange = (rows: any[]) => {
+  selectedOrders.value = rows || []
+}
+
+const generateSelectedOrdersToManufacturerHandle = async () => {
+  try {
+    if (!selectedOrders.value.length) {
+      toast.warning('Zaznacz przynajmniej 1 zamówienie (checkbox po lewej)')
+      return
+    }
+
+    const orderIds = selectedOrders.value.map((x) => x.orderId).filter(Boolean)
+
+    const payload = {
+      body: JSON.stringify({
+        storeId: cookies.get('dsStore'),
+        brandId: producer.value, // opcjonalnie
+        orderIds
+      })
+    }
+
+    await Api.shipping.generateOrdersToManufacturerSelected(payload)
+
+    toast.success(`Wygenerowano zamówienia: ${orderIds.length}`)
+    selectedOrders.value = []
+    tableRef.value?.clearSelection?.()
+    await fetchTableData()
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się wygenerować zamówień dla zaznaczonych')
+  }
+}
+
+const providerLabel = (p: ShipmentProvider | null | undefined) => {
+  switch (p) {
+    case ShipmentProvider.Dpd: return 'DPD'
+    case ShipmentProvider.Geodis: return 'Geodis'
+    default: return '-'
+  }
+}
+
+
+const openCreateShipmentModal = (provider: ShipmentProvider, row: any) => {
+  shipmentProvider.value = provider
+  shipmentOrder.value = row
+
+  shipmentForm.value.reference = row.orderNumber ?? ''
+  shipmentModalOpen.value = true
+}
 
 enum PaymentProvider {
   Przelewy24 = 0,
@@ -63,6 +140,55 @@ function translatePaymentProvider(value: number): string | null {
       return 'Termin'
     default:
       return null // lub inny sposób obsługi nieprawidłowej wartości
+  }
+}
+
+const getSelectedSet = (orderId: string) => {
+  if (!selectedOrderItems.value[orderId]) {
+    selectedOrderItems.value[orderId] = new Set<string>()
+  }
+  return selectedOrderItems.value[orderId]
+}
+
+const isItemSelected = (orderId: string, orderItemId: string) => {
+  return getSelectedSet(orderId).has(orderItemId)
+}
+
+const toggleItemSelection = (orderId: string, orderItemId: string, checked: boolean) => {
+  const set = getSelectedSet(orderId)
+  if (checked) set.add(orderItemId)
+  else set.delete(orderItemId)
+}
+
+const selectedCountForOrder = (orderId: string) => getSelectedSet(orderId).size
+
+const sendSelectedItemsToManufacturer = async (orderRow: any) => {
+  try {
+    const orderId = orderRow?.orderId
+    if (!orderId) {
+      toast.error('Brak orderId')
+      return
+    }
+
+    const ids = Array.from(getSelectedSet(orderId))
+    if (!ids.length) {
+      toast.warning('Zaznacz przynajmniej 1 produkt')
+      return
+    }
+
+    const payload = {
+      body: JSON.stringify({
+        orderId,
+        orderItemIds: ids
+      })
+    }
+
+    await Api.shipping.generateOrderSelectedProductsToManufacturer(payload)
+    toast.success(`Wysłano do producenta: ${ids.length} pozycji`)
+    selectedOrderItems.value[orderId] = new Set()
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się wysłać zaznaczonych produktów')
   }
 }
 
@@ -239,7 +365,10 @@ function row_key(row) {
      return row.sortId
 }
 
+
+
 const generateOneOrderFromManofacturerHandle = async (order) => {
+  console.log(order)
   const object = {
     OrderItemId: order.orderItemId,
     ProductId: order.productId
@@ -249,7 +378,7 @@ const generateOneOrderFromManofacturerHandle = async (order) => {
     body: JSON.stringify(object),
   };
 
-  const result = await Api.shipping.getByIdOrderShipping(payload);
+  // const result = await Api.shipping.getByIdOrderShipping(payload);
 }
 
 const generateOrderForManufacturerHandle = async () => {
@@ -306,7 +435,7 @@ onMounted(async () => {
 </script>
 <template>
   <div class="p-3 h-[88vh]">
-    <div class="bg-[#f1f4f9] p-2  border-t-[3px] border-[#64748b] rounded-t-xl">
+    <div class="bg-[#f1f4f9] p-1  border-t-[3px] border-[#64748b] rounded-t-xl">
     <div class="flex justify-between">
       <div class="flex">
       <span class="flex hover:bg-sky-100 p-1">
@@ -316,21 +445,46 @@ onMounted(async () => {
     </div>
     <div class="flex gap-3 items-center producer_section">
       <FormKit
-      type="select"
-      name="producer"
-      v-model="producer"
-      :options="brands"
-      input-class="!text-xs !h-10 !w-[180px]"
+        type="select"
+        name="producer"
+        v-model="producer"
+        :options="brands"
+        input-class="producer-compact__input"
+        outer-class="producer-compact__outer"
       />
         <span class="flex hover:bg-sky-100 p-1 !h-[40px]">
           <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-400" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5.53 17.506q-.978-1.142-1.504-2.558T3.5 12q0-3.616 2.664-6.058T12.5 3.5V2l3.673 2.75L12.5 7.5V6Q9.86 6 7.93 7.718T6 12q0 1.13.399 2.15t1.13 1.846zM11.5 22l-3.673-2.75L11.5 16.5V18q2.64 0 4.57-1.718T18 12q0-1.13-.399-2.16q-.399-1.028-1.13-1.855l1.998-1.51q.979 1.142 1.505 2.558T20.5 12q0 3.616-2.664 6.058T11.5 20.5z"/></svg>
           <button @click="generateOrderForManufacturerHandle" class=" rounded-md p-1 text-xs font-semibold">Generuj zam. towarów</button>
         </span>
+        <span class="flex hover:bg-sky-100 p-1 !h-[40px]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-400" width="20" height="20" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M5.53 17.506q-.978-1.142-1.504-2.558T3.5 12q0-3.616 2.664-6.058T12.5 3.5V2l3.673 2.75L12.5 7.5V6Q9.86 6 7.93 7.718T6 12q0 1.13.399 2.15t1.13 1.846zM11.5 22l-3.673-2.75L11.5 16.5V18q2.64 0 4.57-1.718T18 12q0-1.13-.399-2.16q-.399-1.028-1.13-1.855l1.998-1.51q.979 1.142 1.505 2.558T20.5 12q0 3.616-2.664 6.058T11.5 20.5z"/>
+          </svg>
+          <button
+            @click="generateSelectedOrdersToManufacturerHandle"
+            class="rounded-md p-1 text-xs font-semibold"
+          >
+            Generuj zaznaczone ({{ selectedOrders.length }})
+          </button>
+        </span>
     </div>
     </div>
   </div>
   <div class="table-container">
-  <el-table class="pt-[1px] !bg-[#d6dfe9]" ref="tableData" :row-key="row_key" :data="dataTable.items" :border="true" style="width: 100%; min-height: 87vh;" :cell-style="cellStyle">
+    <el-table
+      size="small"
+      class="pt-[1px] !bg-[#d6dfe9] shipping-table"
+      ref="tableData"
+      @selection-change="handleSelectionChange"
+      :row-key="row_key"
+      :data="dataTable.items"
+      :border="true"
+      :fit="true"
+      table-layout="auto"
+      style="width: 100%; min-height: 87vh;"
+      :cell-style="cellStyle"
+    >
+    <el-table-column type="selection" width="48" />
     <el-table-column type="expand">
       <template #default="props">
         <div>
@@ -382,9 +536,34 @@ onMounted(async () => {
               {{ props.row.orderNote }}
             </p>
           </div>
+          <div class="px-8 flex items-center gap-3 my-3">
+            <el-button
+              size="small"
+              type="primary"
+              @click="sendSelectedItemsToManufacturer(props.row)"
+            >
+              Wygeneruj zamówienie ({{ selectedCountForOrder(props.row.orderId) }})
+            </el-button>
+
+            <el-button
+              size="small"
+              @click="selectedOrderItems[props.row.orderId] = new Set()"
+              :disabled="selectedCountForOrder(props.row.orderId) === 0"
+            >
+              Wyczyść zaznaczenie
+            </el-button>
+          </div>
           <div class="table__product m-auto w-[90%] py-4 px-8">
             <el-table :data="props.row.orderProcessedItems" :border="true" :cell-style="styleProductTable" >
-              <el-table-column label="Zdjęcie" width="120">
+              <el-table-column label="Zaznacz" width="80" align="center">
+                <template #default="scope">
+                  <el-checkbox
+                    :model-value="isItemSelected(props.row.orderId, scope.row.orderItemId)"
+                    @change="(val:any) => toggleItemSelection(props.row.orderId, scope.row.orderItemId, !!val)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="Zdjęcie" label-class-name="order_label" width="120">
                 <template #default="prop"
                   ><a :href="'https://olmag.pl/' + prop.row.slug" target="_blank">
                     <img
@@ -394,16 +573,16 @@ onMounted(async () => {
                   </a>
                 </template>
               </el-table-column>
-              <el-table-column label="Nazwa produktu" prop="name">
+              <el-table-column label="Nazwa produktu" label-class-name="order_label" prop="name">
                 <template #default="prop"
-                  ><a :href="'https://olmag.pl/' + prop.row.slug" target="_blank">{{
+                  ><a :href="'https://olmag.pl/' + prop.row.slug" class="cell-offer-tight" target="_blank">{{
                     prop.row.name
                   }}</a></template
                 >
               </el-table-column>
-              <el-table-column label="Ilość" width="70" prop="quantity" />
-              <el-table-column label="Kod" width="140" prop="productCode" />
-              <el-table-column label="Data zamówienia u producenta" width="200" prop="itemOrderedFromManufacturerDate" class="p-5">
+              <el-table-column label="Ilość" label-class-name="order_label" width="70" prop="quantity" />
+              <el-table-column label="Kod" label-class-name="order_label" width="90" prop="productCode" />
+              <el-table-column label="Data zamówienia u producenta"  width="200" label-class-name="order_label" prop="itemOrderedFromManufacturerDate" class="p-5">
                 <template #default="scope">
                   <el-date-picker
                     v-model="scope.row.itemOrderedFromManufacturerDate"
@@ -416,7 +595,7 @@ onMounted(async () => {
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="Data zamówienia kuriera" width="200" prop="orderedCourierDate" class="p-5">
+              <el-table-column label="Data zamówienia kuriera" width="200" label-class-name="order_label" prop="orderedCourierDate" class="p-5">
                 <template #default="scope">
                   <el-date-picker
                     v-model="scope.row.orderedCourierDate"
@@ -429,7 +608,7 @@ onMounted(async () => {
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="Data wysłania zamówienia" width="200" prop="itemShipedDate" class="p-5">
+              <el-table-column label="Data wysłania zamówienia" width="160" label-class-name="order_label" prop="itemShipedDate" class="p-5">
                 <template #default="scope">
                   <el-date-picker
                     v-model="scope.row.itemShipedDate"
@@ -442,7 +621,7 @@ onMounted(async () => {
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="Etykieta" width="70" class="p-5">
+              <el-table-column label="Etykieta" label-class-name="order_label" width="70" class="p-5">
                 <template #default="scope">
                   <el-checkbox
                     v-model="scope.row.ownLabel"
@@ -451,19 +630,12 @@ onMounted(async () => {
                   </el-checkbox>
                 </template>
               </el-table-column>
-              <el-table-column label="Generuj" width="70" class="p-5">
-                <template #default="scope">
-                  <span class="flex hover:bg-sky-100 p-1 !h-[40px]">
-                    <button @click="generateOneOrderFromManofacturerHandle(scope.row)" class=" rounded-md p-1 text-xs font-semibold"><svg xmlns="http://www.w3.org/2000/svg" class="m-auto text-blue-400" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M5.53 17.506q-.978-1.142-1.504-2.558T3.5 12q0-3.616 2.664-6.058T12.5 3.5V2l3.673 2.75L12.5 7.5V6Q9.86 6 7.93 7.718T6 12q0 1.13.399 2.15t1.13 1.846zM11.5 22l-3.673-2.75L11.5 16.5V18q2.64 0 4.57-1.718T18 12q0-1.13-.399-2.16q-.399-1.028-1.13-1.855l1.998-1.51q.979 1.142 1.505 2.558T20.5 12q0 3.616-2.664 6.058T11.5 20.5z"/></svg></button>
-                  </span>
-                </template>
-              </el-table-column>
             </el-table>
           </div>
         </div>
       </template>
     </el-table-column>
-    <el-table-column  label="Nr. zam." label-class-name="order_label" prop="orderNumber" width="130">
+    <el-table-column  label="Nr. zam." label-class-name="order_label" prop="orderNumber" width="100">
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Nr. zam.</div>
@@ -472,7 +644,7 @@ onMounted(async () => {
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
               v-model="filter.SmartTableParam.Search.PredicateObject.NumberOrder"
-              class="!font-s m-auto"
+            class="filter-compact"
               @blur="sendFilterUpdate"
             >
           <template #prefix>
@@ -494,7 +666,7 @@ onMounted(async () => {
       </div>
     </template>
     </el-table-column>
-    <el-table-column label="Producent" prop="brandName" width="180" label-class-name="order_label">
+    <el-table-column label="Producent" prop="brandName" width="200" label-class-name="order_label">
     <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Producent</div>
@@ -507,38 +679,7 @@ onMounted(async () => {
       <span class="text-[12px] font-bold">{{ row.brandName }}</span>
     </template>
     </el-table-column>
-    <!-- <el-table-column label="Dane klienta" prop="billingData" label-class-name="order_label">
-    <template #header>
-      <div class="header-content">
-        <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center search_input">Dane klienta</div>
-        <div class="search-row bg-[#e0e8f0] h-[50px] py-1 px-2 content-center">
-            <el-input
-              style="border-radius: 1px !important; font-size:12px;"
-              placeholder="Szukaj..."
-              class="!font-s m-auto"
-              v-model="filter.SmartTableParam.Search.PredicateObject.ClientData"
-              @blur="sendFilterUpdate"
-            >
-          <template #prefix>
-            <span class="flex items-center pl-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 32 32" fill="currentColor">
-                <g fill="none">
-                  <path
-                    clip-rule="evenodd"
-                    d="M18.874 19.581a6 6 0 1 1 .707-.707l4.273 4.272l-.708.708zM20 15a5 5 0 1 1-10 0a5 5 0 0 1 10 0z"
-                    fill="currentColor"
-                    fill-rule="evenodd"
-                  />
-                </g>
-              </svg>
-            </span>
-          </template>
-        </el-input>
-        </div>
-      </div>
-    </template>
-    </el-table-column> -->
-    <el-table-column label="Adres wysyłki" width="300" prop="" label-class-name="order_label">
+    <el-table-column label="Adres wysyłki" prop="" min-width="200" label-class-name="order_label">
       
       <template #header>
       <div class="header-content">
@@ -548,7 +689,7 @@ onMounted(async () => {
             <el-input
               style="border-radius: 1px !important; font-size:12px;"
               placeholder="Szukaj..."
-              class="!font-s"
+              class="filter-compact"
               v-model="filter.SmartTableParam.Search.PredicateObject.ShipmentData"
               @blur="sendFilterUpdate"
             >
@@ -576,7 +717,7 @@ onMounted(async () => {
       <span class="text-[12px] font-bold whitespace-pre-line">{{ row.shippingAdres }}</span>
     </template>
     </el-table-column>
-    <el-table-column label="Informacje dodatkowe"  label-class-name="order_label">
+    <el-table-column label="Informacje dodatkowe" width="110"  label-class-name="order_label">
       <template #header>
       <div class="header-content">
         <div class="p-2 text-[13px] shadow-xs border-b-[1px] h-[60px] content-center border-[#d6dfe9] search_input">Informacje dodatkowe</div>
@@ -597,7 +738,7 @@ onMounted(async () => {
         </el-row>
       </template>
     </el-table-column>
-    <el-table-column label="Pobranie" width="120" label-class-name="order_label">
+    <el-table-column label="Pobranie" width="80" label-class-name="order_label">
   <template #header>
     <div class="header-content">
       <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
@@ -615,14 +756,14 @@ onMounted(async () => {
     </el-checkbox>
   </template>
 </el-table-column>
-    <el-table-column label="Zamówiono u producenta" width="180" label-class-name="order_label">
+    <el-table-column label="Zamówiono u producenta" width="120" label-class-name="order_label">
   <template #header>
   <div class="header-content">
     <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Pobranie</div>
     <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
       <el-select
         v-model="filter.SmartTableParam.Search.PredicateObject.IsCOD"
-        class="select__element"
+            class="filter-compact"
         placeholder="Wybierz"
         @change="sendFilterUpdate"
         clearable
@@ -637,7 +778,7 @@ onMounted(async () => {
     <el-select
       :model-value="checkIfAllOrdered(row) ? true : false"
       placeholder="Wybierz"
-      class="non-clickable-select"
+            class="filter-compact"
       :class="checkIfAllOrdered(row) ? 'select-green' : 'select-red'"
     >
       <el-option label="Tak" :value="true"></el-option>
@@ -645,12 +786,12 @@ onMounted(async () => {
     </el-select>
   </template>
 </el-table-column>
-    <el-table-column label="Zamówiono kuriera" width="180" label-class-name="order_label">
+    <el-table-column label="Zamówiono kuriera" width="140" label-class-name="order_label">
       <template #header>
           <div class="header-content">
             <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Zamówiono kuriera</div>
             <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
-            <el-select class="select__element" placeholder="Wybierz">
+            <el-select class="filter-compact" placeholder="Wybierz">
               <el-option label="Tak" :value="true"></el-option>
               <el-option label="Nie" :value="false"></el-option>
             </el-select>
@@ -661,7 +802,7 @@ onMounted(async () => {
         <el-select
           :model-value="checkIfAllCourierOrdered(row) ? true : false"
           placeholder="Wybierz"
-          class="non-clickable-select"
+            class="filter-compact"
           :class="checkIfAllCourierOrdered(row) ? 'select-green' : 'select-red'"
         >
           <el-option label="Tak" :value="true"></el-option>
@@ -669,12 +810,12 @@ onMounted(async () => {
         </el-select>
       </template>
     </el-table-column>
-    <el-table-column label="Wysłane" width="180" label-class-name="order_label">
+    <el-table-column label="Wysłane" width="120" label-class-name="order_label">
       <template #header>
         <div class="header-content">
           <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">Wysłane</div>
           <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
-            <el-select class="select__element" placeholder="Wybierz">
+            <el-select class="filter-compact" placeholder="Wybierz">
               <el-option label="Tak" :value="true"></el-option>
               <el-option label="Nie" :value="false"></el-option>
             </el-select>
@@ -685,7 +826,7 @@ onMounted(async () => {
         <el-select
           :model-value="checkIfAllProductShipped(row) ? true : false"
           placeholder="Wybierz"
-          class="non-clickable-select"
+          class="filter-compact"
           :class="checkIfAllProductShipped(row) ? 'select-green' : 'select-red'"
         >
           <el-option label="Tak" :value="true"></el-option>
@@ -693,7 +834,61 @@ onMounted(async () => {
         </el-select>
       </template>
     </el-table-column>
+    <el-table-column label="Przesyłka" width="145" label-class-name="order_label">
+      <template #header>
+        <div class="header-content">
+          <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
+            Utwórz przesyłkę
+          </div>
+          <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block"></div>
+        </div>
+      </template>
+
+      <template #default="{ row }">
+        <div class="flex gap-1 mb-1">
+          <el-button
+            size="small"
+            class="shipment-btn"
+            @click="openCreateShipmentModal(ShipmentProviderEnum.Dpd, row)"
+          >
+            DPD
+          </el-button>
+
+          <el-button
+            size="small"
+            class="shipment-btn"
+            @click="openCreateShipmentModal(ShipmentProviderEnum.Geodis, row)"
+          >
+            Geodis
+          </el-button>
+        </div>
+
+        <div class="flex gap-1">
+          <el-button
+            size="small"
+            class="shipment-btn"
+            @click="openCreateShipmentModal(ShipmentProviderEnum.Gls, row)"
+          >
+            GLS
+          </el-button>
+
+          <el-button
+            size="small"
+            class="shipment-btn"
+            @click="openCreateShipmentModal(ShipmentProviderEnum.Jas, row)"
+          >
+            JAS
+          </el-button>
+        </div>
+      </template>
+    </el-table-column>
   </el-table>
+<CreateShipmentModal
+  v-model="shipmentModalOpen"
+  :provider="shipmentProvider"
+  :order="shipmentOrder"
+  @created="refreshTable"
+/>
 </div>
 </div>
 </template>
@@ -701,11 +896,18 @@ onMounted(async () => {
 
 <style>
 .table__product .el-table {
-  --el-table-border-color:2px solid #fafbfd !important ; /* Ustaw kolor obramowania */
+  --el-table-border-color:2px solid #fafbfd !important ;
   --el-table-border: 2px solid #fafbfd !important;
-  --el-border-width: 1px; /* Ustaw grubość obramowania */
+  --el-border-width: 1px;
   --el-table-row-hover-bg-color: none !important;
   --el-fill-color-lighter: #f1f4f9
+}
+
+.shipment-btn {
+  width: 65px !important;
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .non-clickable-select {
@@ -846,4 +1048,112 @@ onMounted(async () => {
 .selected-row {
   background-color: #cce7ff !important; /* Kolor podświetlenia */
 }
+
+.producer-compact__outer {
+  margin: 0 !important;
+}
+
+.producer-compact__outer .formkit-wrapper,
+.producer-compact__outer .formkit-inner {
+  min-height: 22px !important;
+}
+
+.producer-compact__input {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  line-height: 22px !important;
+}
+
+/* jeśli FormKit renderuje natywny select */
+.producer-compact__outer select {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+}
+
+/* jeśli FormKit renderuje input-like (zależnie od theme) */
+.producer-compact__outer input {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+}
+
+/* ===== KOMPAKTOWE FILTRY: input / select / date / number ===== */
+.filter-compact {
+  width: 100% !important;
+}
+
+/* input wrapper dla wszystkich kontrolek */
+.filter-compact .el-input__wrapper,
+.filter-compact.el-date-editor .el-input__wrapper,
+.filter-compact.el-select .el-input__wrapper,
+.filter-compact.el-input-number .el-input__wrapper {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+}
+
+/* tekst w środku */
+.filter-compact .el-input__inner,
+.filter-compact.el-date-editor .el-input__inner,
+.filter-compact.el-select .el-input__inner {
+  height: 22px !important;
+  line-height: 22px !important;
+  font-size: 11px !important;
+}
+
+/* daterange – zmniejsz inputy zakresu */
+.filter-compact.el-date-editor .el-range-input {
+  font-size: 11px !important;
+  line-height: 22px !important;
+}
+
+/* input-number: wyłącz przyciski i dopnij wysokość */
+.filter-compact.el-input-number {
+  height: 22px !important;
+}
+.filter-compact.el-input-number .el-input-number__increase,
+.filter-compact.el-input-number .el-input-number__decrease {
+  display: none !important;
+}
+
+/* prefix (lupa) – bliżej i mniejszy */
+.filter-compact .el-input__prefix {
+  margin-right: 2px !important;
+  width: 30px !important;
+}
+.filter-compact .el-input__icon,
+.filter-compact .el-select__caret {
+  font-size: 14px !important;
+}
+
+.filter-compact {
+  width: 100% !important;
+}
+
+.filter-compact .el-input__wrapper,
+.filter-compact.el-date-editor .el-input__wrapper {
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 6px !important;
+}
+
+.filter-compact .el-input__inner {
+  height: 20px !important;
+  line-height: 20px !important;
+  font-size: 11px !important;
+  text-align: center;
+}
+
+.cell-offer-tight {
+  font-size: 11px;
+  line-height: 2px;      /* ← TU ZMNIEJSZAMY SZPARĘ */
+  padding: 2px 4px;       /* mniej powietrza */
+  white-space: pre-line; /* zachowuje łamanie linii */
+}
+
 </style>

@@ -1,3 +1,7 @@
+import { CreateBaseApiService } from '../baseApi'
+import { APISettings } from '../config.js'
+
+
 const addRuleToProduct = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/ProductRule`, {
     method: 'POST',
@@ -28,5 +32,6 @@ const removeProductFromRule = (payload) =>
 
 export const productRules = {
   addRuleToProduct,
-  removeProductFromRule
+  removeProductFromRule,
+    ...CreateBaseApiService('administration/product/ProductRule')
 }

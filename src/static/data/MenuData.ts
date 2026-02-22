@@ -42,6 +42,17 @@ export interface MenuItem {
     },
     {
       id:3,
+      name: "Kurierzy",
+      route: "/",
+      subMenus: [
+        {
+          name: "Zlecenia",
+          route: "/courier/orders"
+        },
+      ]
+    },
+    {
+      id:4,
       name: "Katalog",
       route: "/",
       subMenus: [
@@ -68,7 +79,7 @@ export interface MenuItem {
       ]
     },
     {
-      id:4,
+      id:5,
       name: "Menadżer kontentu",
       route: "/",
       subMenus: [
@@ -83,7 +94,7 @@ export interface MenuItem {
       ]
     },
     {
-      id:5,
+      id:6,
       name: "System",
       route: "/",
       subMenus: [
@@ -95,16 +106,35 @@ export interface MenuItem {
           name: "Producenci",
           route: "/system/brand"
         },
+        {
+          name: "Magazyny",
+          route: "/system/warehouseBrand"
+        },
       ]
     },
     {
-      id:6,
+      id:7,
       name: "Bezpieczeństwo",
       route: "/",
       subMenus: [
         {
           name: "Certyfikaty i Bezpieczeństwo",
           route: "/safety/CertyficationAndSafety"
+        }
+      ]
+    },
+        {
+      id:8,
+      name: "Śledzenie",
+      route: "/",
+      subMenus: [
+        {
+          name: "Użytkownicy",
+          route: "/tracking/user"
+        },
+        {
+          name: "Strony",
+          route: "/tracking/user"
         }
       ]
     }
