@@ -448,11 +448,12 @@ const buildFilter = () => {
 const isOnline = (row: any) => {
   if (!row?.userId) return false
   const uid = String(row.userId).toLowerCase()
+  return (onlineUsers.value ?? []).some((x: any) => String(x?.userId ?? '').toLowerCase() === uid)
+}
 
-  return (onlineUsers.value ?? []).some((x: any) => {
-    const xuid = String(x?.userId ?? x?.UserId ?? '').toLowerCase()
-    return xuid === uid
-  })
+const paginate = (items: any[], page: number, size: number) => {
+  const start = (page - 1) * size
+  return items.slice(start, start + size)
 }
 
 const totalCartQty = (row: any) => {
@@ -491,26 +492,9 @@ const copy = async (text: any) => {
   }
 }
 
-const fetchOnline = async () => {
-  try {
-    const res = await Api.tracking.getOnline()
-    const list = Array.isArray(res) ? res : (res?.data ?? res ?? [])
-    onlineUsers.value = list
-  } catch (e) {
-    console.warn('online failed', e)
-    onlineUsers.value = []
-  }
-}
-
 const applyClientFiltersAndSort = (items: any[]) => {
   let out = [...(items ?? [])]
 
-  // online mode -> filtr client-side
-  if (filterMode.value === 'online') {
-    out = out.filter((u) => isOnline(u))
-  }
-
-  // window (ostatnie X minut) -> filtr po last activity
   if (activityWindowMinutes.value && activityWindowMinutes.value > 0) {
     const minTs = Date.now() - activityWindowMinutes.value * 60_000
     out = out.filter((u: any) => {
@@ -520,7 +504,6 @@ const applyClientFiltersAndSort = (items: any[]) => {
     })
   }
 
-  // sorty
   const getLast = (u: any) => {
     const t = u?.dateLastActivity ?? u?.dateLastLogin ?? u?.dateCreated
     const dt = new Date(t)
@@ -544,23 +527,38 @@ const applyClientFiltersAndSort = (items: any[]) => {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const filter = buildFilter()
     const res = await Api.tracking.getAllTrackingUsers({
       body: JSON.stringify(buildFilter())
     })
-    const table = res?.data ?? res
+
+    const data = res?.data ?? res
+
+    const table = data?.users ?? data
+    const allOnline = data?.onlineUsers ?? []
+
+    onlineUsers.value = allOnline
 
     const items = table?.items ?? []
+    meta.value.total = table?.totalCount ?? items.length
+    meta.value.online = allOnline.length
+    meta.value.withCart = items.filter((u: any) => u?.hasShoppingCartItems).length
+
+    if (filterMode.value === 'online') {
+      const filteredOnline = applyClientFiltersAndSort(allOnline)
+
+      totalCount.value = filteredOnline.length
+      rows.value = paginate(filteredOnline, pageNumber.value, pageSize.value)
+      return
+    }
+
     const filtered = applyClientFiltersAndSort(items)
 
     rows.value = filtered
-    // totalCount ustawiamy UX-owo na to co widać (po filtrach client-side)
-    totalCount.value = filterMode.value === 'online' || activityWindowMinutes.value > 0 ? filtered.length : (table?.totalCount ?? filtered.length)
 
-    // meta
-    meta.value.total = table?.totalCount ?? items.length
-    meta.value.online = (onlineUsers.value?.length ?? 0)
-    meta.value.withCart = items.filter((u: any) => u?.hasShoppingCartItems).length
+    totalCount.value = activityWindowMinutes.value > 0
+      ? filtered.length
+      : (table?.totalCount ?? filtered.length)
+
   } catch (e) {
     console.error(e)
     toast.error('Nie udało się pobrać użytkowników')
@@ -568,10 +566,8 @@ const fetchUsers = async () => {
     loading.value = false
   }
 }
-
 const refreshNow = async () => {
   countdown.value = 60
-  await fetchOnline()
   await fetchUsers()
 }
 
