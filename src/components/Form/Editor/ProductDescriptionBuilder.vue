@@ -169,7 +169,8 @@ export default defineComponent({
   emits: ['update:modelValue', 'improve-ai', 'add-ai-below'],
   data() {
     return {
-      localRows: [] as ProductDescriptionRow[]
+      localRows: [] as ProductDescriptionRow[],
+      syncingFromParent: false
     }
   },
   computed: {
@@ -189,12 +190,24 @@ export default defineComponent({
       immediate: true,
       deep: true,
       handler(value: unknown) {
-        this.localRows = this.normalizeModelValue(value)
+        const normalized = this.normalizeModelValue(value)
+        const current = JSON.stringify(this.localRows)
+        const incoming = JSON.stringify(normalized)
+
+        if (current !== incoming) {
+          this.syncingFromParent = true
+          this.localRows = normalized
+
+          this.$nextTick(() => {
+            this.syncingFromParent = false
+          })
+        }
       }
     },
     localRows: {
       deep: true,
       handler(value: ProductDescriptionRow[]) {
+        if (this.syncingFromParent) return
         this.$emit('update:modelValue', JSON.parse(JSON.stringify(value)))
       }
     }
