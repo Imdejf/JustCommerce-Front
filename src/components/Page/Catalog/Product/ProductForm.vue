@@ -34,6 +34,18 @@ const test = ref<any>(null)
 const productAvailableList = ref<{ id: any; name: string }[]>([])
 const deletedMediaIds = ref<string[]>([])
 
+const dropzone = ref<any>(null)
+
+const generatedThumbnailBase64 = ref('')
+const productPhotoAi = reactive({
+  isLoading: false,
+  userInstruction: '',
+  quality: 'high',
+  size: '1024x1024',
+  outputFormat: 'png',
+  count: 1
+})
+
 const aiCollapse = ref<string[]>(['ai'])
 const ai = reactive({
   exampleDescription: '',
@@ -55,6 +67,13 @@ const aiSectionModal = reactive({
 const canCallAI = () =>
   Boolean(currentProduct?.name && String(currentProduct.name).trim().length > 0)
 
+const onThumbnailBase64Changed = (val: string) => {
+  uploadedFileThumbnail.value = {
+    ...(uploadedFileThumbnail.value || {}),
+    base64String: val
+  }
+}
+
 const createDescriptionRow = (type: string, html = '') => ({
   id: crypto.randomUUID(),
   type,
@@ -63,6 +82,79 @@ const createDescriptionRow = (type: string, html = '') => ({
   imageTitle: '',
   text: html
 })
+
+async function generateProductPhotoAI() {
+  try {
+    if (!canCallAI()) {
+      toast.error('Podaj nazwę produktu, zanim użyjesz AI.', { timeout: 2000 })
+      return
+    }
+
+    const base64Image =
+      uploadedFileThumbnail.value?.base64String ||
+      uploadedFileThumbnail.value?.base64 ||
+      uploadedFileThumbnail.value?.file?.base64String ||
+      ''
+
+    if (!base64Image) {
+      toast.error('Najpierw dodaj zdjęcie bazowe produktu do pola "Zdjęcie produktu".', {
+        timeout: 2500
+      })
+      return
+    }
+
+    productPhotoAi.isLoading = true
+
+    const body = {
+      productPhotoBriefDTO: {
+        productName: currentProduct.name,
+        base64Image,
+        mimeType: uploadedFileThumbnail.value?.mimeType || 'image/png',
+        userInstruction: productPhotoAi.userInstruction || "",
+        quality: productPhotoAi.quality,
+        size: productPhotoAi.size,
+        outputFormat: productPhotoAi.outputFormat,
+        count: productPhotoAi.count
+      }
+    }
+
+    const res = await Api.chatGpt.generateProductPhoto({
+      body: JSON.stringify(body)
+    })
+
+    if (!res.ok) {
+      throw new Error('Błąd odpowiedzi serwera')
+    }
+
+    const json = await res.json()
+    const d = (json?.data ?? json) as any
+
+    const firstImage =
+      d?.images?.[0]?.base64Image ??
+      d?.Images?.[0]?.Base64Image ??
+      ''
+
+    if (!firstImage) {
+      toast.error('AI nie zwróciło obrazu.', { timeout: 2500 })
+      return
+    }
+
+    generatedThumbnailBase64.value = firstImage
+
+    uploadedFileThumbnail.value = {
+      ...(uploadedFileThumbnail.value || {}),
+      base64String: firstImage,
+      mimeType: `image/${productPhotoAi.outputFormat === 'jpg' ? 'jpeg' : productPhotoAi.outputFormat}`
+    }
+
+    toast.success('Wygenerowano nowe zdjęcie produktu przez AI.', { timeout: 2000 })
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się wygenerować zdjęcia przez AI.', { timeout: 2500 })
+  } finally {
+    productPhotoAi.isLoading = false
+  }
+}
 
 const parseDescriptionHtmlToRows = (html: string) => {
   if (!html || !html.trim()) return []
@@ -496,7 +588,7 @@ const handleSave = async () => {
     currentProduct.thumbnailImage.filePath = uploadedFileThumbnail.value?.path
 
     currentProduct.thumbnailImage.mediaLangs.forEach((mediaLang: any) => {
-      const matchingPath = uploadedFileThumbnail.value?.pathLang.find(
+      const matchingPath = uploadedFileThumbnail.value?.pathLang?.find(
         (pl: any) => pl.languageId === mediaLang.languageId
       )
 
@@ -676,14 +768,78 @@ watch(
     </el-collapse>
 
     <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
-      <FormSection :title="'Zdjęcie produktu'">
+    <FormSection :title="'Zdjęcie produktu'">
+      <div class="space-y-4 flex gap-10">
         <DropZone
           ref="dropzone"
           :fileInfo="fileThumbnail"
           :url="currentProduct.thumbnailImage.filePath"
+          :externalBase64="generatedThumbnailBase64"
           v-model="uploadedFileThumbnail"
+          @base64Changed="onThumbnailBase64Changed"
         />
-      </FormSection>
+        <div class="border rounded-md w-[800px] p-4 bg-white">
+          <div class="text-sm font-semibold mb-2">AI – generowanie zdjęcia produktu</div>
+
+          <FormKit
+            type="textarea"
+            v-model="productPhotoAi.userInstruction"
+            label="Instrukcja dla AI"
+            rows="4"
+            placeholder="Np. zmień kolor na czarny mat, zachowaj packshot ecommerce"
+          />
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <FormKit
+              type="select"
+              v-model="productPhotoAi.quality"
+              label="Jakość"
+              :options="[
+                { label: 'Low', value: 'low' },
+                { label: 'Medium', value: 'medium' },
+                { label: 'High', value: 'high' }
+              ]"
+            />
+
+            <FormKit
+              type="select"
+              v-model="productPhotoAi.size"
+              label="Rozmiar"
+              :options="[
+                { label: '1024x1024', value: '1024x1024' },
+                { label: '1536x1024', value: '1536x1024' },
+                { label: '1024x1536', value: '1024x1536' }
+              ]"
+            />
+
+            <FormKit
+              type="select"
+              v-model="productPhotoAi.outputFormat"
+              label="Format"
+              :options="[
+                { label: 'PNG', value: 'png' },
+                { label: 'JPEG', value: 'jpeg' },
+                { label: 'WEBP', value: 'webp' }
+              ]"
+            />
+          </div>
+
+          <div class="flex items-center gap-3 mt-3">
+            <el-button
+              type="primary"
+              :loading="productPhotoAi.isLoading"
+              @click="generateProductPhotoAI"
+            >
+              Wygeneruj zdjęcie AI
+            </el-button>
+
+            <span class="text-xs text-gray-500">
+              AI użyje aktualnie wgranego zdjęcia jako bazy.
+            </span>
+          </div>
+        </div>
+      </div>
+    </FormSection>
 
       <div v-if="!language.selectedLanguage">
         <FormSection :title="'Zdjęcie SEO'">
@@ -841,22 +997,23 @@ watch(
   :title="aiSectionModal.mode === 'improve' ? 'Popraw sekcję przez AI' : 'Dodaj sekcję przez AI'"
   width="600px"
 >
-  <div class="space-y-4">
-    <FormKit
-      type="text"
-      v-model="aiSectionModal.purpose"
-      label="Cel sekcji"
-      placeholder="np. Najważniejsze zalety produktu"
-    />
+    <FormSection>
+      <FormKit
+        type="text"
+        v-model="aiSectionModal.purpose"
+        label="Cel sekcji"
+        placeholder="np. Najważniejsze zalety produktu"
+        class="!w-[600px]"
+      />
 
-    <FormKit
-      type="textarea"
-      v-model="aiSectionModal.instruction"
-      label="Instrukcja dla AI"
-      rows="5"
-      placeholder="np. popraw SEO, skróć tekst, dodaj więcej korzyści"
-    />
-  </div>
+      <FormKit
+        type="textarea"
+        v-model="aiSectionModal.instruction"
+        label="Instrukcja dla AI"
+        rows="5"
+        placeholder="np. popraw SEO, skróć tekst, dodaj więcej korzyści"
+      />
+    </FormSection>
 
   <template #footer>
     <el-button @click="aiSectionModal.visible = false">
