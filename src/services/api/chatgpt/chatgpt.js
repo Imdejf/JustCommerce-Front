@@ -10,7 +10,15 @@ const generateProductData = (payload) =>
     ...payload
   });
 
+const generateProductSection = (payload) =>
+  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductSection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payload.body
+  });
+
 export const chatGpt = {
     generateProductData,
+    generateProductSection,
   ...CreateBaseApiService('administration/chatGpt')
 }

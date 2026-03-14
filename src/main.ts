@@ -14,6 +14,7 @@ import DropZone from 'dropzone-vue';
 import 'dropzone-vue/dist/dropzone-vue.common.css';
 import FormSection from './components/Form/Section/FormSection.vue'
 import HtmlEditor from './components/Form/Editor/HtmlEditor.vue'
+import ProductDescriptionBuilder from './components/Form/Editor/ProductDescriptionBuilder.vue'
 import ConfirmModal from './components/Form/Modal/ConfirmModal.vue'
 import ImportFile from './components/Form/Modal/ImportFile.vue'
 import InfoBox from './components/Form/Box/InfoBox.vue'
@@ -71,6 +72,7 @@ app.use(Toast, optionsToast);
 app.component('ContentContainer', ContentContainer)
 app.component('FormSection', FormSection)
 app.component('HtmlEditor', HtmlEditor)
+app.component('ProductDescriptionBuilder', ProductDescriptionBuilder)
 app.component('ConfirmModal', ConfirmModal)
 app.component('ImportFile', ImportFile)
 app.component('InfoBox', InfoBox)

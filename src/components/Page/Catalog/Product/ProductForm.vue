@@ -2,14 +2,14 @@
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { ProductDTO, ProductAvailability } from '/@/types/product/Product'
-import type { MediaFileDTO, FileDTO } from '/@/types/file/File'
+import type { FileDTO } from '/@/types/file/File'
 import { useLanguageStore } from '/@/stores/language'
 import { useStoreStore } from '/@/stores/store'
 import DropZone from '/@/components/Form/File/DropZone'
 import { Api } from '/@/services/api'
 import jwt_decode from 'jwt-decode'
 import Cookies from 'universal-cookie'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import diacritics from 'diacritics'
 
 const props = defineProps({
@@ -20,31 +20,156 @@ const props = defineProps({
 const cookies = new Cookies()
 const store = useStoreStore()
 const toast = useToast()
-const route = useRoute()
 const router = useRouter()
 const language = useLanguageStore()
 
+const currentProduct = reactive({ ...props.product })
 const fileThumbnail = ref<FileDTO | null>(null)
 const uploadedFileThumbnail = ref<any>(null)
-const currentProduct = reactive(props.product)
 const currentFile = ref<any>(null)
-const files = ref(props.product.medias)
+const files = ref(props.product?.medias || [])
 const brands = ref<{ id: number; name: string }[]>([])
 const rules = ref<{ id: number; name: string }[]>([])
 const test = ref<any>(null)
 const productAvailableList = ref<{ id: any; name: string }[]>([])
 const deletedMediaIds = ref<string[]>([])
 
-// --- Panel AI ---
 const aiCollapse = ref<string[]>(['ai'])
 const ai = reactive({
   exampleDescription: '',
   specification: '',
   additionalInformation: '',
+  sectionsCount: 1,
+  generatedLayout: 'text-only',
   isLoading: false
 })
+
+const aiSectionModal = reactive({
+  visible: false,
+  mode: 'improve' as 'improve' | 'add',
+  index: -1,
+  purpose: '',
+  instruction: ''
+})
+
 const canCallAI = () =>
   Boolean(currentProduct?.name && String(currentProduct.name).trim().length > 0)
+
+const createDescriptionRow = (type: string, html = '') => ({
+  id: crypto.randomUUID(),
+  type,
+  imageUrl: null,
+  imageAlt: '',
+  imageTitle: '',
+  text: html
+})
+
+const parseDescriptionHtmlToRows = (html: string) => {
+  if (!html || !html.trim()) return []
+
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const sections = Array.from(doc.body.querySelectorAll('section.desc-row'))
+
+  if (!sections.length) {
+    return [createDescriptionRow('text-only', html)]
+  }
+
+  return sections.map((section) => {
+    let type = 'text-only'
+
+    if (section.classList.contains('desc-row-2cols')) {
+      const firstChild = Array.from(section.children)[0] as HTMLElement | undefined
+
+      if (firstChild?.classList.contains('desc-image')) {
+        type = 'image-left-text-right'
+      } else {
+        type = 'text-left-image-right'
+      }
+    } else if (section.classList.contains('desc-row-image-only')) {
+      type = 'image-only'
+    } else {
+      type = 'text-only'
+    }
+
+    const textElement = section.querySelector('.desc-text')
+    const imageElement = section.querySelector('.desc-image img') as HTMLImageElement | null
+
+    return {
+      id: crypto.randomUUID(),
+      type,
+      imageUrl: imageElement?.getAttribute('src') || null,
+      imageAlt: imageElement?.getAttribute('alt') || '',
+      imageTitle: imageElement?.getAttribute('title') || '',
+      text: textElement?.innerHTML?.trim() || ''
+    }
+  })
+}
+
+const normalizeDescriptionToRows = (value: any) => {
+  if (Array.isArray(value)) {
+    return JSON.parse(JSON.stringify(value))
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return parseDescriptionHtmlToRows(value)
+  }
+
+  return []
+}
+
+const descriptionRows = ref<any[]>(
+  normalizeDescriptionToRows(props.product?.description)
+)
+
+const escapeHtml = (value: string) => {
+  return (value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+const generateDescriptionHtml = (rows: any[]) => {
+  return (rows || [])
+    .map((row) => {
+      const imageHtml = row.imageUrl
+        ? `
+<div class="desc-col desc-image">
+  <img
+    src="${row.imageUrl}"
+    alt="${escapeHtml(row.imageAlt || '')}"
+    title="${escapeHtml(row.imageTitle || '')}"
+    loading="lazy"
+  />
+</div>`
+        : ''
+
+      const textHtml = row.text
+        ? `
+<div class="desc-col desc-text">
+  ${row.text}
+</div>`
+        : ''
+
+      switch (row.type) {
+        case 'image-left-text-right':
+          return `<section class="desc-row desc-row-2cols">${imageHtml}${textHtml}</section>`
+
+        case 'text-left-image-right':
+          return `<section class="desc-row desc-row-2cols">${textHtml}${imageHtml}</section>`
+
+        case 'image-only':
+          return `<section class="desc-row desc-row-image-only">${imageHtml}</section>`
+
+        case 'text-only':
+        default:
+          return `<section class="desc-row desc-row-text-only">${textHtml}</section>`
+      }
+    })
+    .join('')
+}
 
 async function callAI() {
   if (!canCallAI()) {
@@ -60,7 +185,8 @@ async function callAI() {
         productName: currentProduct.name,
         exampleDescription: ai.exampleDescription || '',
         specification: ai.specification || '',
-        additionalInformation: ai.additionalInformation || ''
+        additionalInformation: ai.additionalInformation || '',
+        sectionsCount: ai.sectionsCount
       }
     }
 
@@ -68,39 +194,53 @@ async function callAI() {
     if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
 
     const json = await res.json()
-    // ApiResponse.Success(200, result) => { data: {...} }
     const d = (json?.data ?? json) as any
 
-    // Pobierz wartości — najpierw camelCase, jeśli brak to PascalCase
-    const alt =
-      d?.altAttribute ??
-      d?.AltAttribute ??
-      ''
-    const title =
-      d?.titleAttribute ??
-      d?.TitleAttribute ??
-      ''
-    const metaTitle =
-      d?.metaTitle ??
-      d?.MetaTitle ??
-      ''
-    const metaDesc =
-      d?.metaDescription ??
-      d?.MetaDescription ??
-      ''
-    const descriptionHtml =
-      d?.description ??
-      d?.Description ??
-      ''
+    const alt = d?.altAttribute ?? d?.AltAttribute ?? ''
+    const title = d?.titleAttribute ?? d?.TitleAttribute ?? ''
+    const metaTitle = d?.metaTitle ?? d?.MetaTitle ?? ''
+    const metaDesc = d?.metaDescription ?? d?.MetaDescription ?? ''
 
-    // MAPOWANIE -> thumbnail + meta + opis
+    const sections = d?.sections ?? d?.Sections ?? []
+    const fallbackDescriptionHtml = d?.description ?? d?.Description ?? ''
+
     if (alt) currentProduct.thumbnailImage.altAttribute = alt
     if (title) currentProduct.thumbnailImage.titleAttribute = title
     if (metaTitle) currentProduct.metaTitle = metaTitle
     if (metaDesc) currentProduct.metaDescription = metaDesc
-    if (descriptionHtml) currentProduct.description = descriptionHtml
 
-    // Twoje watchery rozpropagują wartości do języków tam, gdzie puste/niezmienione
+    let newRows: any[] = []
+
+    if (Array.isArray(sections) && sections.length > 0) {
+      newRows = sections
+        .map((section: any) => {
+          const html =
+            section?.description ??
+            section?.Description ??
+            section?.html ??
+            section?.Html ??
+            ''
+
+          if (!html || !String(html).trim()) return null
+
+          return createDescriptionRow(ai.generatedLayout, html)
+        })
+        .filter(Boolean)
+    } else if (fallbackDescriptionHtml && String(fallbackDescriptionHtml).trim()) {
+      newRows = [createDescriptionRow(ai.generatedLayout, fallbackDescriptionHtml)]
+    }
+
+    if (newRows.length > 0) {
+      const shouldReplace = window.confirm(
+        'AI wygenerowało opis. OK = nadpisz obecne sekcje, Anuluj = dodaj sekcje na końcu.'
+      )
+
+      if (shouldReplace) {
+        descriptionRows.value = newRows
+      } else {
+        descriptionRows.value.push(...newRows)
+      }
+    }
 
     toast.success('AI: dane produktu zaktualizowane.', { timeout: 2000 })
   } catch (err) {
@@ -111,8 +251,136 @@ async function callAI() {
   }
 }
 
+const callSectionAI = async ({
+  currentSectionHtml = '',
+  sectionPurpose = '',
+  userInstruction = ''
+}: {
+  currentSectionHtml?: string
+  sectionPurpose?: string
+  userInstruction?: string
+}) => {
+  const body = {
+    productSectionBriefDTO: {
+      productName: currentProduct.name,
+      exampleDescription: ai.exampleDescription || '',
+      specification: ai.specification || '',
+      additionalInformation: ai.additionalInformation || '',
+      currentSectionHtml,
+      sectionPurpose,
+      userInstruction
+    }
+  }
 
-// --- reszta jak u Ciebie ---
+  const res = await Api.chatGpt.generateProductSection({ body: JSON.stringify(body) })
+  if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
+
+  const json = await res.json()
+  return (json?.data ?? json) as any
+}
+
+const openImproveSectionModal = (index: number) => {
+  const row = descriptionRows.value[index]
+  if (!row) return
+
+  aiSectionModal.visible = true
+  aiSectionModal.mode = 'improve'
+  aiSectionModal.index = index
+  aiSectionModal.purpose = 'Popraw istniejącą sekcję opisu produktu'
+  aiSectionModal.instruction = 'Popraw SEO, naturalność i język korzyści.'
+}
+
+const openAddSectionModal = (insertAfterIndex?: number) => {
+  aiSectionModal.visible = true
+  aiSectionModal.mode = 'add'
+  aiSectionModal.index =
+    typeof insertAfterIndex === 'number' ? insertAfterIndex : -1
+  aiSectionModal.purpose = 'Najważniejsze zalety produktu'
+  aiSectionModal.instruction = 'Napisz sekcję naturalnie, sprzedażowo i pod SEO.'
+}
+
+const submitSectionAIModal = async () => {
+  if (!canCallAI()) {
+    toast.error('Podaj nazwę produktu, zanim użyjesz AI.', { timeout: 2000 })
+    return
+  }
+
+  try {
+    ai.isLoading = true
+
+    if (aiSectionModal.mode === 'improve') {
+      const row = descriptionRows.value[aiSectionModal.index]
+      if (!row) return
+
+      const d = await callSectionAI({
+        currentSectionHtml: row.text || '',
+        sectionPurpose: aiSectionModal.purpose || 'Popraw istniejącą sekcję',
+        userInstruction: aiSectionModal.instruction || 'Popraw sekcję'
+      })
+
+      const newHtml =
+        d?.description ??
+        d?.Description ??
+        ''
+
+      if (!newHtml || !String(newHtml).trim()) {
+        toast.error('AI nie zwróciło poprawionej sekcji.', { timeout: 2000 })
+        return
+      }
+
+      descriptionRows.value[aiSectionModal.index] = {
+        ...descriptionRows.value[aiSectionModal.index],
+        text: newHtml
+      }
+
+      toast.success('Sekcja została poprawiona przez AI.', { timeout: 2000 })
+    }
+
+    if (aiSectionModal.mode === 'add') {
+      const d = await callSectionAI({
+        currentSectionHtml: '',
+        sectionPurpose: aiSectionModal.purpose || 'Nowa sekcja opisu produktu',
+        userInstruction: aiSectionModal.instruction || 'Wygeneruj nową sekcję'
+      })
+
+      const newHtml =
+        d?.description ??
+        d?.Description ??
+        ''
+
+      if (!newHtml || !String(newHtml).trim()) {
+        toast.error('AI nie zwróciło nowej sekcji.', { timeout: 2000 })
+        return
+      }
+
+      const newRow = createDescriptionRow(ai.generatedLayout, newHtml)
+
+      if (aiSectionModal.index >= 0) {
+        descriptionRows.value.splice(aiSectionModal.index + 1, 0, newRow)
+      } else {
+        descriptionRows.value.push(newRow)
+      }
+
+      toast.success('Dodano nową sekcję przez AI.', { timeout: 2000 })
+    }
+
+    aiSectionModal.visible = false
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się wykonać operacji AI.', { timeout: 2500 })
+  } finally {
+    ai.isLoading = false
+  }
+}
+
+const improveSectionWithAI = (index: number) => {
+  openImproveSectionModal(index)
+}
+
+const addSectionWithAI = (insertAfterIndex?: number) => {
+  openAddSectionModal(insertAfterIndex)
+}
+
 const translationsProductAvailable = {
   [ProductAvailability.Available]: 'Dostępny',
   [ProductAvailability.TwentyFourToFourtyEight]: 'Od 24 do 48h',
@@ -126,16 +394,37 @@ const translationsProductAvailable = {
   [ProductAvailability.ToOrder]: 'Na zamówienie',
   [ProductAvailability.SellerConfirmation]: 'Potwierdzenie sprzedawcy'
 }
+
 for (const id in translationsProductAvailable) {
-  productAvailableList.value.push({ id, name: translationsProductAvailable[id] })
+  productAvailableList.value.push({
+    id,
+    name: translationsProductAvailable[id as keyof typeof translationsProductAvailable]
+  })
 }
 
 const handleRemoveFile = async (id: string) => {
   try {
+    const removedFile = files.value.find((file: any) => file.mediaId === id)
+
     files.value = files.value.filter((file: any) => file.mediaId !== id)
 
     if (!deletedMediaIds.value.includes(id)) {
       deletedMediaIds.value.push(id)
+    }
+
+    if (removedFile?.filePath) {
+      descriptionRows.value = descriptionRows.value.map((row: any) => {
+        if (row.imageUrl === removedFile.filePath) {
+          return {
+            ...row,
+            imageUrl: null,
+            imageAlt: '',
+            imageTitle: ''
+          }
+        }
+
+        return row
+      })
     }
 
     toast.success('Usunięto zdjęcie', { timeout: 2000 })
@@ -145,44 +434,13 @@ const handleRemoveFile = async (id: string) => {
   }
 }
 
-const handleSave = async () => {
-  const token = cookies.get('Authorization')
-  const decoded: any = jwt_decode(token)
-  currentProduct.storeId = store.selectedStore.id
-
-  if (uploadedFileThumbnail.value) {
-    currentProduct.thumbnailImage.filePath = uploadedFileThumbnail.value?.path
-    currentProduct.thumbnailImage.mediaLangs.forEach((mediaLang: any) => {
-      const matchingPath = uploadedFileThumbnail.value?.pathLang.find(
-        (pl: any) => pl.languageId === mediaLang.languageId
-      )
-      if (matchingPath) mediaLang.filePath = matchingPath.path
-    })
-  }
-
-  currentProduct.slug = diacritics.remove(currentProduct.slug)
-  currentProduct.currentUserId = decoded.UserId
-  currentProduct.deletedMediaIds = deletedMediaIds.value
-
-  try {
-    const payload = { body: JSON.stringify(currentProduct) }
-    if (!props.updated) {
-      await Api.products.create(payload)
-      toast.success('Dodano produkt', { timeout: 2000 })
-    } else {
-      await Api.products.update(payload)
-      toast.success('Edytowano produkt', { timeout: 2000 })
-    }
-    router.go(-1)
-  } catch {
-    toast.error('Wystąpił błąd', { timeout: 2000 })
-  }
+const handleAddFile = (file: any) => {
+  files.value.push(file.media)
 }
-
-const handleAddFile = (file: any) => { files.value.push(file.media) }
 
 const handleEditFile = (file: any) => {
   const index = files.value?.findIndex((c: any) => c.mediaId === file.id)
+
   currentFile.value = {
     displayOrder: file.displayOrder,
     mediaId: file.id,
@@ -201,7 +459,10 @@ const handleEditFile = (file: any) => {
       }
     })
   }
-  files.value[index] = currentFile.value
+
+  if (index !== -1) {
+    files.value[index] = currentFile.value
+  }
 }
 
 const slugGenerator = () => {
@@ -209,21 +470,69 @@ const slugGenerator = () => {
     toast.error('Błędna nazwa produktu', { timeout: 2000 })
     return
   }
-  currentProduct.slug = currentProduct.name.trim().toLowerCase().replace(/\s+/g, '-')
+
+  currentProduct.slug = diacritics.remove(
+    currentProduct.name.trim().toLowerCase().replace(/\s+/g, '-')
+  )
 }
 
 const allBrands = async () => {
   const result = await Api.brands.listByStoreId()
   brands.value = result.items.map((x: any) => ({ id: x.id, name: x.name }))
 }
+
 const allRules = async () => {
   const result = await Api.rules.listByStoreId()
   rules.value = result.items.map((x: any) => ({ id: x.id, name: x.name }))
 }
 
+const handleSave = async () => {
+  const token = cookies.get('Authorization')
+  const decoded: any = jwt_decode(token)
+
+  currentProduct.storeId = store.selectedStore.id
+
+  if (uploadedFileThumbnail.value) {
+    currentProduct.thumbnailImage.filePath = uploadedFileThumbnail.value?.path
+
+    currentProduct.thumbnailImage.mediaLangs.forEach((mediaLang: any) => {
+      const matchingPath = uploadedFileThumbnail.value?.pathLang.find(
+        (pl: any) => pl.languageId === mediaLang.languageId
+      )
+
+      if (matchingPath) {
+        mediaLang.filePath = matchingPath.path
+      }
+    })
+  }
+
+  currentProduct.slug = diacritics.remove(currentProduct.slug)
+  currentProduct.currentUserId = decoded.UserId
+  currentProduct.deletedMediaIds = deletedMediaIds.value
+  currentProduct.description = generateDescriptionHtml(descriptionRows.value)
+
+  try {
+    const payload = { body: JSON.stringify(currentProduct) }
+
+    if (!props.updated) {
+      await Api.products.create(payload)
+      toast.success('Dodano produkt', { timeout: 2000 })
+    } else {
+      await Api.products.update(payload)
+      toast.success('Edytowano produkt', { timeout: 2000 })
+    }
+
+    router.go(-1)
+  } catch (e) {
+    console.error(e)
+    toast.error('Wystąpił błąd', { timeout: 2000 })
+  }
+}
+
 onMounted(() => {
   allBrands()
   allRules()
+
   fileThumbnail.value = {
     media: {
       seoFileName: currentProduct.thumbnailImage.seoFileName,
@@ -237,9 +546,25 @@ onMounted(() => {
   }
 })
 
-// --- propagacje (jak w Twoim kodzie) ---
-const PRODUCT_FIELDS = ['name','metaTitle','metaKeywords','metaDescription','shortDescription','description','specification'] as const
-const THUMBNAIL_FIELDS = ['seoFileName','altAttribute','titleAttribute'] as const
+const PRODUCT_FIELDS = [
+  'name',
+  'metaTitle',
+  'metaKeywords',
+  'metaDescription',
+  'shortDescription',
+  'description',
+  'specification'
+] as const
+
+const THUMBNAIL_FIELDS = ['seoFileName', 'altAttribute', 'titleAttribute'] as const
+
+watch(
+  descriptionRows,
+  (rows) => {
+    currentProduct.description = generateDescriptionHtml(rows)
+  },
+  { deep: true }
+)
 
 watch(
   () => ({
@@ -254,7 +579,9 @@ watch(
   (newVals, oldVals) => {
     currentProduct.productLangs.forEach((lang: Record<string, any>) => {
       PRODUCT_FIELDS.forEach((key) => {
-        const n = newVals[key], o = oldVals?.[key]
+        const n = newVals[key]
+        const o = oldVals?.[key]
+
         if (n !== undefined && (lang[key] == null || lang[key] === '' || lang[key] === o)) {
           lang[key] = n
         }
@@ -273,7 +600,9 @@ watch(
   (newVals, oldVals) => {
     currentProduct.thumbnailImage.mediaLangs.forEach((lang: Record<string, any>) => {
       THUMBNAIL_FIELDS.forEach((key) => {
-        const n = newVals[key], o = oldVals?.[key]
+        const n = newVals[key]
+        const o = oldVals?.[key]
+
         if (n !== undefined && (lang[key] == null || lang[key] === '' || lang[key] === o)) {
           lang[key] = n
         }
@@ -283,7 +612,6 @@ watch(
   { deep: false, immediate: true }
 )
 </script>
-
 <template>
   <ContentContainer :showLanguage="true">
     <!-- Panel AI -->
@@ -301,6 +629,13 @@ watch(
             Uzupełnij dowolne pola. <strong>Nazwa produktu</strong> jest wymagana, by wywołać AI.
           </div>
 
+          <FormKit
+            type="number"
+            v-model="ai.sectionsCount"
+            label="Liczba sekcji opisu"
+            min="1"
+            max="10"
+          />
           <FormKit
             type="textarea"
             v-model="ai.exampleDescription"
@@ -401,12 +736,17 @@ watch(
           <HtmlEditor v-model="currentProduct.shortDescription" />
         </FormSection>
 
-        <FormSection :title="'Opis'">
-          <HtmlEditor v-model="currentProduct.description" />
-        </FormSection>
-
         <FormSection :title="'Specyfikacja'">
           <HtmlEditor v-model="currentProduct.specification" />
+        </FormSection>
+
+        <FormSection :title="'Test'">
+          <ProductDescriptionBuilder
+            v-model="descriptionRows"
+            :product-images="files"
+            @improve-ai="improveSectionWithAI"
+            @add-ai-below="addSectionWithAI"
+          />
         </FormSection>
 
         <FormSection :title="'Kod'">
@@ -438,7 +778,7 @@ watch(
         </FormSection>
 
         <FormSection>
-          <FormKit type="checkbox" label="Widoczny" v-model="product.isPublished" :value="false" />
+          <FormKit type="checkbox" label="Widoczny" v-model="currentProduct.isPublished" :value="false" />
         </FormSection>
         <FormSection>
           <FormKit type="checkbox" label="Bestseller" v-model="currentProduct.isBestseller" :value="false" />
@@ -475,6 +815,8 @@ watch(
             <FormKit type="textarea" label="Meta opis" v-model="currentProduct.productLangs[index].metaDescription" rows="10" placeholder="Podaj opis meta" validation="required" validation-visibility="live" />
           </FormSection>
 
+
+          
           <FormSection :title="'Opis skrócony'">
             <HtmlEditor v-model="currentProduct.productLangs[index].shortDescription" />
           </FormSection>
@@ -494,6 +836,42 @@ watch(
       </div>
     </FormKit>
   </ContentContainer>
+<el-dialog
+  v-model="aiSectionModal.visible"
+  :title="aiSectionModal.mode === 'improve' ? 'Popraw sekcję przez AI' : 'Dodaj sekcję przez AI'"
+  width="600px"
+>
+  <div class="space-y-4">
+    <FormKit
+      type="text"
+      v-model="aiSectionModal.purpose"
+      label="Cel sekcji"
+      placeholder="np. Najważniejsze zalety produktu"
+    />
+
+    <FormKit
+      type="textarea"
+      v-model="aiSectionModal.instruction"
+      label="Instrukcja dla AI"
+      rows="5"
+      placeholder="np. popraw SEO, skróć tekst, dodaj więcej korzyści"
+    />
+  </div>
+
+  <template #footer>
+    <el-button @click="aiSectionModal.visible = false">
+      Anuluj
+    </el-button>
+
+    <el-button
+      type="primary"
+      :loading="ai.isLoading"
+      @click="submitSectionAIModal"
+    >
+      Generuj
+    </el-button>
+  </template>
+</el-dialog>
 </template>
 
 <style>
