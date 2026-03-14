@@ -6,6 +6,7 @@ import type { CategoryDTO } from '/@/types/category/Category.ts'
 import ContentContainer from '/@/layouts/ContentContainer.vue'
 import CategoryDetailNavbar from '/@/components/Page/Catalog/Category/CategoryDetailNavbar.vue'
 import CategoryWithPostTab from '../../../components/Page/Catalog/Category/Tabs/CategoryBlogItem.vue'
+import CategoryWithFaqTab from '../../../components/Page/Catalog/Category/Tabs/CategoryFaqItem.vue'
 
 
 const route = useRoute()
@@ -21,6 +22,14 @@ const tabs = [
     id: 'categoryWithPost',
     title: 'Posty kategorii',
     component: CategoryWithPostTab,
+    props: {
+        category: category,
+      }
+  },
+  {
+    id: 'categoryWithFaq',
+    title: 'Faq kategorii',
+    component: CategoryWithFaqTab,
     props: {
         category: category,
       }

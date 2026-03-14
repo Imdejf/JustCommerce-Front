@@ -22,6 +22,7 @@ import DropDownGroup from './components/Form/DropDown/DropDownGroup.vue'
 import DataTable from './components/Form/DataTable/DataTable.vue'
 import MediaArea from './components/Form/File/MediaArea.vue'
 import TabsView from './components/Builder/TabsView.vue'
+import { FontAwesomeIcon } from './plugins/fontawesome'
 
 import Toast, { PluginOptions } from "vue-toastification";
 import "vue-toastification/dist/index.css";
@@ -30,7 +31,6 @@ import "vue-toastification/dist/index.css";
 import { library } from '@fortawesome/fontawesome-svg-core'
 
 /* import font awesome icon component */
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 /* import specific icons */
 import { faBold, faItalic, faUnderline, faStrikethrough, faAlignLeft, faAlignCenter, faAlignRight, faAlignJustify, faList, faListNumeric, faSubscript, faSuperscript, faTextSlash, faArrowRotateRight, faArrowRotateLeft  } from '@fortawesome/free-solid-svg-icons'
@@ -79,8 +79,7 @@ app.component('DataTable', DataTable)
 app.component('MediaArea', MediaArea)
 app.component('TabsView', TabsView)
 app.component('DropDownGroup', DropDownGroup)
-
-.component('font-awesome-icon', FontAwesomeIcon)
+app.component('font-awesome-icon', FontAwesomeIcon)
 
 
 app.mount('#app')

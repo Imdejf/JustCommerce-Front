@@ -22,6 +22,7 @@ export interface CategoryDTO {
     childCategories: CategoryDTO[];
     categoryLangs: CategoryLangDTO[];
     categoryBlogItems: CategoryBlogItemDTO[]; 
+    categoryFaqItems: CategoryFaqItemDTO[];
   }
   
   export interface CategoryLangDTO {
@@ -38,6 +39,15 @@ export interface CategoryDTO {
   export interface CategoryBlogItemDTO {
     categoryId: string;
     blogId: string;
+  }
+
+  export interface CategoryFaqItemDTO {
+      Id: string;
+      CategoryId: string;
+      Question: string;
+      Answer: string;
+      DisplayOrder: number;
+      IsPublished: boolean;
   }
 
   interface MediaDTO {
