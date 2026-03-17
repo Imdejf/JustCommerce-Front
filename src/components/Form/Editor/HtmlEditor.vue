@@ -200,10 +200,6 @@ const CustomHeading = Heading.extend({
   }
 })
 
-function isExternalUrl(url: string) {
-  return /^(https?:)?\/\//i.test(url)
-}
-
 function normalizeUrl(url: string) {
   if (!url) return ''
   const trimmed = url.trim()
@@ -308,17 +304,31 @@ export default {
       if (!this.editor) return
 
       if (this.isSourceMode) {
-        if (this.sourceHtml !== value) {
-          this.sourceHtml = value
+        const cleanedValue = this.sanitizeInternalLinks(value)
+        if (this.sourceHtml !== cleanedValue) {
+          this.sourceHtml = cleanedValue
         }
         return
       }
 
-      if (this.editor.getHTML() === value) return
-      this.editor.commands.setContent(value || '', false)
+      const cleanedValue = this.sanitizeInternalLinks(value)
+      if (this.editor.getHTML() === cleanedValue) return
+      this.editor.commands.setContent(cleanedValue || '', false)
     }
   },
   methods: {
+    sanitizeInternalLinks(html: string) {
+      if (!html) return ''
+
+      return html
+        .replace(/\starget="_blank"/gi, '')
+        .replace(/\starget="_self"/gi, '')
+        .replace(/\srel="noopener noreferrer"/gi, '')
+        .replace(/\srel="noopener"/gi, '')
+        .replace(/\srel="noreferrer"/gi, '')
+        .replace(/\srel=""/gi, '')
+    },
+
     isButtonActive(active: any) {
       if (!this.editor) return false
 
@@ -420,25 +430,29 @@ export default {
         ''
       )
 
-      this.editor.commands.setContent(tocHtml + cleanedHtml, false)
-      this.$emit('update:modelValue', this.editor.getHTML())
+      const finalHtml = this.sanitizeInternalLinks(tocHtml + cleanedHtml)
+
+      this.editor.commands.setContent(finalHtml, false)
+      this.$emit('update:modelValue', finalHtml)
     },
 
     toggleView() {
       if (!this.editor) return
 
       if (this.isSourceMode) {
-        this.editor.commands.setContent(this.sourceHtml || '', false)
-        this.$emit('update:modelValue', this.editor.getHTML())
+        const cleanedHtml = this.sanitizeInternalLinks(this.sourceHtml || '')
+        this.editor.commands.setContent(cleanedHtml, false)
+        this.$emit('update:modelValue', cleanedHtml)
       } else {
-        this.sourceHtml = this.editor.getHTML()
+        this.sourceHtml = this.sanitizeInternalLinks(this.editor.getHTML())
       }
 
       this.isSourceMode = !this.isSourceMode
     },
 
     onSourceInput() {
-      this.$emit('update:modelValue', this.sourceHtml)
+      const cleanedHtml = this.sanitizeInternalLinks(this.sourceHtml)
+      this.$emit('update:modelValue', cleanedHtml)
     },
 
     setParagraph() {
@@ -496,18 +510,23 @@ export default {
         return
       }
 
-      const isExternal = isExternalUrl(url)
-
       this.editor
         .chain()
         .focus()
         .extendMarkRange('link')
         .setLink({
           href: url,
-          target: isExternal ? '_blank' : null,
-          rel: isExternal ? 'noopener noreferrer' : null
+          target: null,
+          rel: null
         })
         .run()
+
+      const cleanedHtml = this.sanitizeInternalLinks(this.editor.getHTML())
+      if (cleanedHtml !== this.editor.getHTML()) {
+        this.editor.commands.setContent(cleanedHtml, false)
+      }
+
+      this.$emit('update:modelValue', cleanedHtml)
     },
 
     unsetLink() {
@@ -607,7 +626,7 @@ export default {
   },
   mounted() {
     this.editor = new Editor({
-      content: this.modelValue || '',
+      content: this.sanitizeInternalLinks(this.modelValue || ''),
       extensions: [
         StarterKit.configure({
           heading: false
@@ -649,12 +668,19 @@ export default {
       },
       onUpdate: ({ editor }) => {
         if (!this.isSourceMode) {
-          this.$emit('update:modelValue', editor.getHTML())
+          const cleanedHtml = this.sanitizeInternalLinks(editor.getHTML())
+
+          if (cleanedHtml !== editor.getHTML()) {
+            editor.commands.setContent(cleanedHtml, false)
+            return
+          }
+
+          this.$emit('update:modelValue', cleanedHtml)
         }
       }
     })
 
-    this.sourceHtml = this.modelValue || ''
+    this.sourceHtml = this.sanitizeInternalLinks(this.modelValue || '')
   },
   beforeUnmount() {
     document.body.style.overflow = ''
