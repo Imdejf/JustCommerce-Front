@@ -1,5 +1,9 @@
 <template>
-  <div id="text-editor" class="w-full">
+  <div
+    id="text-editor"
+    class="w-full"
+    :class="{ fullscreen: isFullscreen }"
+  >
     <div v-if="editor" class="toolbar">
       <div class="align-dropdown">
         <button type="button" class="dropbtn">Blok ▼</button>
@@ -87,6 +91,30 @@
         <font-awesome-icon icon="fa-pen-to-square" />
       </button>
 
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Wstaw spis treści"
+        @click="insertTableOfContents"
+      >
+        <font-awesome-icon icon="fa-list-ul" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        :title="isFullscreen ? 'Zamknij pełny ekran' : 'Otwórz pełny ekran'"
+        @click="toggleFullscreen"
+      >
+        <font-awesome-icon
+          :icon="
+            isFullscreen
+              ? 'fa-down-left-and-up-right-to-center'
+              : 'fa-up-right-and-down-left-from-center'
+          "
+        />
+      </button>
+
       <button type="button" class="html-toggle" @click="toggleView">
         {{ isSourceMode ? 'Treść' : 'HTML' }}
       </button>
@@ -100,21 +128,26 @@
       />
     </div>
 
-    <div v-if="!isSourceMode">
-      <editor-content :editor="editor" />
-    </div>
+    <div class="editor-stage">
+      <div class="editor-paper">
+        <div v-if="!isSourceMode">
+          <editor-content :editor="editor" />
+        </div>
 
-    <div v-else class="source-mode">
-      <textarea
-        v-model="sourceHtml"
-        class="source-textarea"
-        @input="onSourceInput"
-      />
+        <div v-else class="source-mode">
+          <textarea
+            v-model="sourceHtml"
+            class="source-textarea"
+            @input="onSourceInput"
+          />
+        </div>
+      </div>
     </div>
 
     <div v-if="editor" class="footer">
       <span class="characters-count" :class="maxLimit ? limitWarning : ''">
-        {{ charactersCount }} {{ maxLimit ? `/ ${maxLimit} characters` : 'characters' }}
+        {{ charactersCount }}
+        {{ maxLimit ? `/ ${maxLimit} characters` : 'characters' }}
       </span>
       |
       <span class="words-count">{{ wordsCount }} words</span>
@@ -125,6 +158,7 @@
 <script lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
+import Heading from '@tiptap/extension-heading'
 import Text from '@tiptap/extension-text'
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
@@ -155,6 +189,17 @@ const CustomImage = Image.extend({
   }
 })
 
+const CustomHeading = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      id: {
+        default: null
+      }
+    }
+  }
+})
+
 function isExternalUrl(url: string) {
   return /^(https?:)?\/\//i.test(url)
 }
@@ -179,6 +224,18 @@ function normalizeUrl(url: string) {
   return `https://${trimmed}`
 }
 
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ł/g, 'l')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
 export default {
   name: 'SeoTextEditor',
   components: {
@@ -199,6 +256,7 @@ export default {
     return {
       editor: null as Editor | null,
       isSourceMode: false,
+      isFullscreen: false,
       sourceHtml: '',
       imageBase64: null as string | null,
       textActions: [
@@ -248,6 +306,7 @@ export default {
   watch: {
     modelValue(value: string) {
       if (!this.editor) return
+
       if (this.isSourceMode) {
         if (this.sourceHtml !== value) {
           this.sourceHtml = value
@@ -273,6 +332,96 @@ export default {
       }
 
       return false
+    },
+
+    toggleFullscreen() {
+      this.isFullscreen = !this.isFullscreen
+      document.body.style.overflow = this.isFullscreen ? 'hidden' : ''
+    },
+
+    assignHeadingIds() {
+      if (!this.editor) return []
+
+      const headings: Array<{ level: number; text: string; id: string }> = []
+      const usedIds = new Set<string>()
+
+      this.editor.commands.command(({ tr, state, dispatch }) => {
+        state.doc.descendants((node, pos) => {
+          if (node.type.name !== 'heading') return
+
+          const text = node.textContent?.trim()
+          if (!text) return
+
+          let baseId = slugify(text)
+          if (!baseId) baseId = `sekcja-${headings.length + 1}`
+
+          let finalId = baseId
+          let counter = 2
+
+          while (usedIds.has(finalId)) {
+            finalId = `${baseId}-${counter}`
+            counter++
+          }
+
+          usedIds.add(finalId)
+
+          headings.push({
+            level: node.attrs.level,
+            text,
+            id: finalId
+          })
+
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            id: finalId
+          })
+        })
+
+        if (dispatch) {
+          dispatch(tr)
+        }
+
+        return true
+      })
+
+      return headings
+    },
+
+    insertTableOfContents() {
+      if (!this.editor) return
+
+      const headings = this.assignHeadingIds()
+
+      if (!headings.length) {
+        window.alert('Najpierw dodaj nagłówki H2-H6, aby wygenerować spis treści.')
+        return
+      }
+
+      const listItems = headings
+        .map((item) => {
+          const marginLeft = Math.max(item.level - 2, 0) * 20
+          return `<li style="margin-left:${marginLeft}px;"><a href="#${item.id}">${item.text}</a></li>`
+        })
+        .join('')
+
+      const tocHtml = `
+        <nav class="table-of-contents" data-toc="true">
+          <h2>Spis treści</h2>
+          <ul>
+            ${listItems}
+          </ul>
+        </nav>
+        <p></p>
+      `
+
+      const currentHtml = this.editor.getHTML()
+      const cleanedHtml = currentHtml.replace(
+        /<nav class="table-of-contents" data-toc="true">[\s\S]*?<\/nav>\s*(<p><\/p>)?/gi,
+        ''
+      )
+
+      this.editor.commands.setContent(tocHtml + cleanedHtml, false)
+      this.$emit('update:modelValue', this.editor.getHTML())
     },
 
     toggleView() {
@@ -333,7 +482,10 @@ export default {
       if (!this.editor) return
 
       const previousUrl = this.editor.getAttributes('link').href || ''
-      const rawUrl = window.prompt('Podaj URL linku (np. /kategoria lub https://example.com)', previousUrl)
+      const rawUrl = window.prompt(
+        'Podaj URL linku (np. /kategoria lub https://example.com)',
+        previousUrl
+      )
 
       if (rawUrl === null) return
 
@@ -369,9 +521,11 @@ export default {
     handleFileSelect(event: Event) {
       const input = event.target as HTMLInputElement
       const selectedFile = input.files?.[0]
+
       if (selectedFile) {
         this.convertToBase64(selectedFile)
       }
+
       input.value = ''
     },
 
@@ -411,8 +565,10 @@ export default {
 
       this.isSourceMode = false
 
-      const alt = window.prompt('ALT obrazka (ważne dla SEO i dostępności)', fileName || '') || ''
-      const title = window.prompt('TITLE obrazka (opcjonalnie)', alt || fileName || '') || ''
+      const alt =
+        window.prompt('ALT obrazka (ważne dla SEO i dostępności)', fileName || '') || ''
+      const title =
+        window.prompt('TITLE obrazka (opcjonalnie)', alt || fileName || '') || ''
 
       this.editor
         .chain()
@@ -454,9 +610,10 @@ export default {
       content: this.modelValue || '',
       extensions: [
         StarterKit.configure({
-          heading: {
-            levels: [2, 3, 4, 5, 6]
-          }
+          heading: false
+        }),
+        CustomHeading.configure({
+          levels: [2, 3, 4, 5, 6]
         }),
         Underline,
         TextStyle,
@@ -500,6 +657,7 @@ export default {
     this.sourceHtml = this.modelValue || ''
   },
   beforeUnmount() {
+    document.body.style.overflow = ''
     this.editor?.destroy()
   }
 }
@@ -511,6 +669,16 @@ export default {
   background-color: #fff;
 }
 
+#text-editor.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(17, 24, 39, 0.92);
+  display: flex;
+  flex-direction: column;
+  border: none;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -518,6 +686,28 @@ export default {
   gap: 6px;
   padding: 8px;
   border-bottom: 1px solid #808080;
+  background: #fff;
+}
+
+#text-editor.fullscreen .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.editor-stage {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  background: white;
+}
+
+#text-editor.fullscreen .editor-stage {
+  padding: 24px;
+}
+
+.editor-paper {
+  background: #fff;
 }
 
 .toolbar-btn,
@@ -587,6 +777,13 @@ export default {
   font-size: 16px;
 }
 
+#text-editor.fullscreen .ProseMirror {
+  min-height: calc(100vh - 48px - 53px - 50mm);
+  overflow: visible;
+  padding: 25mm 20mm;
+  box-sizing: border-box;
+}
+
 .ProseMirror p {
   margin: 0 0 1em;
 }
@@ -599,6 +796,7 @@ export default {
   margin: 1.2em 0 0.6em;
   line-height: 1.3;
   font-weight: 700;
+  scroll-margin-top: 90px;
 }
 
 .ProseMirror h2 {
@@ -649,6 +847,37 @@ export default {
   outline: 3px solid #68cef8;
 }
 
+.ProseMirror .table-of-contents {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 0 0 24px;
+  background: #f9fafb;
+}
+
+.ProseMirror .table-of-contents h2 {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.ProseMirror .table-of-contents ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+.ProseMirror .table-of-contents li {
+  margin-bottom: 8px;
+}
+
+.ProseMirror .table-of-contents a {
+  text-decoration: none;
+}
+
+.ProseMirror .table-of-contents a:hover {
+  text-decoration: underline;
+}
+
 .source-mode {
   padding: 0;
 }
@@ -665,12 +894,19 @@ export default {
   box-sizing: border-box;
 }
 
+#text-editor.fullscreen .source-textarea {
+  min-height: calc(297mm - 40px);
+  padding: 25mm 20mm;
+  resize: none;
+}
+
 .footer {
   color: #808080;
   font-size: 14px;
   text-align: right;
   padding: 8px 12px;
   border-top: 1px solid #e5e7eb;
+  background: #fff;
 }
 
 .characters-count.warning {
