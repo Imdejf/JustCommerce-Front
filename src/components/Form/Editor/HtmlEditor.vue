@@ -398,43 +398,60 @@ export default {
     },
 
     insertTableOfContents() {
-      if (!this.editor) return
+  if (!this.editor) return
 
-      const headings = this.assignHeadingIds()
+  const headings = this.assignHeadingIds().filter((item) => item.level === 2)
 
-      if (!headings.length) {
-        window.alert('Najpierw dodaj nagłówki H2-H6, aby wygenerować spis treści.')
-        return
-      }
+  if (!headings.length) {
+    window.alert('Najpierw dodaj nagłówki H2, aby wygenerować spis treści.')
+    return
+  }
 
-      const listItems = headings
-        .map((item) => {
-          const marginLeft = Math.max(item.level - 2, 0) * 20
-          return `<li style="margin-left:${marginLeft}px;"><a href="#${item.id}">${item.text}</a></li>`
-        })
-        .join('')
+  const { from, to } = this.editor.state.selection
 
-      const tocHtml = `
-        <nav class="table-of-contents" data-toc="true">
-          <h2>Spis treści</h2>
-          <ul>
-            ${listItems}
-          </ul>
-        </nav>
-        <p></p>
-      `
+  const listItems = headings
+    .map((item) => {
+      return `<li><a href="#${item.id}">${item.text}</a></li>`
+    })
+    .join('')
 
-      const currentHtml = this.editor.getHTML()
-      const cleanedHtml = currentHtml.replace(
-        /<nav class="table-of-contents" data-toc="true">[\s\S]*?<\/nav>\s*(<p><\/p>)?/gi,
-        ''
-      )
+  const tocHtml = `
+    <nav class="table-of-contents" data-toc="true">
+      <h2>Spis treści</h2>
+      <ul>
+        ${listItems}
+      </ul>
+    </nav>
+    <p></p>
+  `
 
-      const finalHtml = this.sanitizeInternalLinks(tocHtml + cleanedHtml)
+  const currentHtml = this.editor.getHTML()
+  const cleanedHtml = currentHtml.replace(
+    /<nav class="table-of-contents" data-toc="true">[\s\S]*?<\/nav>\s*(<p><\/p>)?/gi,
+    ''
+  )
 
-      this.editor.commands.setContent(finalHtml, false)
-      this.$emit('update:modelValue', finalHtml)
-    },
+  const finalHtml = this.sanitizeInternalLinks(cleanedHtml)
+
+  this.editor.commands.setContent(finalHtml, false)
+
+  this.$nextTick(() => {
+    if (!this.editor) return
+
+    const docSize = this.editor.state.doc.content.size
+    const safeFrom = Math.min(from, docSize)
+    const safeTo = Math.min(to, docSize)
+
+    this.editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: safeFrom, to: safeTo })
+      .insertContent(this.sanitizeInternalLinks(tocHtml))
+      .run()
+
+    this.$emit('update:modelValue', this.sanitizeInternalLinks(this.editor.getHTML()))
+  })
+},
 
     toggleView() {
       if (!this.editor) return
