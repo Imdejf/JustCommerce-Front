@@ -103,6 +103,61 @@
       <button
         type="button"
         class="toolbar-btn"
+        :class="{ active: editor.isActive('table') }"
+        title="Wstaw tabelę"
+        @click="insertTable"
+      >
+        <font-awesome-icon icon="fa-table" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Dodaj wiersz poniżej"
+        @click="addRowAfter"
+      >
+        <font-awesome-icon icon="fa-grip-lines" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Dodaj kolumnę po prawej"
+        @click="addColumnAfter"
+      >
+        <font-awesome-icon icon="fa-table-columns" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Usuń wiersz"
+        @click="deleteRow"
+      >
+        <font-awesome-icon icon="fa-minus" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Usuń kolumnę"
+        @click="deleteColumn"
+      >
+        <font-awesome-icon icon="fa-minus" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
+        title="Usuń tabelę"
+        @click="deleteTable"
+      >
+        <font-awesome-icon icon="fa-trash" />
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-btn"
         :title="isFullscreen ? 'Zamknij pełny ekran' : 'Otwórz pełny ekran'"
         @click="toggleFullscreen"
       >
@@ -170,6 +225,10 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
+import { TableKit } from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableHeader from '@tiptap/extension-table-header'
+import TableCell from '@tiptap/extension-table-cell'
 import Cookies from 'universal-cookie'
 
 const CustomImage = Image.extend({
@@ -253,6 +312,7 @@ export default {
       editor: null as Editor | null,
       isSourceMode: false,
       isFullscreen: false,
+      isUpdatingFromEditor: false,
       sourceHtml: '',
       imageBase64: null as string | null,
       textActions: [
@@ -302,17 +362,19 @@ export default {
   watch: {
     modelValue(value: string) {
       if (!this.editor) return
+      if (this.isUpdatingFromEditor) return
+
+      const cleanedValue = this.sanitizeInternalLinks(value)
 
       if (this.isSourceMode) {
-        const cleanedValue = this.sanitizeInternalLinks(value)
         if (this.sourceHtml !== cleanedValue) {
           this.sourceHtml = cleanedValue
         }
         return
       }
 
-      const cleanedValue = this.sanitizeInternalLinks(value)
       if (this.editor.getHTML() === cleanedValue) return
+
       this.editor.commands.setContent(cleanedValue || '', false)
     }
   },
@@ -398,60 +460,71 @@ export default {
     },
 
     insertTableOfContents() {
-  if (!this.editor) return
+      if (!this.editor) return
 
-  const headings = this.assignHeadingIds().filter((item) => item.level === 2)
+      const headings = this.assignHeadingIds().filter((item) => item.level === 2)
 
-  if (!headings.length) {
-    window.alert('Najpierw dodaj nagłówki H2, aby wygenerować spis treści.')
-    return
-  }
+      if (!headings.length) {
+        window.alert('Najpierw dodaj nagłówki H2, aby wygenerować spis treści.')
+        return
+      }
 
-  const { from, to } = this.editor.state.selection
+      const { from, to } = this.editor.state.selection
 
-  const listItems = headings
-    .map((item) => {
-      return `<li><a href="#${item.id}">${item.text}</a></li>`
-    })
-    .join('')
+      const listItems = headings
+        .map((item) => `<li><a href="#${item.id}">${item.text}</a></li>`)
+        .join('')
 
-  const tocHtml = `
-    <nav class="table-of-contents" data-toc="true">
-      <h2>Spis treści</h2>
-      <ul>
-        ${listItems}
-      </ul>
-    </nav>
-    <p></p>
-  `
+      const tocHtml = `
+        <nav class="table-of-contents" data-toc="true">
+          <h2>Spis treści</h2>
+          <ul>
+            ${listItems}
+          </ul>
+        </nav>
+        <p></p>
+      `
 
-  const currentHtml = this.editor.getHTML()
-  const cleanedHtml = currentHtml.replace(
-    /<nav class="table-of-contents" data-toc="true">[\s\S]*?<\/nav>\s*(<p><\/p>)?/gi,
-    ''
-  )
+      const currentHtml = this.editor.getHTML()
+      const cleanedHtml = currentHtml.replace(
+        /<nav class="table-of-contents" data-toc="true">[\s\S]*?<\/nav>\s*(<p><\/p>)?/gi,
+        ''
+      )
 
-  const finalHtml = this.sanitizeInternalLinks(cleanedHtml)
+      const finalHtml = this.sanitizeInternalLinks(cleanedHtml)
 
-  this.editor.commands.setContent(finalHtml, false)
+      this.editor.commands.setContent(finalHtml, false)
 
-  this.$nextTick(() => {
-    if (!this.editor) return
+      this.$nextTick(() => {
+        if (!this.editor) return
 
-    const docSize = this.editor.state.doc.content.size
-    const safeFrom = Math.min(from, docSize)
-    const safeTo = Math.min(to, docSize)
+        const docSize = this.editor.state.doc.content.size
+        const safeFrom = Math.min(from, docSize)
+        const safeTo = Math.min(to, docSize)
 
-    this.editor
-      .chain()
-      .focus()
-      .setTextSelection({ from: safeFrom, to: safeTo })
-      .insertContent(this.sanitizeInternalLinks(tocHtml))
-      .run()
+        this.editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: safeFrom, to: safeTo })
+          .insertContent(this.sanitizeInternalLinks(tocHtml))
+          .run()
 
-    this.$emit('update:modelValue', this.sanitizeInternalLinks(this.editor.getHTML()))
-  })
-},
+        this.emitEditorHtml()
+      })
+    },
+
+    emitEditorHtml() {
+      if (!this.editor) return
+
+      const cleanedHtml = this.sanitizeInternalLinks(this.editor.getHTML())
+
+      this.isUpdatingFromEditor = true
+      this.$emit('update:modelValue', cleanedHtml)
+
+      this.$nextTick(() => {
+        this.isUpdatingFromEditor = false
+      })
+    },
 
     toggleView() {
       if (!this.editor) return
@@ -459,12 +532,13 @@ export default {
       if (this.isSourceMode) {
         const cleanedHtml = this.sanitizeInternalLinks(this.sourceHtml || '')
         this.editor.commands.setContent(cleanedHtml, false)
-        this.$emit('update:modelValue', cleanedHtml)
-      } else {
-        this.sourceHtml = this.sanitizeInternalLinks(this.editor.getHTML())
+        this.isSourceMode = false
+        this.emitEditorHtml()
+        return
       }
 
-      this.isSourceMode = !this.isSourceMode
+      this.sourceHtml = this.sanitizeInternalLinks(this.editor.getHTML())
+      this.isSourceMode = true
     },
 
     onSourceInput() {
@@ -524,6 +598,7 @@ export default {
 
       if (!url) {
         this.editor.chain().focus().extendMarkRange('link').unsetLink().run()
+        this.emitEditorHtml()
         return
       }
 
@@ -538,16 +613,47 @@ export default {
         })
         .run()
 
-      const cleanedHtml = this.sanitizeInternalLinks(this.editor.getHTML())
-      if (cleanedHtml !== this.editor.getHTML()) {
-        this.editor.commands.setContent(cleanedHtml, false)
-      }
-
-      this.$emit('update:modelValue', cleanedHtml)
+      this.emitEditorHtml()
     },
 
     unsetLink() {
       this.editor?.chain().focus().extendMarkRange('link').unsetLink().run()
+      this.emitEditorHtml()
+    },
+
+    insertTable() {
+      this.editor?.chain().focus().insertTable({
+        rows: 4,
+        cols: 4,
+        withHeaderRow: true
+      }).run()
+
+      this.emitEditorHtml()
+    },
+
+    addRowAfter() {
+      this.editor?.chain().focus().addRowAfter().run()
+      this.emitEditorHtml()
+    },
+
+    addColumnAfter() {
+      this.editor?.chain().focus().addColumnAfter().run()
+      this.emitEditorHtml()
+    },
+
+    deleteRow() {
+      this.editor?.chain().focus().deleteRow().run()
+      this.emitEditorHtml()
+    },
+
+    deleteColumn() {
+      this.editor?.chain().focus().deleteColumn().run()
+      this.emitEditorHtml()
+    },
+
+    deleteTable() {
+      this.editor?.chain().focus().deleteTable().run()
+      this.emitEditorHtml()
     },
 
     openFileInput() {
@@ -616,6 +722,8 @@ export default {
           loading: 'lazy'
         })
         .run()
+
+      this.emitEditorHtml()
     },
 
     editSelectedImageMeta() {
@@ -639,66 +747,73 @@ export default {
           loading: 'lazy'
         })
         .run()
+
+      this.emitEditorHtml()
     }
   },
-  mounted() {
-    this.editor = new Editor({
-      content: this.sanitizeInternalLinks(this.modelValue || ''),
-      extensions: [
-        StarterKit.configure({
-          heading: false
-        }),
-        CustomHeading.configure({
-          levels: [2, 3, 4, 5, 6]
-        }),
-        Underline,
-        TextStyle,
-        Color,
-        Text,
-        Subscript,
-        Superscript,
-        CustomImage,
-        Placeholder.configure({
-          placeholder:
-            'Wpisz treść opisu SEO, artykułu lub kategorii. Używaj nagłówków H2-H3, linków wewnętrznych, list i obrazów z ALT.'
-        }),
-        Link.configure({
-          autolink: true,
-          openOnClick: false,
-          linkOnPaste: true,
-          protocols: ['http', 'https', 'mailto', 'tel'],
-          HTMLAttributes: {
-            class: 'editor-link'
-          }
-        }),
-        CharacterCount.configure({
-          limit: this.maxLimit || undefined
-        }),
-        TextAlign.configure({
-          types: ['heading', 'paragraph']
-        })
-      ],
-      editorProps: {
-        attributes: {
-          class: 'editor-content'
+mounted() {
+  this.editor = new Editor({
+    content: this.sanitizeInternalLinks(this.modelValue || ''),
+    extensions: [
+      StarterKit.configure({
+        heading: false
+      }),
+      CustomHeading.configure({
+        levels: [2, 3, 4, 5, 6]
+      }),
+      Underline,
+      TextStyle,
+      Color,
+      Text,
+      Subscript,
+      Superscript,
+      CustomImage,
+      TableKit.configure({
+        table: {
+          resizable: true
         }
-      },
-      onUpdate: ({ editor }) => {
-        if (!this.isSourceMode) {
-          const cleanedHtml = this.sanitizeInternalLinks(editor.getHTML())
-
-          if (cleanedHtml !== editor.getHTML()) {
-            editor.commands.setContent(cleanedHtml, false)
-            return
-          }
-
-          this.$emit('update:modelValue', cleanedHtml)
+      }),
+      Placeholder.configure({
+        placeholder:
+          'Wpisz treść opisu SEO, artykułu lub kategorii. Używaj nagłówków H2-H3, linków wewnętrznych, list, tabel i obrazów z ALT.'
+      }),
+      Link.configure({
+        autolink: true,
+        openOnClick: false,
+        linkOnPaste: true,
+        protocols: ['http', 'https', 'mailto', 'tel'],
+        HTMLAttributes: {
+          class: 'editor-link'
         }
+      }),
+      CharacterCount.configure({
+        limit: this.maxLimit || undefined
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph']
+      })
+    ],
+    editorProps: {
+      attributes: {
+        class: 'editor-content'
       }
-    })
+    },
+    onUpdate: ({ editor }) => {
+      if (this.isSourceMode) return
 
-    this.sourceHtml = this.sanitizeInternalLinks(this.modelValue || '')
-  },
+      const cleanedHtml = this.sanitizeInternalLinks(editor.getHTML())
+
+      this.isUpdatingFromEditor = true
+      this.$emit('update:modelValue', cleanedHtml)
+
+      this.$nextTick(() => {
+        this.isUpdatingFromEditor = false
+      })
+    }
+  })
+
+  this.sourceHtml = this.sanitizeInternalLinks(this.modelValue || '')
+},
   beforeUnmount() {
     document.body.style.overflow = ''
     this.editor?.destroy()
@@ -919,6 +1034,62 @@ export default {
 
 .ProseMirror .table-of-contents a:hover {
   text-decoration: underline;
+}
+
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 1rem 0;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid #d1d5db;
+  padding: 10px 12px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.ProseMirror th {
+  background: #f3f4f6;
+  font-weight: 700;
+}
+
+.ProseMirror .selectedCell:after {
+  background: rgba(59, 130, 246, 0.12);
+  content: '';
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  position: relative;
+}
+
+.ProseMirror .column-resize-handle {
+  background-color: #2563eb;
+  bottom: -2px;
+  position: absolute;
+  right: -2px;
+  pointer-events: none;
+  top: 0;
+  width: 4px;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
 }
 
 .source-mode {
