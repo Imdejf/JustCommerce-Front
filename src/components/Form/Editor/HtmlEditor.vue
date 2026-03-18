@@ -226,9 +226,6 @@ import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
 import { TableKit } from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableHeader from '@tiptap/extension-table-header'
-import TableCell from '@tiptap/extension-table-cell'
 import Cookies from 'universal-cookie'
 
 const CustomImage = Image.extend({
@@ -385,9 +382,13 @@ export default {
       return html
         .replace(/\starget="_blank"/gi, '')
         .replace(/\starget="_self"/gi, '')
+        .replace(/\srel="noopener noreferrer nofollow"/gi, '')
         .replace(/\srel="noopener noreferrer"/gi, '')
+        .replace(/\srel="noopener nofollow"/gi, '')
+        .replace(/\srel="noreferrer nofollow"/gi, '')
         .replace(/\srel="noopener"/gi, '')
         .replace(/\srel="noreferrer"/gi, '')
+        .replace(/\srel="nofollow"/gi, '')
         .replace(/\srel=""/gi, '')
     },
 
@@ -751,69 +752,73 @@ export default {
       this.emitEditorHtml()
     }
   },
-mounted() {
-  this.editor = new Editor({
-    content: this.sanitizeInternalLinks(this.modelValue || ''),
-    extensions: [
-      StarterKit.configure({
-        heading: false
-      }),
-      CustomHeading.configure({
-        levels: [2, 3, 4, 5, 6]
-      }),
-      Underline,
-      TextStyle,
-      Color,
-      Text,
-      Subscript,
-      Superscript,
-      CustomImage,
-      TableKit.configure({
-        table: {
-          resizable: true
+
+  mounted() {
+    this.editor = new Editor({
+      content: this.sanitizeInternalLinks(this.modelValue || ''),
+      extensions: [
+        StarterKit.configure({
+          heading: false
+        }),
+        CustomHeading.configure({
+          levels: [2, 3, 4, 5, 6]
+        }),
+        Underline,
+        TextStyle,
+        Color,
+        Text,
+        Subscript,
+        Superscript,
+        CustomImage,
+        TableKit.configure({
+          table: {
+            resizable: true
+          }
+        }),
+        Placeholder.configure({
+          placeholder:
+            'Wpisz treść opisu SEO, artykułu lub kategorii. Używaj nagłówków H2-H3, linków wewnętrznych, list, tabel i obrazów z ALT.'
+        }),
+        Link.configure({
+          autolink: true,
+          openOnClick: false,
+          linkOnPaste: true,
+          protocols: ['http', 'https', 'mailto', 'tel'],
+          HTMLAttributes: {
+            class: 'editor-link',
+            rel: null,
+            target: null
+          }
+        }),
+        CharacterCount.configure({
+          limit: this.maxLimit || undefined
+        }),
+        TextAlign.configure({
+          types: ['heading', 'paragraph']
+        })
+      ],
+      editorProps: {
+        attributes: {
+          class: 'editor-content'
         }
-      }),
-      Placeholder.configure({
-        placeholder:
-          'Wpisz treść opisu SEO, artykułu lub kategorii. Używaj nagłówków H2-H3, linków wewnętrznych, list, tabel i obrazów z ALT.'
-      }),
-      Link.configure({
-        autolink: true,
-        openOnClick: false,
-        linkOnPaste: true,
-        protocols: ['http', 'https', 'mailto', 'tel'],
-        HTMLAttributes: {
-          class: 'editor-link'
-        }
-      }),
-      CharacterCount.configure({
-        limit: this.maxLimit || undefined
-      }),
-      TextAlign.configure({
-        types: ['heading', 'paragraph']
-      })
-    ],
-    editorProps: {
-      attributes: {
-        class: 'editor-content'
+      },
+      onUpdate: ({ editor }) => {
+        if (this.isSourceMode) return
+
+        const cleanedHtml = this.sanitizeInternalLinks(editor.getHTML())
+
+        this.isUpdatingFromEditor = true
+        this.$emit('update:modelValue', cleanedHtml)
+
+        this.$nextTick(() => {
+          this.isUpdatingFromEditor = false
+        })
       }
-    },
-    onUpdate: ({ editor }) => {
-      if (this.isSourceMode) return
+    })
 
-      const cleanedHtml = this.sanitizeInternalLinks(editor.getHTML())
+    this.sourceHtml = this.sanitizeInternalLinks(this.modelValue || '')
+  },
 
-      this.isUpdatingFromEditor = true
-      this.$emit('update:modelValue', cleanedHtml)
-
-      this.$nextTick(() => {
-        this.isUpdatingFromEditor = false
-      })
-    }
-  })
-
-  this.sourceHtml = this.sanitizeInternalLinks(this.modelValue || '')
-},
   beforeUnmount() {
     document.body.style.overflow = ''
     this.editor?.destroy()
