@@ -5,6 +5,8 @@ import ProductRelatedTab from '../../../../components/Page/Catalog/Product/Tabs/
 import ProductVariationTab from '../../../../components/Page/Catalog/Product/Tabs/ProductVariation.vue'
 import ProductAttributeTab from '../../../../components/Page/Catalog/Product/Tabs/ProductAttribute.vue'
 import ProductVolumePricing from '../../../../components/Page/Catalog/Product/Tabs/ProductValuePrice.vue'
+import ProductFaq from '../../../../components/Page/Catalog/Product/Tabs/ProductFaq.vue'
+import ProductBlog from '../../../../components/Page/Catalog/Product/Tabs/ProductBlog.vue'
 
 import { ProductOptionDTO } from '/@/types/product/ProductOption'
 import { onMounted, ref } from 'vue'
@@ -57,6 +59,22 @@ const tabs = [
     props: {
       product: product,
       initialTiers: []
+    }
+  },
+  {
+    id: 'productFaq',
+    title: 'FAQ',
+    component: ProductFaq,
+    props: {
+      product: product
+    }
+  },
+  {
+    id: 'productBlog',
+    title: 'Blog',
+    component: ProductBlog,
+    props: {
+      product: product
     }
   },
 ]

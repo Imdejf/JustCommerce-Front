@@ -20,6 +20,7 @@ import { gusbir } from './gusbir/gusbir'
 import { chatGpt } from './chatgpt/chatgpt'
 import { productValuePrice } from './product/productValuePrice'
 import { tracking } from './tracking/tracking'
+import { productFaq } from './productFaq/productFaq'
 
 
 export const Api = {
@@ -44,5 +45,6 @@ export const Api = {
   gusbir,
   chatGpt,
   productValuePrice,
-  tracking
+  tracking,
+  productFaq
 }
