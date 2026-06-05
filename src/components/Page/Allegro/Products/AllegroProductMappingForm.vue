@@ -1188,7 +1188,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Api } from '/@/services/api'
-import AllegroPhotosAndDescription from '/@/components/form/allegro/AllegroPhotosAndDescription.vue'
+import AllegroPhotosAndDescription from '/@/components/Form/Allegro/AllegroPhotosAndDescription.vue'
+import {
+  buildFeePreviewBody,
+  createDefaultDescriptionRows,
+  extractAllegroUrlFromUpload,
+  prepareDescriptionRowsForAllegro,
+} from '/@/components/Form/Allegro/allegroOfferForm.ts'
 
 const props = defineProps<{
   productId: string
@@ -1282,16 +1288,7 @@ const form = reactive({
   publishTime: '',
 
   photos: [] as any[],
-descriptionRows: [
-  {
-    id: crypto.randomUUID(),
-    text: '',
-    active: true,
-    layout: 'TEXT_ONLY',
-    imageUrl: null,
-    imageFile: null,
-  },
-],
+  descriptionRows: createDefaultDescriptionRows(),
 
   saveError: false,
 
@@ -1738,38 +1735,29 @@ await Api.allegro.saveProductMapping(props.productId, {
 })
 }
 
-const buildFeePreviewBody = () => {
-  return {
-    offer: {
-      name: form.title,
-      category: {
-        id: form.categoryId
-      },
-      sellingMode: {
-        format: form.isAuction ? 'AUCTION' : 'BUY_NOW',
-        price: {
-          amount: String(form.price || 0),
-          currency: 'PLN'
-        }
-      },
-      stock: {
-        available: Number(form.stockQuantity || 1),
-        unit: form.stockUnit
-      },
-      delivery: {
-        shippingRates: form.deliveryPriceListId
-          ? {
-              id: form.deliveryPriceListId
-            }
-          : null
-      }
-    }
-  }
-}
-
 const previewFees = async () => {
+  if (!form.categoryId) {
+    ElMessage.error('Wybierz kategorię, aby sprawdzić prowizję.')
+    return
+  }
+
+  if (!form.price || Number(form.price) <= 0) {
+    ElMessage.error('Podaj cenę, aby sprawdzić prowizję.')
+    return
+  }
+
   try {
-    feePreview.value = await Api.allegro.previewOfferFees(buildFeePreviewBody())
+    feePreview.value = await Api.allegro.previewOfferFees(
+      buildFeePreviewBody({
+        title: form.title,
+        categoryId: form.categoryId,
+        price: form.price,
+        stockQuantity: form.stockQuantity,
+        stockUnit: form.stockUnit,
+        deliveryPriceListId: form.deliveryPriceListId,
+        isAuction: form.isAuction,
+      })
+    )
     ElMessage.success('Pobrano prowizje z Allegro.')
   } catch (e) {
     console.error(e)
@@ -1815,11 +1803,7 @@ const publishOffer = async () => {
         const base64File = await fileToBase64(photo.file)
         const uploaded = await Api.allegro.uploadImage(base64File)
 
-        const allegroUrl =
-          uploaded?.data?.allegroUrl ||
-          uploaded?.data?.AllegroUrl ||
-          uploaded?.allegroUrl ||
-          uploaded?.AllegroUrl
+        const allegroUrl = extractAllegroUrlFromUpload(uploaded)
 
         if (allegroUrl) {
           photo.allegroUrl = allegroUrl
@@ -1854,20 +1838,11 @@ const publishOffer = async () => {
         ? `${form.publishDate}T${form.publishTime}:00`
         : null
 
-    const descriptionRows = form.descriptionRows
-      .filter((x: any) =>
-        x.active &&
-        (
-          !String(x.text || '').trim() ||
-          x.imageUrl
-        )
-      )
-      .map((x: any) => ({
-        text: x.text,
-        active: true,
-        layout: x.layout,
-        imageUrl: x.imageUrl
-      }))
+    const descriptionRows = await prepareDescriptionRowsForAllegro(
+      form.descriptionRows,
+      form.photos,
+      base64File => Api.allegro.uploadImage(base64File),
+    )
 
     const result = await Api.allegro.publishProduct(props.productId, {
       publishImmediately: form.publishOption === 'NOW',

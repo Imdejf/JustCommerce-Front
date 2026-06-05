@@ -12,10 +12,18 @@ const props = defineProps({
   tabs: {
     type: Array,
     required: true
+  },
+  defaultTabId: {
+    type: String,
+    default: ''
   }
 })
 
-const activeTab = ref(props.tabs[0].id)
+const activeTab = ref(
+  props.defaultTabId && props.tabs.some((tab: Tab) => tab.id === props.defaultTabId)
+    ? props.defaultTabId
+    : props.tabs[0].id
+)
 const tabProps = ref({})
 
 const activeTabComponent = computed(() => {

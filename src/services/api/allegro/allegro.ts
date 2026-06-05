@@ -126,6 +126,17 @@ const getOffer = (offerId: string) =>
     method: 'GET'
   })
 
+const getOfferForEdit = (offerId: string) =>
+  request(`${baseUrl}/offers/${offerId}/edit`, {
+    method: 'GET'
+  })
+
+const updateOffer = (offerId: string, body: any) =>
+  request(`${baseUrl}/offers/${offerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  })
+
 const updateOfferPrice = (offerId: string, price: number) =>
   request(`${baseUrl}/offers/${offerId}/price`, {
     method: 'PUT',
@@ -236,6 +247,21 @@ const updateOrderFulfillment = (
     })
   })
 
+const getCarriers = () =>
+  request(`${baseUrl}/orders/carriers`, {
+    method: 'GET'
+  })
+
+const getOrderInvoices = (checkoutFormId: string) =>
+  request(`${baseUrl}/orders/${checkoutFormId}/invoices`, {
+    method: 'GET'
+  })
+
+const uploadOrderInvoiceFromLocalOrder = (checkoutFormId: string) =>
+  request(`${baseUrl}/orders/${checkoutFormId}/invoices/upload-from-local-order`, {
+    method: 'POST'
+  })
+
 const getLiveOrders = (
   status?: string | null,
   fulfillmentStatus?: string | null,
@@ -305,6 +331,35 @@ const getImportedOrder = (checkoutFormId: string, sandbox?: boolean | null) => {
   })
 }
 
+const emptyGuid = '00000000-0000-0000-0000-000000000000'
+
+const allegroDefaultStoreId = import.meta.env.VITE_ALLEGRO_DEFAULT_STORE_ID || emptyGuid
+const allegroDefaultLanguageId = import.meta.env.VITE_ALLEGRO_DEFAULT_LANGUAGE_ID || emptyGuid
+const allegroDefaultUserId = import.meta.env.VITE_ALLEGRO_DEFAULT_USER_ID || emptyGuid
+const allegroDefaultCountryId = import.meta.env.VITE_ALLEGRO_DEFAULT_COUNTRY_ID || emptyGuid
+const allegroDefaultStateProvinceId = import.meta.env.VITE_ALLEGRO_DEFAULT_STATE_PROVINCE_ID || emptyGuid
+
+const getAllegroLocalOrderEnvDefaults = () => ({
+  storeId: allegroDefaultStoreId,
+  languageId: allegroDefaultLanguageId,
+  userId: allegroDefaultUserId,
+  countryId: allegroDefaultCountryId,
+  stateProvinceId: allegroDefaultStateProvinceId,
+})
+
+const buildCreateLocalOrderBody = (settings?: any) => ({
+  storeId: allegroDefaultStoreId,
+  createdById: allegroDefaultUserId,
+  defaultCustomerId: allegroDefaultUserId,
+  defaultLanguageId: allegroDefaultLanguageId,
+  defaultCountryId: allegroDefaultCountryId,
+  defaultStateProvinceId: allegroDefaultStateProvinceId,
+  deliveryMethod: settings?.defaultDeliveryMethod ?? 0,
+  orderStatus: settings?.defaultOrderStatus > 0 ? settings.defaultOrderStatus : 1,
+  paidPaymentStatus: settings?.defaultPaidPaymentStatus > 0 ? settings.defaultPaidPaymentStatus : 20,
+  unpaidPaymentStatus: settings?.defaultUnpaidPaymentStatus > 0 ? settings.defaultUnpaidPaymentStatus : 10,
+})
+
 const createLocalOrder = (checkoutFormId: string, body: any) =>
   request(`${baseUrl}/orders/${checkoutFormId}/create-local-order`, {
     method: 'POST',
@@ -344,6 +399,11 @@ const saveSettings = (body: any) =>
   request(`${baseUrl}/settings`, {
     method: 'PUT',
     body: JSON.stringify(body)
+  })
+
+const runAutomation = () =>
+  request(`${baseUrl}/automation/run`, {
+    method: 'POST'
   })
 
 const getReturnPolicies = () =>
@@ -430,6 +490,8 @@ export const allegro = {
 
   getOffers,
   getOffer,
+  getOfferForEdit,
+  updateOffer,
   updateOfferPrice,
   updateOfferStock,
 
@@ -441,6 +503,8 @@ export const allegro = {
   getImportedOrders,
   getImportedOrder,
   createLocalOrder,
+  buildCreateLocalOrderBody,
+  getAllegroLocalOrderEnvDefaults,
 
   getReturnPolicies,
   getImpliedWarranties,
@@ -460,10 +524,14 @@ export const allegro = {
   getOrderShipments,
   addOrderShipment,
   updateOrderFulfillment,
+  getCarriers,
+  getOrderInvoices,
+  uploadOrderInvoiceFromLocalOrder,
 
   searchCatalogProducts,
   getSettings,
   saveSettings,
+  runAutomation,
 
   getResponsibleProducers,
   getResponsiblePersons,

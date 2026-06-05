@@ -128,7 +128,7 @@ onMounted(async () => {
       </InfoBox>
     </div>
     <template #tabs>
-      <TabsView :tabs="tabs" v-if="isLoading" />
+      <TabsView :tabs="tabs" default-tab-id="productAttribute" v-if="isLoading" />
     </template>
   </ContentContainer>
 </template>

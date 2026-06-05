@@ -259,6 +259,51 @@ const removePurchaseInvoice = (payload) => {
   })
 }
 
+const updateOrderBillingAndShipping = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/UpdateOrderBillingAndShipping`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
+const uploadOrderAttachment = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/UploadOrderAttachment`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
+const removeOrderAttachment = (payload) => {
+  return fetch(`${APISettings.baseURL}administration/order/RemoveOrderAttachment`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (response.status != 200) {
+      throw response.status
+    } else {
+      return response.json()
+    }
+  })
+}
+
 
 export const orders = {
   smartTable,
@@ -275,5 +320,8 @@ export const orders = {
   uploadInvoice,
   addInvoiceToOrder,
   removePurchaseInvoice,
+  updateOrderBillingAndShipping,
+  uploadOrderAttachment,
+  removeOrderAttachment,
   ...CreateBaseApiService('administration/order')
 }

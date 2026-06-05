@@ -3,6 +3,9 @@ import type { ProductDTO, ProductFaqItemDTO } from '/@/types/product/Product'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
+import ProductCompetitorImportReviewModal, {
+  type CompetitorImportFaqItem
+} from '/@/components/Form/Modal/ProductCompetitorImportReviewModal.vue'
 
 const props = defineProps({
   product: {
@@ -34,6 +37,12 @@ interface ProductFaqViewModel {
 const items = ref<ProductFaqViewModel[]>([])
 const isLoading = ref(false)
 const isSaving = ref(false)
+const aiFaqUrlModalVisible = ref(false)
+const aiFaqReviewVisible = ref(false)
+const aiFaqLoading = ref(false)
+const aiFaqApplyLoading = ref(false)
+const aiFaqCompetitorUrl = ref('')
+const aiFaqReviewItems = ref<CompetitorImportFaqItem[]>([])
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
 
@@ -190,6 +199,97 @@ const saveFaq = async () => {
   }
 }
 
+const normalizeCompetitorFaqItems = (rawItems: any[]): CompetitorImportFaqItem[] => {
+  if (!Array.isArray(rawItems)) return []
+
+  return rawItems
+    .map((item, index) => ({
+      question: String(item?.question ?? item?.Question ?? '').trim(),
+      answer: String(item?.answer ?? item?.Answer ?? '').trim(),
+      displayOrder: Number(item?.displayOrder ?? item?.DisplayOrder ?? index + 1),
+      selected: true
+    }))
+    .filter((item) => item.question && item.answer)
+}
+
+const generateFaqWithAi = async () => {
+  const url = aiFaqCompetitorUrl.value?.trim()
+  if (!url) {
+    toast.error('Podaj link do strony konkurencji.')
+    return
+  }
+
+  if (!productId.value) {
+    toast.error('Brak product.id.')
+    return
+  }
+
+  aiFaqLoading.value = true
+
+  try {
+    const res = await Api.chatGpt.generateProductSeoFromCompetitor({
+      body: JSON.stringify({
+        productSeoFromCompetitorBriefDTO: {
+          competitorUrl: url,
+          availableAttributes: []
+        }
+      })
+    })
+
+    if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
+
+    const json = await res.json()
+    const data = json?.data ?? json
+    const faqItems = normalizeCompetitorFaqItems(data?.faqItems ?? data?.FaqItems)
+
+    if (!faqItems.length) {
+      toast.error('AI nie zwróciło propozycji FAQ.')
+      return
+    }
+
+    aiFaqReviewItems.value = faqItems
+    aiFaqUrlModalVisible.value = false
+    aiFaqReviewVisible.value = true
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się wygenerować FAQ.')
+  } finally {
+    aiFaqLoading.value = false
+  }
+}
+
+const applySelectedAiFaq = async (payload: {
+  faqItems: CompetitorImportFaqItem[]
+  attributeItems: unknown[]
+}) => {
+  if (!productId.value) return
+
+  aiFaqApplyLoading.value = true
+
+  try {
+    for (const faq of payload.faqItems) {
+      await Api.productFaq.create({
+        body: JSON.stringify({
+          productId: productId.value,
+          question: faq.question,
+          answer: faq.answer,
+          displayOrder: Number(faq.displayOrder ?? 0),
+          isPublished: true
+        })
+      })
+    }
+
+    await getAllFaq()
+    aiFaqReviewVisible.value = false
+    toast.success(`Dodano ${payload.faqItems.length} wpisów FAQ.`)
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się dodać wybranych FAQ.')
+  } finally {
+    aiFaqApplyLoading.value = false
+  }
+}
+
 const removeFaq = async (id: string) => {
   if (!id) return
 
@@ -243,6 +343,12 @@ onMounted(() => {
 <template>
   <div>
     <FormSection title="FAQ produktu">
+      <div class="px-10 mb-4 flex justify-end">
+        <el-button type="warning" :disabled="!productId" @click="aiFaqUrlModalVisible = true">
+          Generuj FAQ z AI
+        </el-button>
+      </div>
+
       <div class="flex gap-10 w-full justify-between px-10">
         <div class="w-[42%] rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
           <div class="flex items-center justify-between mb-6">
@@ -427,5 +533,43 @@ onMounted(() => {
         </div>
       </div>
     </FormSection>
+
+    <el-dialog v-model="aiFaqUrlModalVisible" title="Generuj FAQ z AI" width="560px">
+      <p class="text-sm text-gray-600 mb-4">
+        Wklej link do strony konkurencji. AI zaproponuje pytania i odpowiedzi — wybierzesz checkboxami,
+        które dodać do produktu.
+      </p>
+      <FormKit
+        type="text"
+        v-model="aiFaqCompetitorUrl"
+        label="Link do produktu u konkurencji"
+        placeholder="https://..."
+        validation="required"
+        validation-visibility="live"
+      />
+      <template #footer>
+        <el-button @click="aiFaqUrlModalVisible = false">Anuluj</el-button>
+        <el-button
+          type="primary"
+          :loading="aiFaqLoading"
+          :disabled="!aiFaqCompetitorUrl?.trim()"
+          @click="generateFaqWithAi"
+        >
+          Generuj propozycje FAQ
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <ProductCompetitorImportReviewModal
+      v-if="aiFaqReviewVisible"
+      :loading="aiFaqApplyLoading"
+      :product-name="(product as any)?.name"
+      :requires-product-save="false"
+      :show-attribute-section="false"
+      :faq-items="aiFaqReviewItems"
+      :attribute-items="[]"
+      @close="aiFaqReviewVisible = false"
+      @apply="applySelectedAiFaq"
+    />
   </div>
 </template>

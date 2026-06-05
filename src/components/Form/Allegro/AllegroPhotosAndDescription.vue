@@ -176,16 +176,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import AllegroPhotoUploader, { type AllegroPhoto } from './AllegroPhotoUploader.vue'
+import AllegroPhotoUploader from './AllegroPhotoUploader.vue'
+import {
+  isValidAllegroImageUrl,
+  type AllegroDescriptionRow,
+  type AllegroPhoto,
+} from './allegroOfferForm.ts'
 
-export type AllegroDescriptionRow = {
-  id: string
-  text: string
-  active: boolean
-  layout: 'TEXT_ONLY' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_TEXT_RIGHT' | 'IMAGE_ONLY'
-  imageUrl?: string | null
-  imageFile?: File | null
-}
+export type { AllegroDescriptionRow }
 
 const props = defineProps<{
   photos: AllegroPhoto[]
@@ -303,6 +301,14 @@ const chooseImageForRow = (photo: AllegroPhoto) => {
 
   selectedImageRow.value.imageUrl = photo.allegroUrl || photo.url
   selectedImageRow.value.imageFile = photo.file || null
+
+  if (
+    selectedImageRow.value.imageUrl &&
+    !isValidAllegroImageUrl(selectedImageRow.value.imageUrl) &&
+    !selectedImageRow.value.imageFile
+  ) {
+    alert('To zdjęcie zostanie przesłane do Allegro podczas publikacji oferty.')
+  }
 
   imagePickerVisible.value = false
   selectedImageRow.value = null

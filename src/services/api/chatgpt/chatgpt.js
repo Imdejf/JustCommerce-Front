@@ -25,9 +25,36 @@ const generateProductPhoto = (payload) =>
     body: payload.body
   })
 
+const generateProductSeoFromCompetitor = (payload) =>
+  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductSeoFromCompetitor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: payload.body
+  })
+
+const generateProductDescriptionVision = (payload) =>
+  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionVision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: payload.body
+  })
+
+const generateProductAttributesFromDescription = (payload) =>
+  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductAttributesFromDescription`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: payload.body
+  })
+
 export const chatGpt = {
   generateProductData,
   generateProductSection,
   generateProductPhoto,
+  generateProductSeoFromCompetitor,
+  generateProductAttributesFromDescription,
+  generateProductDescriptionVision,
   ...CreateBaseApiService('administration/chatGpt')
 }

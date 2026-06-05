@@ -4,8 +4,8 @@
       <div class="flex justify-between">
         <div class="flex">
           <span class="flex hover:bg-sky-100 p-1">
-            <a @click="importOrders" class="rounded-md p-1 text-xs font-semibold">
-              Importuj z Allegro
+            <a @click="openImportDialog" class="rounded-md p-1 text-xs font-semibold">
+              Pobierz z Allegro
             </a>
           </span>
 
@@ -51,13 +51,13 @@
                   <span class="font-bold text-base">Kupujący</span>
                   <p>Login: {{ props.row.buyerLogin || '-' }}</p>
                   <p>Email: {{ props.row.buyerEmail || '-' }}</p>
-                  <p>Imię i nazwisko: {{ props.row.buyerName || '-' }}</p>
-                  <p>Telefon: {{ props.row.phoneNumber || '-' }}</p>
+                  <p>Imię i nazwisko: {{ props.row.buyerName || fullName(props.row.buyerFirstName, props.row.buyerLastName) }}</p>
+                  <p>Telefon: {{ props.row.phoneNumber || props.row.buyerPhoneNumber || '-' }}</p>
                 </div>
 
                 <div>
                   <span class="font-bold text-base">Dostawa</span>
-                  <p>Metoda: {{ props.row.deliveryMethod || '-' }}</p>
+                  <p>Metoda: {{ props.row.deliveryMethod || props.row.deliveryMethodName || '-' }}</p>
                   <p>Adres: {{ props.row.deliveryAddress || '-' }}</p>
                   <p>Miasto: {{ props.row.deliveryCity || '-' }}</p>
                   <p>Kod pocztowy: {{ props.row.deliveryZipCode || '-' }}</p>
@@ -74,8 +74,16 @@
 
               <div class="table__product py-4 px-8">
                 <el-table :data="props.row.items || props.row.lineItems || []" :border="true">
-                  <el-table-column label="Nazwa produktu" prop="name" />
-                  <el-table-column label="Oferta Allegro" width="160" prop="offerId" />
+                  <el-table-column label="Nazwa produktu">
+                    <template #default="scope">
+                      {{ scope.row.name || scope.row.offerName || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Oferta Allegro" width="160">
+                    <template #default="scope">
+                      {{ scope.row.offerId || '-' }}
+                    </template>
+                  </el-table-column>
                   <el-table-column label="Ilość" width="80" prop="quantity" />
                   <el-table-column label="Cena" width="120">
                     <template #default="scope">
@@ -171,7 +179,7 @@
         <el-table-column label="Dostawa" label-class-name="order_label">
           <template #default="{ row }">
             <div class="cell-tight">
-              {{ row.deliveryMethod || '-' }}
+              {{ row.deliveryMethod || row.deliveryMethodName || '-' }}
             </div>
           </template>
 
@@ -286,6 +294,92 @@
       @current-change="handlePageChange"
       class="m-2"
     />
+
+    <el-dialog
+      v-model="importDialogVisible"
+      title="Pobierz zamówienia z Allegro"
+      width="520px"
+      :close-on-click-modal="!importing"
+      :close-on-press-escape="!importing"
+      :show-close="!importing"
+    >
+      <div class="space-y-4 text-sm text-[#334155]">
+        <p>
+          System pobierze zamówienia z Allegro i zapisze je lokalnie.
+          Istniejące zamówienia zostaną zaktualizowane.
+        </p>
+
+        <el-checkbox v-model="importOptions.importAll">
+          Pobierz wszystkie strony wyników (pełny import)
+        </el-checkbox>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-[#64748b] mb-1">Data od</label>
+            <el-date-picker
+              v-model="importOptions.from"
+              type="date"
+              placeholder="Od"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              class="!w-full"
+              clearable
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[#64748b] mb-1">Data do</label>
+            <el-date-picker
+              v-model="importOptions.to"
+              type="date"
+              placeholder="Do"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              class="!w-full"
+              clearable
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-[#64748b] mb-1">Status Allegro</label>
+            <el-select v-model="importOptions.status" clearable placeholder="Wszystkie" class="!w-full">
+              <el-option label="Nowe" value="READY_FOR_PROCESSING" />
+              <el-option label="Anulowane" value="CANCELLED" />
+            </el-select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[#64748b] mb-1">Realizacja</label>
+            <el-select v-model="importOptions.fulfillmentStatus" clearable placeholder="Wszystkie" class="!w-full">
+              <el-option label="Nowe" value="NEW" />
+              <el-option label="W trakcie" value="PROCESSING" />
+              <el-option label="Wysłane" value="SENT" />
+              <el-option label="Anulowane" value="CANCELLED" />
+            </el-select>
+          </div>
+        </div>
+
+        <p v-if="!importOptions.from" class="text-xs text-[#64748b]">
+          Bez daty „od” zostanie użyty domyślny zakres z ustawień Allegro.
+        </p>
+      </div>
+
+      <template #footer>
+        <el-button :disabled="importing" @click="importDialogVisible = false">
+          Anuluj
+        </el-button>
+
+        <el-button
+          type="primary"
+          :loading="importing"
+          @click="importOrders"
+        >
+          {{ importing ? 'Pobieram...' : 'Pobierz zamówienia' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -301,6 +395,16 @@ const toast = useToast()
 
 const selectedRow = ref<any>(null)
 const selectedRowId = ref<string | null>(null)
+const importDialogVisible = ref(false)
+const importing = ref(false)
+
+const importOptions = ref({
+  importAll: true,
+  from: null as string | null,
+  to: null as string | null,
+  status: null as string | null,
+  fulfillmentStatus: null as string | null,
+})
 
 const dataTable = ref<any>({
   items: [],
@@ -369,21 +473,63 @@ const normalizeTableResult = (result: any) => {
   }
 }
 
+const toIsoDate = (value: string | null, endOfDay = false) => {
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999)
+  } else {
+    date.setHours(0, 0, 0, 0)
+  }
+
+  return date.toISOString()
+}
+
+const openImportDialog = () => {
+  importOptions.value = {
+    importAll: true,
+    from: filter.value.from,
+    to: filter.value.to,
+    status: filter.value.status,
+    fulfillmentStatus: filter.value.fulfillmentStatus,
+  }
+
+  importDialogVisible.value = true
+}
+
 const importOrders = async () => {
+  importing.value = true
+
   try {
-    await Api.allegro.importOrders({
-      status: filter.value.status,
-      fulfillmentStatus: filter.value.fulfillmentStatus,
-      from: filter.value.from,
-      to: filter.value.to,
-      limit: 100
+    const result = await Api.allegro.importOrders({
+      status: importOptions.value.status,
+      fulfillmentStatus: importOptions.value.fulfillmentStatus,
+      from: toIsoDate(importOptions.value.from),
+      to: toIsoDate(importOptions.value.to, true),
+      limit: 100,
+      importAll: importOptions.value.importAll,
     })
 
-    toast.success('Zamówienia Allegro zostały zaimportowane')
+    const data = result?.data || result
+    const created = data?.createdCount ?? 0
+    const updated = data?.updatedCount ?? 0
+    const total = data?.totalFetchedFromAllegro ?? data?.importedCount ?? 0
+    const pages = data?.pagesProcessed ?? 1
+
+    toast.success(
+      `Pobrano ${total} zamówień z Allegro (${pages} stron). Nowe: ${created}, zaktualizowane: ${updated}.`
+    )
+
+    importDialogVisible.value = false
+    filter.value.page = 1
     await fetchTableData()
   } catch (error) {
     console.error(error)
-    toast.error('Nie udało się zaimportować zamówień z Allegro')
+    toast.error('Nie udało się pobrać zamówień z Allegro')
+  } finally {
+    importing.value = false
   }
 }
 
@@ -411,18 +557,10 @@ const createLocalOrder = async () => {
   try {
     const checkoutFormId = selectedRow.value.checkoutFormId || selectedRow.value.id
 
-    await Api.allegro.createLocalOrder(checkoutFormId, {
-      storeId: null,
-      createdById: null,
-      defaultCustomerId: null,
-      defaultLanguageId: null,
-      defaultCountryId: null,
-      defaultStateProvinceId: null,
-      deliveryMethod: null,
-      orderStatus: 1,
-      paidPaymentStatus: 30,
-      unpaidPaymentStatus: 10
-    })
+    const settingsResult = await Api.allegro.getSettings()
+    const settings = settingsResult?.data || settingsResult
+
+    await Api.allegro.createLocalOrder(checkoutFormId, Api.allegro.buildCreateLocalOrderBody(settings))
 
     toast.success('Utworzono zamówienie lokalne')
     await fetchTableData()
@@ -443,6 +581,11 @@ const handlePageChange = async (page: number) => {
   })
 
   await fetchTableData()
+}
+
+const fullName = (firstName?: string | null, lastName?: string | null) => {
+  const full = `${firstName || ''} ${lastName || ''}`.trim()
+  return full || '-'
 }
 
 const formatDate = (dateIso: string) => {

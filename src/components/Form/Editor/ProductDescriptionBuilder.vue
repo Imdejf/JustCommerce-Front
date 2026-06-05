@@ -110,6 +110,14 @@
     </div>
 
     <div class="builder-footer">
+      <button
+        type="button"
+        class="add-row-btn add-row-btn--vision"
+        @click="$emit('generate-vision-ai')"
+      >
+        CHAT – GENERUJ OPIS ZE ZDJĘĆ
+      </button>
+
       <button type="button" class="add-row-btn" @click="addRow">
         DODAJ KOLEJNY WIERSZ
       </button>
@@ -166,7 +174,7 @@ export default defineComponent({
       default: () => []
     }
   },
-  emits: ['update:modelValue', 'improve-ai', 'add-ai-below'],
+  emits: ['update:modelValue', 'improve-ai', 'add-ai-below', 'generate-vision-ai'],
   data() {
     return {
       localRows: [] as ProductDescriptionRow[],
@@ -433,6 +441,14 @@ export default defineComponent({
 }
 
 .add-row-btn--secondary {
+  letter-spacing: 1px;
+}
+
+.add-row-btn--vision {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
   letter-spacing: 1px;
 }
 </style>

@@ -113,6 +113,8 @@ const removeOptionCombination = (payload) =>
     }
   })
 
+const isSuccessResponse = (status) => status >= 200 && status < 300
+
 const addAttributeValue = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
     method: 'POST',
@@ -120,7 +122,7 @@ const addAttributeValue = (payload) =>
     credentials: 'include',
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!isSuccessResponse(response.status)) {
       throw response.status
     } else {
       return response.json()
@@ -129,12 +131,12 @@ const addAttributeValue = (payload) =>
 
 const removeAttributeValue = (payload) =>
   fetch(`${APISettings.baseURL}administration/product/RemoveProductAttributeValue`, {
-    method: 'DELETE',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!isSuccessResponse(response.status)) {
       throw response.status
     } else {
       return response.json()
@@ -148,7 +150,7 @@ const updateAttributeValue = (payload) =>
     headers: { 'Content-Type': 'application/json' },
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!isSuccessResponse(response.status)) {
       throw response.status
     } else {
       return response.json()

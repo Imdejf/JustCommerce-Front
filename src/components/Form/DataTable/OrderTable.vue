@@ -608,8 +608,16 @@ const fetchTableData = async () => {
 
     // Wykonaj zapytanie do API
     const result = await Api.orders.smartTable(payload);
+    const tableData = result.data
 
-    dataTable.value = result.data;
+    if (tableData?.items?.length) {
+      tableData.items = tableData.items.map((item: any) => ({
+        ...item,
+        orderStatus: item.orderStatus > 0 ? item.orderStatus : OrderStatus.New,
+      }))
+    }
+
+    dataTable.value = tableData;
   } catch (error) {
     console.error('Błąd podczas pobierania danych:', error);
     toast.error('Wystąpił problem z pobraniem danych');

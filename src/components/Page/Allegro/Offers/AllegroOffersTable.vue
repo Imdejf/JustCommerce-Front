@@ -10,6 +10,12 @@
           </span>
 
           <span class="ml-4 flex hover:bg-sky-100 p-1">
+            <a @click="syncOffersFromAllegro" class="rounded-md p-1 text-xs font-semibold">
+              Połącz oferty ze sklepem
+            </a>
+          </span>
+
+          <span class="ml-4 flex hover:bg-sky-100 p-1">
             <a @click="showSelectedOffer" class="rounded-md p-1 text-xs font-semibold">
               Szczegóły oferty
             </a>
@@ -55,7 +61,6 @@
           </template>
 
           <template #default="prop">
-            {{ prop.row }}
             <div class="cell-tight">
               {{ prop.row.offerId || prop.row.id || '-' }}
             </div>
@@ -82,8 +87,8 @@
           <template #default="{ row }">
             <div class="cell-tight">
               <strong>{{ row.productName || row.name || row.title || '-' }}</strong>
-              <div v-if="row.sku || row.productId">
-                SKU/Produkt: {{ row.sku || row.productId }}
+              <div v-if="row.productIdentificationCode || row.externalId || row.productId">
+                Kod: {{ row.productIdentificationCode || row.externalId || row.productId }}
               </div>
             </div>
           </template>
@@ -296,6 +301,22 @@ const sendFilterUpdate = async () => {
   })
 
   await fetchTableData()
+}
+
+const syncOffersFromAllegro = async () => {
+  try {
+    const result = await Api.allegro.syncOffersFromAllegro()
+    const data = result?.data || result
+
+    toast.success(
+      `Połączono oferty: pobrano ${data?.downloadedCount ?? 0}, nowe ${data?.createdCount ?? 0}, zaktualizowane ${data?.updatedCount ?? 0}, pominięte ${data?.skippedCount ?? 0}.`
+    )
+
+    await fetchTableData()
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się połączyć ofert Allegro ze sklepem')
+  }
 }
 
 const showSelectedOffer = () => {

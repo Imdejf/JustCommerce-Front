@@ -63,7 +63,7 @@
             </div>
 
             <div>
-              <strong>SKU:</strong>
+              <strong>Kod producenta:</strong>
               <p>{{ form.externalId || '-' }}</p>
             </div>
           </div>
@@ -137,50 +137,76 @@
             </el-select>
           </div>
 
-          <div>
-            <h3 class="text-sm font-bold text-[#111827] mb-3">
-              Parametry Allegro
-            </h3>
+          <div class="border-t border-[#e5e7eb] mt-8 pt-6">
+            <div v-if="!parameters.length">
+              <el-empty description="Brak parametrów dla kategorii oferty" />
+            </div>
 
-            <el-table
-              :data="form.parameterValues"
-              :border="true"
-              class="!bg-[#d6dfe9]"
-            >
-              <el-table-column label="ID parametru" width="180">
-                <template #default="{ row }">
-                  <el-input v-model="row.parameterId" size="small" />
-                </template>
-              </el-table-column>
+            <div v-else class="max-w-[460px] space-y-5">
+              <div
+                v-for="param in visibleParameters"
+                :key="param.id"
+              >
+                <div class="flex items-center gap-2">
+                  <div class="flex-1">
+                    <label class="block text-xs font-semibold text-[#64748b] mb-1">
+                      {{ param.name }}
+                      <span v-if="param.required" class="text-red-500">*</span>
+                    </label>
 
-              <el-table-column label="Wartość">
-                <template #default="{ row }">
-                  <el-input v-model="row.value" size="small" />
-                </template>
-              </el-table-column>
+                    <el-select
+                      v-if="getParamValues(param).length"
+                      v-model="form.parameterValues[param.id]"
+                      filterable
+                      clearable
+                      class="!w-full allegro-select"
+                      placeholder="wybierz"
+                    >
+                      <el-option
+                        v-for="value in getParamValues(param)"
+                        :key="value.id || value.value || value.name"
+                        :label="value.name || value.value"
+                        :value="value.id || value.value || value.name"
+                      />
+                    </el-select>
 
-              <el-table-column label="ID wartości" width="180">
-                <template #default="{ row }">
-                  <el-input v-model="row.valueId" size="small" />
-                </template>
-              </el-table-column>
+                    <el-input-number
+                      v-else-if="isNumberParameter(param)"
+                      v-model="form.parameterValues[param.id]"
+                      :controls="false"
+                      class="!w-full allegro-input-number"
+                    />
 
-              <el-table-column label="Akcje" width="90">
-                <template #default="{ $index }">
-                  <el-button size="small" type="danger" @click="removeParameter($index)">
-                    Usuń
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+                    <el-switch
+                      v-else-if="isBooleanParameter(param)"
+                      v-model="form.parameterValues[param.id]"
+                    />
 
-            <button
-              type="button"
-              class="mt-3 text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline"
-              @click="addParameter"
-            >
-              DODAJ PARAMETR
-            </button>
+                    <el-input
+                      v-else
+                      v-model="form.parameterValues[param.id]"
+                      class="allegro-input"
+                      placeholder="Wpisz wartość"
+                    />
+                  </div>
+
+                  <el-tooltip content="Parametr wymagany przez Allegro" placement="top">
+                    <span class="text-[#64748b] border border-[#94a3b8] rounded-full w-4 h-4 text-[10px] flex items-center justify-center mt-5">
+                      ?
+                    </span>
+                  </el-tooltip>
+                </div>
+              </div>
+
+              <button
+                v-if="parameters.length > 6"
+                class="border border-[#00796b] px-4 py-2 text-xs font-bold tracking-[0.18em] text-[#00796b] hover:bg-[#ecfdf5]"
+                type="button"
+                @click="showAllParameters = !showAllParameters"
+              >
+                {{ showAllParameters ? 'MNIEJ PARAMETRÓW' : 'WIĘCEJ PARAMETRÓW' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -492,7 +518,22 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Api } from '/@/services/api'
-import AllegroPhotosAndDescription from '/@/components/form/allegro/AllegroPhotosAndDescription.vue'
+import AllegroPhotosAndDescription from '/@/components/Form/Allegro/AllegroPhotosAndDescription.vue'
+import {
+  applyParameterValuesFromApi,
+  buildParameterValuesForApi,
+  createDefaultDescriptionRows,
+  extractAllegroUrlFromUpload,
+  extractParametersFromLiveOffer,
+  fileToBase64,
+  getParamValues,
+  isBooleanParameter,
+  isNumberParameter,
+  mapDescriptionRowsFromApi,
+  normalizeAllegroImages,
+  prepareDescriptionRowsForAllegro,
+  buildFeePreviewBody,
+} from '/@/components/Form/Allegro/allegroOfferForm.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -512,6 +553,18 @@ const returnPolicies = ref<any[]>([])
 const impliedWarranties = ref<any[]>([])
 const warranties = ref<any[]>([])
 const deliveryPriceLists = ref<any[]>([])
+const parameters = ref<any[]>([])
+const showAllParameters = ref(false)
+const savedParameterValues = ref<any[]>([])
+
+const visibleParameters = computed(() => {
+  if (showAllParameters.value) return parameters.value
+
+  const required = parameters.value.filter((param: any) => param.required)
+  const optional = parameters.value.filter((param: any) => !param.required)
+
+  return [...required, ...optional].slice(0, 6)
+})
 
 const form = reactive({
   allegroOfferId: '',
@@ -525,22 +578,13 @@ const form = reactive({
   allegroCatalogProductId: '',
 
   condition: 'NEW',
-  parameterValues: [] as any[],
+  parameterValues: {} as Record<string, any>,
 
   responsibleProducerId: '',
   safetyText: '',
 
   photos: [] as any[],
-  descriptionRows: [
-    {
-      id: crypto.randomUUID(),
-      text: '',
-      active: true,
-      layout: 'TEXT_ONLY',
-      imageUrl: null,
-      imageFile: null,
-    },
-  ] as any[],
+  descriptionRows: createDefaultDescriptionRows(),
 
   deliveryPriceListId: '',
   shippingTime: 'PT72H',
@@ -617,13 +661,14 @@ const loadOffer = async () => {
   loading.value = true
 
   try {
-    const result = await Api.allegro.getOffer(offerId.value)
+    const result = await Api.allegro.getOfferForEdit(offerId.value)
     offer.value = result?.data || result
 
-    fillFormFromOffer(offer.value)
+    fillFormFromEditDto(offer.value)
+    await syncCategoryParameters(offer.value.parameterValues || [])
   } catch (error) {
     console.error(error)
-    ElMessage.error('Nie udało się pobrać szczegółów oferty Allegro')
+    ElMessage.error('Nie udało się pobrać danych oferty do edycji')
   } finally {
     loading.value = false
   }
@@ -642,6 +687,7 @@ const loadLiveOffer = async () => {
     liveOffer.value = result?.data || result
 
     fillFormFromLiveOffer(liveOffer.value)
+    await syncCategoryParameters(extractParametersFromLiveOffer(liveOffer.value))
 
     ElMessage.success('Pobrano aktualne dane z Allegro')
   } catch (error) {
@@ -652,30 +698,38 @@ const loadLiveOffer = async () => {
   }
 }
 
-const fillFormFromOffer = (data: any) => {
+const fillFormFromEditDto = (data: any) => {
   form.allegroOfferId = data.allegroOfferId || data.offerId || data.id || offerId.value
   form.productId = data.productId || ''
-  form.externalId = data.externalId || data.sku || ''
+  form.externalId = data.externalId || data.productIdentificationCode || data.identificationCode || ''
   form.status = data.status || ''
 
   form.title = data.name || data.productName || data.title || ''
   form.categoryId = data.categoryId || data.category?.id || ''
   form.categoryName = data.categoryName || data.category?.name || ''
+  form.allegroCatalogProductId = data.allegroCatalogProductId || ''
 
   form.price = Number(data.price?.amount || data.price || 0)
   form.stockQuantity = Number(data.stock || data.stockQuantity || data.availableStock || 0)
+  form.stockUnit = data.stockUnit || form.stockUnit
 
   form.deliveryPriceListId = data.deliveryPriceListId || data.shippingRateId || ''
+  form.shippingTime = data.shippingTime || form.shippingTime
   form.returnPolicyId = data.returnPolicyId || ''
   form.impliedWarrantyId = data.impliedWarrantyId || ''
   form.warrantyId = data.warrantyId || ''
 
-  form.photos = normalizeImages(data.images || [])
-  form.parameterValues = normalizeParameters(data.parameters || data.parameterValues || [])
+  form.responsibleProducerId = data.responsibleProducerId || ''
+  form.safetyText = data.safetyText || ''
 
-  if (!form.descriptionRows.length) {
-    form.descriptionRows = createDefaultDescriptionRows()
-  }
+  form.invoiceOption = data.invoiceOption || form.invoiceOption
+  form.invoiceSubject = data.invoiceSubject || form.invoiceSubject
+  form.vatRatePoland = data.vatRatePoland || form.vatRatePoland
+  form.condition = data.condition || form.condition
+
+  form.photos = normalizeAllegroImages(data.images || [])
+  savedParameterValues.value = data.parameterValues || data.parameters || []
+  form.descriptionRows = mapDescriptionRowsFromApi(data.descriptionRows || [])
 }
 
 const fillFormFromLiveOffer = (data: any) => {
@@ -725,40 +779,39 @@ const fillFormFromLiveOffer = (data: any) => {
     productSetItem?.safetyInformation?.description ||
     form.safetyText
 
-  form.photos = normalizeImages(data.images || productSetItem?.product?.images || [])
-  form.parameterValues = normalizeParameters(data.parameters || productSetItem?.product?.parameters || [])
+  form.photos = normalizeAllegroImages([
+    ...(data.images || []),
+    ...(productSetItem?.product?.images || []),
+  ])
+  savedParameterValues.value = extractParametersFromLiveOffer(data)
 
   form.descriptionRows = normalizeDescription(data.description)
 }
 
-const normalizeImages = (images: any[]) => {
-  if (!Array.isArray(images)) return []
+const loadCategoryParameters = async (categoryId: string) => {
+  const result = await Api.allegro.getCategoryParameters(categoryId)
+  const data = result?.data || result
 
-  return images
-    .map((x: any) => {
-      const url = typeof x === 'string'
-        ? x
-        : x.url || x.allegroUrl || x.filePath
+  parameters.value = Array.isArray(data) ? data : (data?.items || [])
 
-      if (!url) return null
-
-      return {
-        id: crypto.randomUUID(),
-        url,
-        allegroUrl: url
-      }
-    })
-    .filter(Boolean)
+  parameters.value.forEach((param: any) => {
+    if (form.parameterValues[param.id] === undefined) {
+      form.parameterValues[param.id] = null
+    }
+  })
 }
 
-const normalizeParameters = (parameters: any[]) => {
-  if (!Array.isArray(parameters)) return []
+const syncCategoryParameters = async (apiParams: any[] = []) => {
+  savedParameterValues.value = apiParams
 
-  return parameters.map((x: any) => ({
-    parameterId: x.id || x.parameterId || '',
-    valueId: x.valuesIds?.[0] || x.valueId || '',
-    value: x.values?.[0] || x.value || ''
-  }))
+  if (!form.categoryId) {
+    parameters.value = []
+    return
+  }
+
+  showAllParameters.value = false
+  await loadCategoryParameters(form.categoryId)
+  applyParameterValuesFromApi(form.parameterValues, apiParams)
 }
 
 const normalizeDescription = (description: any) => {
@@ -794,17 +847,6 @@ const normalizeDescription = (description: any) => {
     }
   })
 }
-
-const createDefaultDescriptionRows = () => [
-  {
-    id: crypto.randomUUID(),
-    text: '',
-    active: true,
-    layout: 'TEXT_ONLY',
-    imageUrl: null,
-    imageFile: null,
-  },
-]
 
 const stripHtml = (html: string) => {
   if (!html) return ''
@@ -874,96 +916,90 @@ const buildDescription = () => {
   }
 }
 
-const buildPatchBody = () => {
-  const imageUrls = form.photos
-    .map((x: any) => x.allegroUrl || x.url)
-    .filter(Boolean)
+const uploadPhotos = async () => {
+  const uploadedUrls: string[] = []
 
-  const productSetItem: any = {
-    product: {
-      id: form.allegroCatalogProductId || null,
-      name: form.title,
-      category: {
-        id: form.categoryId
-      },
-      parameters: form.parameterValues
-        .filter((x: any) => x.parameterId)
-        .map((x: any) => ({
-          id: x.parameterId,
-          valuesIds: x.valueId ? [x.valueId] : null,
-          values: x.value && !x.valueId ? [x.value] : null
-        })),
-      images: imageUrls
+  for (const photo of form.photos) {
+    if (photo.allegroUrl) {
+      uploadedUrls.push(photo.allegroUrl)
+      continue
     }
-  }
 
-  if (form.responsibleProducerId) {
-    productSetItem.responsibleProducer = {
-      type: 'ID',
-      id: form.responsibleProducerId
-    }
-  }
+    if (photo.file) {
+      const base64File = await fileToBase64(photo.file)
+      const uploaded = await Api.allegro.uploadImage(base64File)
 
-  if (form.safetyText) {
-    productSetItem.safetyInformation = {
-      type: 'TEXT',
-      description: form.safetyText
-    }
-  }
+      const allegroUrl = extractAllegroUrlFromUpload(uploaded)
 
-  return {
-    name: form.title,
-
-    productSet: [
-      productSetItem
-    ],
-
-    sellingMode: {
-      format: 'BUY_NOW',
-      price: {
-        amount: Number(form.price || 0).toFixed(2),
-        currency: 'PLN'
+      if (allegroUrl) {
+        photo.allegroUrl = allegroUrl
+        photo.url = allegroUrl
+        uploadedUrls.push(allegroUrl)
       }
-    },
 
-    stock: {
-      available: Number(form.stockQuantity || 0),
-      unit: form.stockUnit || 'UNIT'
-    },
+      continue
+    }
 
-    delivery: {
-      shippingRates: form.deliveryPriceListId
-        ? {
-            id: form.deliveryPriceListId
-          }
-        : null,
-      handlingTime: form.shippingTime || null
-    },
-
-    afterSalesServices: {
-      returnPolicy: form.returnPolicyId
-        ? {
-            id: form.returnPolicyId
-          }
-        : null,
-      impliedWarranty: form.impliedWarrantyId
-        ? {
-            id: form.impliedWarrantyId
-          }
-        : null,
-      warranty: form.warrantyId
-        ? {
-            id: form.warrantyId
-          }
-        : null
-    },
-
-    parameters: [],
-
-    images: imageUrls,
-
-    description: buildDescription()
+    if (
+      photo.url &&
+      photo.url.startsWith('https://') &&
+      photo.url.includes('allegroimg.com')
+    ) {
+      uploadedUrls.push(photo.url)
+    }
   }
+
+  return uploadedUrls
+    .filter(Boolean)
+    .filter((x: string) => x.startsWith('https://'))
+    .filter((x: string) => x.includes('allegroimg.com'))
+    .filter((value, index, self) => self.indexOf(value) === index)
+}
+
+const buildUpdateBody = (imageUrls: string[], descriptionRows: any[]) => ({
+  offerName: form.title,
+  categoryId: form.categoryId,
+  allegroCatalogProductId: form.allegroCatalogProductId || null,
+  parameterValues: buildParameterValuesForApi(form.parameterValues, parameters.value),
+  imageUrls,
+  descriptionRows,
+  price: Number(form.price || 0),
+  stockQuantity: Number(form.stockQuantity || 0),
+  stockUnit: form.stockUnit || 'UNIT',
+  condition: form.condition || null,
+  deliveryPriceListId: form.deliveryPriceListId || null,
+  shippingTime: form.shippingTime || null,
+  returnPolicyId: form.returnPolicyId || null,
+  impliedWarrantyId: form.impliedWarrantyId || null,
+  warrantyId: form.warrantyId || null,
+  invoiceOption: form.invoiceOption || null,
+  invoiceSubject: form.invoiceSubject || null,
+  vatRatePoland: form.vatRatePoland || null,
+  safetyText: form.safetyText || null,
+  responsibleProducerId: form.responsibleProducerId || null,
+})
+
+const waitForOperation = async (allegroOfferId: string, operationId: string) => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const operation = await Api.allegro.getOfferOperationStatus(
+      allegroOfferId,
+      operationId
+    )
+
+    const status = operation?.status || operation?.data?.status
+
+    if (status === 'COMPLETED' || status === 'SUCCESS') {
+      return operation
+    }
+
+    if (status === 'FAILED' || status === 'ERROR') {
+      throw new Error('Allegro odrzuciło edycję oferty')
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1500))
+  }
+
+  return null
 }
 
 const saveChanges = async () => {
@@ -972,73 +1008,95 @@ const saveChanges = async () => {
     return
   }
 
+  if (!form.title?.trim()) {
+    ElMessage.error('Tytuł oferty jest wymagany')
+    return
+  }
+
+  if (!form.categoryId) {
+    ElMessage.error('Brak kategorii oferty')
+    return
+  }
+
+  if (!form.deliveryPriceListId) {
+    ElMessage.error('Wybierz cennik dostawy')
+    return
+  }
+
+  if (!form.returnPolicyId || !form.impliedWarrantyId) {
+    ElMessage.error('Uzupełnij warunki zwrotów i reklamacji')
+    return
+  }
+
   saving.value = true
 
   try {
-    const body = buildPatchBody()
+    const imageUrls = await uploadPhotos()
 
-    await Api.allegro.patchOffer(offerId.value, body)
+    if (!imageUrls.length) {
+      ElMessage.error('Dodaj co najmniej jedno zdjęcie Allegro')
+      return
+    }
 
-    ElMessage.success('Zmiany zostały wysłane do Allegro')
+    const descriptionRows = await prepareDescriptionRowsForAllegro(
+      form.descriptionRows,
+      form.photos,
+      base64File => Api.allegro.uploadImage(base64File),
+    )
 
-    await loadLiveOffer()
-  } catch (error) {
+    const result = await Api.allegro.updateOffer(
+      offerId.value,
+      buildUpdateBody(imageUrls, descriptionRows)
+    )
+
+    const operationId =
+      result?.operationId ||
+      result?.data?.operationId
+
+    if (operationId) {
+      await waitForOperation(
+        result?.id || form.allegroOfferId || offerId.value,
+        operationId
+      )
+    }
+
+    ElMessage.success('Oferta została zaktualizowana w Allegro')
+    await loadOffer()
+  } catch (error: any) {
     console.error(error)
-    ElMessage.error('Nie udało się zapisać zmian w Allegro')
+    ElMessage.error(error?.message || 'Nie udało się zapisać zmian w Allegro')
   } finally {
     saving.value = false
   }
 }
 
-const buildFeePreviewBody = () => {
-  return {
-    offer: {
-      name: form.title,
-      category: {
-        id: form.categoryId
-      },
-      sellingMode: {
-        format: 'BUY_NOW',
-        price: {
-          amount: String(form.price || 0),
-          currency: 'PLN'
-        }
-      },
-      stock: {
-        available: Number(form.stockQuantity || 1),
-        unit: form.stockUnit
-      },
-      delivery: {
-        shippingRates: form.deliveryPriceListId
-          ? {
-              id: form.deliveryPriceListId
-            }
-          : null
-      }
-    }
-  }
-}
-
 const previewFees = async () => {
+  if (!form.categoryId) {
+    ElMessage.error('Brak kategorii — nie można sprawdzić prowizji')
+    return
+  }
+
+  if (!form.price || Number(form.price) <= 0) {
+    ElMessage.error('Podaj cenę, aby sprawdzić prowizję')
+    return
+  }
+
   try {
-    feePreview.value = await Api.allegro.previewOfferFees(buildFeePreviewBody())
+    feePreview.value = await Api.allegro.previewOfferFees(
+      buildFeePreviewBody({
+        title: form.title,
+        categoryId: form.categoryId,
+        price: form.price,
+        stockQuantity: form.stockQuantity,
+        stockUnit: form.stockUnit,
+        deliveryPriceListId: form.deliveryPriceListId,
+      })
+    )
     ElMessage.success('Pobrano prowizje z Allegro')
   } catch (error) {
     console.error(error)
     ElMessage.error('Nie udało się pobrać prowizji')
   }
-}
-
-const addParameter = () => {
-  form.parameterValues.push({
-    parameterId: '',
-    valueId: '',
-    value: ''
-  })
-}
-
-const removeParameter = (index: number) => {
-  form.parameterValues.splice(index, 1)
 }
 
 const goBack = () => {
@@ -1048,7 +1106,6 @@ const goBack = () => {
 onMounted(async () => {
   await loadInitialData()
   await loadOffer()
-  await loadLiveOffer()
 })
 </script>
 
@@ -1072,6 +1129,16 @@ onMounted(async () => {
   border-radius: 2px;
   box-shadow: 0 0 0 1px #9ca3af inset;
   font-size: 13px;
+}
+
+:deep(.allegro-input-number .el-input__wrapper) {
+  min-height: 42px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #9ca3af inset;
+}
+
+:deep(.allegro-input-number) {
+  width: 100%;
 }
 
 .json-preview {

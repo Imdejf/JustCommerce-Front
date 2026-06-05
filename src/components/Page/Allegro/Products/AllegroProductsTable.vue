@@ -77,8 +77,8 @@
           <template #default="{ row }">
             <div class="cell-tight">
               <strong>{{ row.name || row.productName || '-' }}</strong>
-              <div v-if="row.identificationCode || row.sku">
-                Kod: {{ row.identificationCode || row.sku }}
+              <div v-if="row.identificationCode">
+                Kod producenta: {{ row.identificationCode }}
               </div>
             </div>
           </template>

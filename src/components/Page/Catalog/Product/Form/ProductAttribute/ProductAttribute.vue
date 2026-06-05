@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { ProductDTO, ProductAttributeDTO } from '/@/types/product/Product'
-import { onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useStoreStore } from '/@/stores/store'
-import { ref } from 'vue'
 import { Api } from '/@/services/api'
 import { useLanguageStore } from '/@/stores/language'
+import { useToast } from 'vue-toastification'
 import { Check, Edit, Delete, Close } from '@element-plus/icons-vue'
 
 interface ProductAttribute {
@@ -33,15 +33,70 @@ const props = defineProps({
 
 const store = useStoreStore()
 const language = useLanguageStore()
+const toast = useToast()
+
+const normalizeProductAttribute = (attr: any): ProductAttributeDTO => ({
+  id: String(attr?.id ?? attr?.Id ?? ''),
+  attributeValueId: String(attr?.attributeValueId ?? attr?.AttributeValueId ?? ''),
+  name: String(attr?.name ?? attr?.Name ?? ''),
+  value: String(attr?.value ?? attr?.Value ?? ''),
+  groupName: String(attr?.groupName ?? attr?.GroupName ?? ''),
+  groupId: String(attr?.groupId ?? attr?.GroupId ?? ''),
+  productAttributeLangs: (attr?.productAttributeLangs ?? attr?.ProductAttributeLangs ?? []).map(
+    (lang: any) => ({
+      productAttributeValueId: String(
+        lang?.productAttributeValueId ?? lang?.ProductAttributeValueId ?? ''
+      ),
+      languageId: String(lang?.languageId ?? lang?.LanguageId ?? ''),
+      value: String(lang?.value ?? lang?.Value ?? '')
+    })
+  )
+})
+
+const syncLanguagesFromDefault = (attribute: ProductAttributeDTO | null) => {
+  if (!attribute || language.selectedLanguage) return
+
+  const defaultValue = attribute.value ?? ''
+  attribute.productAttributeLangs?.forEach((lang) => {
+    lang.value = defaultValue
+  })
+}
+
+const ensureAttributeLanguages = (attribute: ProductAttributeDTO) => {
+  if (!attribute.productAttributeLangs?.length) {
+    attribute.productAttributeLangs = language.languages.map((lang) => ({
+      languageId: lang.id,
+      productAttributeValueId: attribute.attributeValueId ?? '',
+      value: attribute.value ?? ''
+    }))
+  }
+}
+
+const syncProductAttributesRef = () => {
+  const product = props.product as any
+  const target = product?.value ?? product
+  if (target && Array.isArray(target.attributes)) {
+    target.attributes = [...addedAttributeList.value]
+  }
+}
+
+const resolvedProduct = computed<ProductDTO | null>(() => {
+  const product = props.product as any
+  return product?.value ?? product ?? null
+})
+
+const productId = computed(() => resolvedProduct.value?.id ?? '')
 
 const currentToEdit = ref<ProductAttributeDTO | null>(null)
 const currentAttribute = ref<ProductAttributeDTO[]>([])
 const attributeTemplateList = ref([])
 const availableAttributeList = ref([])
 const addedAttributeList = ref<Array<ProductAttributeDTO>>(
-  props.product?.attributes ? props.product.attributes : []
+  resolvedProduct.value?.attributes ? [...resolvedProduct.value.attributes] : []
 )
 const currentTemplate = ref(null)
+const removeModalVisible = ref(false)
+const attributeToRemove = ref<ProductAttributeDTO | null>(null)
 
 const getAllProductTemplate = async () => {
   const result = await Api.attributeGroups.listByStoreId()
@@ -143,83 +198,138 @@ function findItemsById(idToFind: string) {
   return undefined // Nie znaleziono pasującego elementu
 }
 
-const handleRemoveAddedAttribute = async (attribute: ProductAttributeDTO) => {
+const handleRemoveAddedAttribute = (attribute: ProductAttributeDTO) => {
+  if (!productId.value) {
+    toast.error('Brak identyfikatora produktu.')
+    return
+  }
+
+  if (!attribute.attributeValueId) {
+    toast.error('Brak identyfikatora wartości atrybutu.')
+    return
+  }
+
+  attributeToRemove.value = attribute
+  removeModalVisible.value = true
+}
+
+const cancelRemoveAttribute = () => {
+  removeModalVisible.value = false
+  attributeToRemove.value = null
+}
+
+const confirmRemoveAttribute = async () => {
+  const attribute = attributeToRemove.value
+  if (!attribute || !productId.value || !attribute.attributeValueId) {
+    cancelRemoveAttribute()
+    return
+  }
+
   const backup = [...addedAttributeList.value]
-  addedAttributeList.value = addedAttributeList.value.filter(a => a.id !== attribute.id)
+  addedAttributeList.value = addedAttributeList.value.filter((a) => a.id !== attribute.id)
+
+  if (currentToEdit.value?.id === attribute.id) {
+    currentToEdit.value = null
+  }
 
   try {
-    const payload = {
+    await Api.products.removeAttributeValue({
       body: JSON.stringify({
-        productId: props.product.id,
-        productAttributeValueId: attribute.attributeValueId // <- ID wartości atrybutu
+        productId: productId.value,
+        productAttributeValueId: attribute.attributeValueId
       })
-    }
-    await Api.products.removeAttributeValue(payload)
+    })
+
+    syncProductAttributesRef()
+    toast.success('Atrybut został usunięty.')
   } catch (err) {
     addedAttributeList.value = backup
     console.error('Nie udało się usunąć atrybutu:', err)
+    toast.error('Nie udało się usunąć atrybutu.')
+  } finally {
+    cancelRemoveAttribute()
   }
 }
 
 const handleSaveAttribute = async (attribute: ProductAttributeDTO) => {
+  if (!productId.value) {
+    toast.error('Brak identyfikatora produktu.')
+    return
+  }
+
+  ensureAttributeLanguages(attribute)
+  syncLanguagesFromDefault(attribute)
+
   const newAttribute: ProductAttribute = {
-    productId: props.product.id,
+    productId: productId.value,
     productAttributeValues: {
       value: attribute.value,
       attributeId: attribute.id,
-      productAttributeValueLangs: attribute.productAttributeLangs.map((lang) => {
-        return {
-          languageId: lang.languageId,
-          value: lang.value
-        }
-      })
+      productAttributeValueLangs: attribute.productAttributeLangs.map((lang) => ({
+        languageId: lang.languageId,
+        value: lang.value
+      }))
     }
   }
 
-  const payload = {
-    body: JSON.stringify(newAttribute)
+  try {
+    const result = await Api.products.addAttributeValue({
+      body: JSON.stringify(newAttribute)
+    })
+
+    const newAttributeValue = normalizeProductAttribute(result?.data ?? result)
+
+    currentAttribute.value = currentAttribute.value.filter((c) => c.id !== attribute.id)
+    addedAttributeList.value.push(newAttributeValue)
+    syncProductAttributesRef()
+    toast.success('Atrybut został dodany.')
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się zapisać atrybutu.')
   }
-
-  const result = await Api.products.addAttributeValue(payload)
-
-  const newAttributeValue: ProductAttributeDTO = result.data
-
-  currentAttribute.value = currentAttribute.value.filter((c) => c.id !== attribute.id)
-
-  addedAttributeList.value.push(newAttributeValue)
 }
 
-const handleUpdateAttribute = async (attribute: ProductAttributeDTO) => {
+const handleUpdateAttribute = async () => {
+  const attribute = currentToEdit.value
+  if (!attribute || !productId.value) return
+
+  ensureAttributeLanguages(attribute)
+  syncLanguagesFromDefault(attribute)
+
   const newAttribute: ProductAttribute = {
-    productId: props.product.id,
+    productId: productId.value,
     productAttributeValues: {
       value: attribute.value,
       attributeId: attribute.id,
       productAttributeValueId: attribute.attributeValueId,
-      productAttributeValueLangs: attribute.productAttributeLangs.map((lang) => {
-        return {
-          languageId: lang.languageId,
-          value: lang.value
-        }
-      })
+      productAttributeValueLangs: attribute.productAttributeLangs.map((lang) => ({
+        languageId: lang.languageId,
+        value: lang.value
+      }))
     }
   }
 
-  const payload = {
-    body: JSON.stringify(newAttribute)
+  try {
+    await Api.products.updateAttributeValue({
+      body: JSON.stringify(newAttribute)
+    })
+
+    const index = addedAttributeList.value.findIndex((c) => c.id === attribute.id)
+
+    if (index !== -1) {
+      addedAttributeList.value[index].value = attribute.value
+      addedAttributeList.value[index].productAttributeLangs = attribute.productAttributeLangs.map(
+        (lang) => ({ ...lang })
+      )
+    }
+
+    syncProductAttributesRef()
+    currentToEdit.value = null
+    toast.success('Atrybut został zaktualizowany.')
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się zaktualizować atrybutu.')
   }
-
-  await Api.products.updateAttributeValue(payload)
-
-  const index = addedAttributeList.value.findIndex(
-    (c) => c.id === newAttribute.productAttributeValues.attributeId
-  )
-
-  if (index !== -1) {
-    addedAttributeList.value[index].value = newAttribute.productAttributeValues.value
-  }
-
-  currentToEdit.value = null
 }
 
 const handleRemoveCurrentAttribute = (id: string) => {
@@ -231,12 +341,27 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
 }
 
 const handleEditAttribute = (attribute: ProductAttributeDTO) => {
+  ensureAttributeLanguages(attribute)
   currentToEdit.value = attribute
+}
+
+const onDefaultValueChange = (attribute: ProductAttributeDTO | null) => {
+  syncLanguagesFromDefault(attribute)
 }
 
 const handleCancel = () => {
   currentToEdit.value = null
 }
+
+watch(
+  () => resolvedProduct.value?.attributes,
+  (attributes) => {
+    if (Array.isArray(attributes)) {
+      addedAttributeList.value = attributes.map(normalizeProductAttribute)
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 onMounted(async () => {
   await getAllProductTemplate()
@@ -246,7 +371,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    {{ currentTemplate }}
     <FormSection :title="'Wzór produktów'"
       ><DropDown label="Opcje" v-model="currentTemplate" :options="attributeTemplateList" />
       <div class="mt-7">
@@ -297,7 +421,11 @@ onMounted(async () => {
               </td>
               <div v-if="!language.selectedLanguage">
                 <td class="section__variation flex">
-                  <FormKit type="text" v-model="currentAttribute[index].value" />
+                  <FormKit
+                    type="text"
+                    v-model="currentAttribute[index].value"
+                    @update:model-value="onDefaultValueChange(currentAttribute[index])"
+                  />
                 </td>
               </div>
               <div v-for="(formLanguage, indexLang) in language.languages" :key="formLanguage.id">
@@ -329,23 +457,26 @@ onMounted(async () => {
               <td>
                 {{ attribute.name }}
               </td>
-              <td v-if="!currentToEdit">
+              <td v-if="currentToEdit?.id !== attribute.id">
                 {{ attribute.value }}
               </td>
-              <td v-if="currentToEdit">
-                <div v-if="!language.selectedLanguage">
-                  <td class="section__variation flex">
-                    <FormKit type="text" v-model="currentToEdit.value" />
-                  </td>
+              <td v-else>
+                <div v-if="!language.selectedLanguage" class="section__variation flex">
+                  <FormKit
+                    type="text"
+                    v-model="currentToEdit!.value"
+                    @update:model-value="onDefaultValueChange(currentToEdit)"
+                  />
                 </div>
                 <div v-for="(formLanguage, indexLang) in language.languages" :key="formLanguage.id">
-                  <div v-if="language.selectedLanguage === formLanguage.id">
-                    <td class="section__variation flex">
-                      <FormKit
-                        type="text"
-                        v-model="currentToEdit.productAttributeLangs[indexLang].value"
-                      />
-                    </td>
+                  <div
+                    v-if="language.selectedLanguage === formLanguage.id"
+                    class="section__variation flex"
+                  >
+                    <FormKit
+                      type="text"
+                      v-model="currentToEdit!.productAttributeLangs[indexLang].value"
+                    />
                   </div>
                 </div>
               </td>
@@ -362,7 +493,7 @@ onMounted(async () => {
                   type="success"
                   :icon="Check"
                   circle
-                  @click="handleUpdateAttribute(attribute)"
+                  @click="handleUpdateAttribute()"
                 />
                 <el-button
                   v-if="currentToEdit?.id !== attribute.id"
@@ -392,4 +523,11 @@ onMounted(async () => {
       </div>
     </FormSection>
   </div>
+
+  <ConfirmModal
+    v-if="removeModalVisible"
+    :text="`Czy na pewno usunąć atrybut „${attributeToRemove?.name ?? ''}”?`"
+    @confirmed="confirmRemoveAttribute"
+    @canceled="cancelRemoveAttribute"
+  />
 </template>

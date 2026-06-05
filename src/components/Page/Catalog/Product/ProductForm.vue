@@ -1,6 +1,23 @@
 <script lang="ts" setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
+import ProductDescriptionAiModal from '/@/components/Form/Modal/ProductDescriptionAiModal.vue'
+import ProductCompetitorImportModal from '/@/components/Form/Modal/ProductCompetitorImportModal.vue'
+import ProductCompetitorImportReviewModal, {
+  type CompetitorImportAttributeItem,
+  type CompetitorImportFaqItem
+} from '/@/components/Form/Modal/ProductCompetitorImportReviewModal.vue'
+import {
+  collectProductImages,
+  pickImageForSection,
+  resolveRowLayoutFromSlot,
+  type DescriptionLayoutPattern
+} from '/@/utils/descriptionRowUtils'
+import {
+  getDescriptionTemplate,
+  MANUAL_TEMPLATE_ID,
+  type DescriptionTemplateSlot
+} from '/@/utils/descriptionTemplates'
 import { ProductDTO, ProductAvailability } from '/@/types/product/Product'
 import type { FileDTO } from '/@/types/file/File'
 import { useLanguageStore } from '/@/stores/language'
@@ -62,6 +79,29 @@ const aiSectionModal = reactive({
   index: -1,
   purpose: '',
   instruction: ''
+})
+
+const descriptionAiModalVisible = ref(false)
+const descriptionAiLoading = ref(false)
+const competitorImportModalVisible = ref(false)
+const competitorImportReviewVisible = ref(false)
+const importCompetitorSeoLoading = ref(false)
+const importCompetitorExtrasLoading = ref(false)
+const competitorReviewFaq = ref<CompetitorImportFaqItem[]>([])
+const competitorReviewAttributes = ref<CompetitorImportAttributeItem[]>([])
+const COMPETITOR_IMPORT_PENDING_KEY = 'productCompetitorImportPending'
+
+const availableDescriptionImages = computed(() => {
+  const collected = collectProductImages(
+    currentProduct.thumbnailImage,
+    files.value,
+    uploadedFileThumbnail.value?.base64String || generatedThumbnailBase64.value || null
+  )
+
+  return {
+    ...collected,
+    totalCount: collected.refs.length + collected.base64Items.length
+  }
 })
 
 const canCallAI = () =>
@@ -473,6 +513,449 @@ const addSectionWithAI = (insertAfterIndex?: number) => {
   openAddSectionModal(insertAfterIndex)
 }
 
+const openDescriptionVisionModal = () => {
+  descriptionAiModalVisible.value = true
+}
+
+const applyCompetitorSeoToProduct = (data: any) => {
+  const productName = data?.productName ?? data?.ProductName ?? ''
+  const slug = data?.slug ?? data?.Slug ?? ''
+  const seoFileName = data?.seoFileName ?? data?.SeoFileName ?? ''
+  const alt = data?.altAttribute ?? data?.AltAttribute ?? ''
+  const title = data?.titleAttribute ?? data?.TitleAttribute ?? ''
+  const metaTitle = data?.metaTitle ?? data?.MetaTitle ?? ''
+  const metaDesc = data?.metaDescription ?? data?.MetaDescription ?? ''
+  const metaKeywords = data?.metaKeywords ?? data?.MetaKeywords ?? ''
+  const specification = data?.specification ?? data?.Specification ?? ''
+
+  if (productName) currentProduct.name = productName
+  if (slug) currentProduct.slug = slug
+  if (seoFileName) currentProduct.thumbnailImage.seoFileName = seoFileName
+  if (alt) currentProduct.thumbnailImage.altAttribute = alt
+  if (title) currentProduct.thumbnailImage.titleAttribute = title
+  if (metaTitle) currentProduct.metaTitle = metaTitle
+  if (metaDesc) currentProduct.metaDescription = metaDesc
+  if (metaKeywords) currentProduct.metaKeywords = metaKeywords
+
+  if (specification) {
+    currentProduct.specification = specification
+    ai.specification = specification
+  }
+}
+
+const normalizeCompetitorFaqItems = (items: any[]): CompetitorImportFaqItem[] => {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .map((item, index) => ({
+      question: String(item?.question ?? item?.Question ?? '').trim(),
+      answer: String(item?.answer ?? item?.Answer ?? '').trim(),
+      displayOrder: Number(item?.displayOrder ?? item?.DisplayOrder ?? index + 1),
+      selected: true
+    }))
+    .filter((item) => item.question && item.answer)
+}
+
+const normalizeCompetitorAttributeItems = (items: any[]): CompetitorImportAttributeItem[] => {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .map((item) => ({
+      attributeId: String(item?.attributeId ?? item?.AttributeId ?? '').trim(),
+      attributeName: String(item?.attributeName ?? item?.AttributeName ?? '').trim(),
+      value: String(item?.value ?? item?.Value ?? '').trim(),
+      selected: true
+    }))
+    .filter((item) => item.attributeId && item.attributeName && item.value)
+}
+
+const loadStoreAttributesForImport = async () => {
+  try {
+    const result = await Api.productAttributes.listByStoreId()
+    const items = result?.items ?? []
+
+    return items.map((item: any) => ({
+      id: item.id ?? item.Id,
+      name: item.name ?? item.Name ?? ''
+    }))
+  } catch (err) {
+    console.error(err)
+    return []
+  }
+}
+
+const storePendingCompetitorExtras = (
+  faqItems: CompetitorImportFaqItem[],
+  attributeItems: CompetitorImportAttributeItem[]
+) => {
+  if (!faqItems.length && !attributeItems.length) return
+
+  try {
+    sessionStorage.setItem(
+      COMPETITOR_IMPORT_PENDING_KEY,
+      JSON.stringify({
+        slug: currentProduct.slug,
+        faqItems,
+        attributeItems
+      })
+    )
+  } catch {
+    // ignore
+  }
+}
+
+const applyPendingCompetitorExtrasIfAny = async () => {
+  if (!currentProduct.id) return
+
+  try {
+    const raw = sessionStorage.getItem(COMPETITOR_IMPORT_PENDING_KEY)
+    if (!raw) return
+
+    const pending = JSON.parse(raw)
+    const pendingSlug = String(pending?.slug ?? '').trim()
+    const currentSlug = String(currentProduct.slug ?? '').trim()
+
+    if (!pendingSlug || !currentSlug || pendingSlug !== currentSlug) return
+
+    const faqItems = Array.isArray(pending?.faqItems) ? pending.faqItems : []
+    const attributeItems = Array.isArray(pending?.attributeItems) ? pending.attributeItems : []
+
+    if (!faqItems.length && !attributeItems.length) return
+
+    competitorReviewFaq.value = faqItems.map((item: CompetitorImportFaqItem) => ({
+      ...item,
+      selected: item.selected ?? true
+    }))
+    competitorReviewAttributes.value = attributeItems.map((item: CompetitorImportAttributeItem) => ({
+      ...item,
+      selected: item.selected ?? true
+    }))
+    competitorImportReviewVisible.value = true
+    sessionStorage.removeItem(COMPETITOR_IMPORT_PENDING_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+const applySelectedCompetitorFaq = async (productId: string, faqItems: CompetitorImportFaqItem[]) => {
+  for (const faq of faqItems) {
+    await Api.productFaq.create({
+      body: JSON.stringify({
+        productId,
+        question: faq.question,
+        answer: faq.answer,
+        displayOrder: Number(faq.displayOrder ?? 0),
+        isPublished: true
+      })
+    })
+  }
+}
+
+const applySelectedCompetitorAttributes = async (
+  productId: string,
+  attributeItems: CompetitorImportAttributeItem[]
+) => {
+  const existingAttributes = Array.isArray(currentProduct.attributes) ? currentProduct.attributes : []
+
+  for (const attr of attributeItems) {
+    const existing = existingAttributes.find((item: any) => String(item.id) === attr.attributeId)
+
+    const payload = {
+      productId,
+      productAttributeValues: {
+        attributeId: attr.attributeId,
+        value: attr.value,
+        productAttributeValueLangs: language.languages.map((lang) => ({
+          languageId: lang.id,
+          value: attr.value
+        }))
+      }
+    }
+
+    if (existing?.attributeValueId) {
+      await Api.products.updateAttributeValue({
+        body: JSON.stringify({
+          ...payload,
+          productAttributeValues: {
+            ...payload.productAttributeValues,
+            productAttributeValueId: existing.attributeValueId
+          }
+        })
+      })
+
+      existing.value = attr.value
+    } else {
+      const result = await Api.products.addAttributeValue({
+        body: JSON.stringify(payload)
+      })
+
+      const created = result?.data ?? result
+      if (created) {
+        if (!Array.isArray(currentProduct.attributes)) {
+          currentProduct.attributes = []
+        }
+        currentProduct.attributes.push(created)
+      }
+    }
+  }
+}
+
+const handleApplyCompetitorReview = async (payload: {
+  faqItems: CompetitorImportFaqItem[]
+  attributeItems: CompetitorImportAttributeItem[]
+}) => {
+  const productId = currentProduct.id
+
+  if (!productId) {
+    storePendingCompetitorExtras(payload.faqItems, payload.attributeItems)
+    competitorImportReviewVisible.value = false
+    toast.info('Zapisz produkt i otwórz edycję — FAQ i atrybuty będą gotowe do dodania.', {
+      timeout: 3500
+    })
+    return
+  }
+
+  try {
+    importCompetitorExtrasLoading.value = true
+
+    if (payload.faqItems.length > 0) {
+      await applySelectedCompetitorFaq(productId, payload.faqItems)
+    }
+
+    if (payload.attributeItems.length > 0) {
+      await applySelectedCompetitorAttributes(productId, payload.attributeItems)
+    }
+
+    competitorImportReviewVisible.value = false
+    toast.success(
+      `Dodano: FAQ (${payload.faqItems.length}), atrybuty (${payload.attributeItems.length}).`,
+      { timeout: 2500 }
+    )
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się dodać wybranych FAQ lub atrybutów.', { timeout: 2500 })
+  } finally {
+    importCompetitorExtrasLoading.value = false
+  }
+}
+
+const handleImportCompetitorSeo = async (competitorUrl: string) => {
+  if (!competitorUrl?.trim()) {
+    toast.error('Podaj link do strony konkurencji.', { timeout: 2000 })
+    return
+  }
+
+  try {
+    importCompetitorSeoLoading.value = true
+
+    const availableAttributes = await loadStoreAttributesForImport()
+
+    const res = await Api.chatGpt.generateProductSeoFromCompetitor({
+      body: JSON.stringify({
+        productSeoFromCompetitorBriefDTO: {
+          competitorUrl: competitorUrl.trim(),
+          availableAttributes: availableAttributes.map((item) => ({
+            id: item.id,
+            name: item.name
+          }))
+        }
+      })
+    })
+
+    if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
+
+    const json = await res.json()
+    const data = json?.data ?? json
+
+    if (!data?.productName && !data?.ProductName) {
+      toast.error('AI nie zwróciło nazwy produktu ze strony.', { timeout: 2500 })
+      return
+    }
+
+    applyCompetitorSeoToProduct(data)
+
+    competitorReviewFaq.value = normalizeCompetitorFaqItems(data?.faqItems ?? data?.FaqItems)
+    competitorReviewAttributes.value = normalizeCompetitorAttributeItems(
+      data?.attributes ?? data?.Attributes
+    )
+
+    competitorImportModalVisible.value = false
+    competitorImportReviewVisible.value = true
+
+    toast.success('Zaimportowano dane SEO. Wybierz FAQ i atrybuty do dodania.', { timeout: 2500 })
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się zaimportować danych ze strony konkurencji.', { timeout: 2500 })
+  } finally {
+    importCompetitorSeoLoading.value = false
+  }
+}
+
+const buildRowsFromVisionSections = (
+  sections: any[],
+  templateSlots: DescriptionTemplateSlot[] | null,
+  layoutPattern: DescriptionLayoutPattern
+) => {
+  const { refs } = availableDescriptionImages.value
+  const hasImages = refs.length > 0
+
+  return sections
+    .map((section: any, index: number) => {
+      const html =
+        section?.description ??
+        section?.Description ??
+        ''
+
+      if (!html || !String(html).trim()) return null
+
+      const slot = templateSlots?.[index]
+      const layout = resolveRowLayoutFromSlot(
+        slot?.layout,
+        index,
+        layoutPattern,
+        hasImages
+      )
+      const row = createDescriptionRow(layout, html)
+
+      const needsImage =
+        layout === 'image-left-text-right' ||
+        layout === 'text-left-image-right' ||
+        layout === 'image-only'
+
+      if (needsImage) {
+        const suggested =
+          section?.suggestedImageIndex ??
+          section?.SuggestedImageIndex ??
+          null
+
+        const image = pickImageForSection(refs, index, suggested)
+        if (image) {
+          row.imageUrl = image.url
+          row.imageAlt = image.alt || slot?.headingHint || ''
+          row.imageTitle = image.title || slot?.headingHint || ''
+        } else if (layout === 'image-only') {
+          return null
+        } else {
+          row.type = 'text-only'
+        }
+      }
+
+      return row
+    })
+    .filter(Boolean)
+}
+
+const handleDescriptionVisionGenerate = async (config: {
+  templateId: string
+  sectionsCount: number
+  layoutPattern: DescriptionLayoutPattern
+  customPrompt: string
+  competitorUrl: string
+  exampleDescription: string
+  specification: string
+}) => {
+  if (!canCallAI()) {
+    toast.error('Podaj nazwę produktu, zanim użyjesz AI.', { timeout: 2000 })
+    return
+  }
+
+  const { urls, base64Items } = availableDescriptionImages.value
+
+  if (
+    !urls.length &&
+    !base64Items.length &&
+    !config.exampleDescription?.trim() &&
+    !config.competitorUrl?.trim() &&
+    !config.specification?.trim() &&
+    !currentProduct.specification?.trim()
+  ) {
+    toast.error(
+      'Dodaj zdjęcia produktu lub uzupełnij opis / link konkurencji / specyfikację.',
+      { timeout: 3000 }
+    )
+    return
+  }
+
+  try {
+    descriptionAiLoading.value = true
+
+    const template = getDescriptionTemplate(config.templateId)
+    const templateSlots =
+      config.templateId === MANUAL_TEMPLATE_ID ? null : template.slots
+
+    const body = {
+      productDescriptionVisionBriefDTO: {
+        productName: currentProduct.name,
+        exampleDescription:
+          config.exampleDescription ||
+          ai.exampleDescription ||
+          currentProduct.shortDescription ||
+          '',
+        specification:
+          config.specification ||
+          ai.specification ||
+          currentProduct.specification ||
+          '',
+        competitorUrl: config.competitorUrl || '',
+        customPrompt: config.customPrompt || '',
+        sectionsCount: templateSlots?.length ?? config.sectionsCount,
+        templateSlots: templateSlots?.map((slot) => ({
+          layout: slot.layout,
+          label: slot.label,
+          purpose: slot.purpose,
+          headingHint: slot.headingHint || null
+        })),
+        imageUrls: urls,
+        imageBase64Items: base64Items
+      }
+    }
+
+    const res = await Api.chatGpt.generateProductDescriptionVision({
+      body: JSON.stringify(body)
+    })
+
+    if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
+
+    const json = await res.json()
+    const d = (json?.data ?? json) as any
+    const sections = d?.sections ?? d?.Sections ?? []
+
+    if (!sections.length) {
+      toast.error('AI nie zwróciło sekcji opisu.', { timeout: 2500 })
+      return
+    }
+
+    const newRows = buildRowsFromVisionSections(
+      sections,
+      templateSlots,
+      config.layoutPattern
+    )
+
+    if (!newRows.length) {
+      toast.error('Nie udało się zbudować sekcji z odpowiedzi AI.', { timeout: 2500 })
+      return
+    }
+
+    const shouldReplace = window.confirm(
+      'AI wygenerowało opis ze zdjęć. OK = nadpisz sekcje, Anuluj = dodaj na końcu.'
+    )
+
+    if (shouldReplace) {
+      descriptionRows.value = newRows
+    } else {
+      descriptionRows.value.push(...newRows)
+    }
+
+    descriptionAiModalVisible.value = false
+    toast.success(`Wygenerowano ${newRows.length} sekcji opisu.`, { timeout: 2000 })
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się wygenerować opisu ze zdjęć.', { timeout: 2500 })
+  } finally {
+    descriptionAiLoading.value = false
+  }
+}
+
 const translationsProductAvailable = {
   [ProductAvailability.Available]: 'Dostępny',
   [ProductAvailability.TwentyFourToFourtyEight]: 'Od 24 do 48h',
@@ -621,9 +1104,10 @@ const handleSave = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   allBrands()
   allRules()
+  await applyPendingCompetitorExtrasIfAny()
 
   fileThumbnail.value = {
     media: {
@@ -706,6 +1190,18 @@ watch(
 </script>
 <template>
   <ContentContainer :showLanguage="true">
+    <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="font-semibold text-amber-900">Szybki start – import z konkurencji</p>
+        <p class="text-sm text-amber-800">
+          Uzupełnij nazwę, slug, SEO i specyfikację ze strony konkurenta. Opis produktu generujesz osobno.
+        </p>
+      </div>
+      <el-button type="warning" @click="competitorImportModalVisible = true">
+        Importuj ze strony konkurencji
+      </el-button>
+    </div>
+
     <!-- Panel AI -->
     <el-collapse v-model="aiCollapse" class="mb-4">
       <el-collapse-item name="ai">
@@ -851,8 +1347,11 @@ watch(
         <FormSection :title="'Produkt'">
           <FormKit type="text" v-model="currentProduct.name" label="Nazwa" validation="required" validation-visibility="live" />
           <FormKit type="text" v-model="currentProduct.slug" label="Slug" validation="required" validation-visibility="live" />
-          <div class="mt-7">
+          <div class="mt-4 flex flex-wrap gap-2">
             <el-button @click="slugGenerator" color="#ea580c" round>Generuj slug</el-button>
+            <el-button type="warning" round @click="competitorImportModalVisible = true">
+              Importuj z konkurencji (AI)
+            </el-button>
           </div>
         </FormSection>
 
@@ -896,12 +1395,13 @@ watch(
           <HtmlEditor v-model="currentProduct.specification" />
         </FormSection>
 
-        <FormSection :title="'Test'">
+        <FormSection :title="'Opis produktu'">
           <ProductDescriptionBuilder
             v-model="descriptionRows"
             :product-images="files"
             @improve-ai="improveSectionWithAI"
             @add-ai-below="addSectionWithAI"
+            @generate-vision-ai="openDescriptionVisionModal"
           />
         </FormSection>
 
@@ -992,6 +1492,32 @@ watch(
       </div>
     </FormKit>
   </ContentContainer>
+<ProductCompetitorImportModal
+  v-if="competitorImportModalVisible"
+  :loading="importCompetitorSeoLoading"
+  @close="competitorImportModalVisible = false"
+  @import="handleImportCompetitorSeo"
+/>
+
+<ProductCompetitorImportReviewModal
+  v-if="competitorImportReviewVisible"
+  :loading="importCompetitorExtrasLoading"
+  :product-name="currentProduct.name"
+  :requires-product-save="!currentProduct.id"
+  :faq-items="competitorReviewFaq"
+  :attribute-items="competitorReviewAttributes"
+  @close="competitorImportReviewVisible = false"
+  @apply="handleApplyCompetitorReview"
+/>
+
+<ProductDescriptionAiModal
+  v-if="descriptionAiModalVisible"
+  :loading="descriptionAiLoading"
+  :image-count="availableDescriptionImages.totalCount"
+  @close="descriptionAiModalVisible = false"
+  @generate="handleDescriptionVisionGenerate"
+/>
+
 <el-dialog
   v-model="aiSectionModal.visible"
   :title="aiSectionModal.mode === 'improve' ? 'Popraw sekcję przez AI' : 'Dodaj sekcję przez AI'"

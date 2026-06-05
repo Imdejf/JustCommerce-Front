@@ -1,28 +1,152 @@
 <script lang="ts" setup>
 import { UploadFilled } from '@element-plus/icons-vue'
 import { Api } from '/@/services/api'
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
 
 const props = defineProps({
-    order: {
-        type: Object,
-        default: null
-    },
-});
+  order: {
+    type: Object,
+    default: null
+  }
+})
 
 const invoicePurchasePaths = ref<string[]>([])
 const invoicePath = ref<string | null>(null)
 const proformaPath = ref<string | null>(null)
 
+const billingEditing = ref(false)
+const shippingEditing = ref(false)
+const savingAddresses = ref(false)
+const customerOrderNumber = ref('')
+const separateShipping = ref(false)
+
+const billingForm = ref<Record<string, any>>({})
+const shippingForm = ref<Record<string, any>>({})
+
 const emit = defineEmits(['closeOrder'])
 
 const closeOfferHandle = () => {
-    emit('closeOrder')
+  emit('closeOrder')
 }
 
+const cloneAddress = (addr: Record<string, any> | null | undefined) => ({
+  isCompany: addr?.isCompany ?? false,
+  firstName: addr?.firstName ?? '',
+  lastName: addr?.lastName ?? '',
+  email: addr?.email ?? '',
+  companyName: addr?.companyName ?? '',
+  nip: addr?.nip ?? '',
+  phone: addr?.phone ?? '',
+  addressLine1: addr?.addressLine1 ?? '',
+  city: addr?.city ?? '',
+  zipCode: addr?.zipCode ?? '',
+  stateOrProvinceId: addr?.stateOrProvinceId ?? '00000000-0000-0000-0000-000000000000',
+  countryId: addr?.countryId ?? '00000000-0000-0000-0000-000000000000'
+})
+
+const addressesEqual = (a: Record<string, any>, b: Record<string, any>) => {
+  return (
+    a.isCompany === b.isCompany &&
+    a.firstName === b.firstName &&
+    a.lastName === b.lastName &&
+    (a.email || '') === (b.email || '') &&
+    (a.companyName || '') === (b.companyName || '') &&
+    (a.nip || '') === (b.nip || '') &&
+    (a.phone || '') === (b.phone || '') &&
+    a.addressLine1 === b.addressLine1 &&
+    a.city === b.city &&
+    a.zipCode === b.zipCode
+  )
+}
+
+const formatAddress = (addr: Record<string, any> | null | undefined) => {
+  if (!addr) return '—'
+  const lines: string[] = []
+  if (addr.isCompany && addr.companyName) {
+    lines.push(addr.companyName)
+    if (addr.nip) lines.push(`NIP: ${addr.nip}`)
+  } else {
+    lines.push(`${addr.firstName || ''} ${addr.lastName || ''}`.trim())
+  }
+  if (addr.email) lines.push(addr.email)
+  if (addr.phone) lines.push(`Tel: ${addr.phone}`)
+  if (addr.addressLine1) lines.push(addr.addressLine1)
+  if (addr.zipCode || addr.city) lines.push(`${addr.zipCode || ''} ${addr.city || ''}`.trim())
+  return lines.filter(Boolean).join('\n')
+}
+
+const initFormsFromOrder = () => {
+  if (!props.order) return
+  billingForm.value = cloneAddress(props.order.billingAddress)
+  shippingForm.value = cloneAddress(props.order.shippingAddress)
+  customerOrderNumber.value = props.order.customerOrderNumber || ''
+  if (!props.order.attachments) props.order.attachments = []
+  separateShipping.value = !addressesEqual(billingForm.value, shippingForm.value)
+  invoicePurchasePaths.value = props.order.purchaseInvoices?.map((p: any) => p.purchaseInvoiceFilePath) || []
+  invoicePath.value = props.order.invoicePath || null
+  proformaPath.value = props.order.proformaPath || null
+}
+
+const mapAddressPayload = (addr: Record<string, any>) => ({
+  IsCompany: addr.isCompany,
+  FirstName: addr.firstName,
+  LastName: addr.lastName,
+  Email: addr.email || null,
+  CompanyName: addr.companyName || null,
+  Nip: addr.nip || null,
+  Phone: addr.phone || null,
+  AddressLine1: addr.addressLine1,
+  City: addr.city,
+  ZipCode: addr.zipCode,
+  StateOrProvinceId: addr.stateOrProvinceId,
+  CountryId: addr.countryId
+})
+
+const saveBillingAndShipping = async () => {
+  if (!props.order?.id) return
+
+  const zipCodeRegex = /^\d{2}-\d{3}$/
+  if (!zipCodeRegex.test(billingForm.value.zipCode)) {
+    toast.error('Kod pocztowy rozliczeniowy jest niepoprawny (format xx-xxx).')
+    return
+  }
+  if (separateShipping.value && !zipCodeRegex.test(shippingForm.value.zipCode)) {
+    toast.error('Kod pocztowy dostawy jest niepoprawny (format xx-xxx).')
+    return
+  }
+
+  savingAddresses.value = true
+  try {
+    const sameAddress = !separateShipping.value
+    const payload = {
+      OrderId: props.order.id,
+      CustomerOrderNumber: customerOrderNumber.value?.trim() || null,
+      UseShippingAddressAsBillingAddress: sameAddress,
+      BillingAddress: mapAddressPayload(billingForm.value),
+      ShippingAddress: sameAddress ? null : mapAddressPayload(shippingForm.value)
+    }
+
+    await Api.orders.updateOrderBillingAndShipping({
+      body: JSON.stringify(payload)
+    })
+
+    props.order.customerOrderNumber = customerOrderNumber.value?.trim() || null
+    props.order.billingAddress = { ...billingForm.value }
+    props.order.shippingAddress = sameAddress ? { ...billingForm.value } : { ...shippingForm.value }
+
+    billingEditing.value = false
+    shippingEditing.value = false
+    toast.success('Dane zamówienia zostały zapisane')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zapisać danych zamówienia')
+  } finally {
+    savingAddresses.value = false
+  }
+}
 
 const sendInvoice = async () => {
   await Api.invoices.sendInvoice(props.order.id)
@@ -32,22 +156,19 @@ const removePurchaseInvoice = async (invoiceId: string) => {
   try {
     const data = {
       orderId: props.order.id,
-      purchaseInvoiceId: invoiceId,
+      purchaseInvoiceId: invoiceId
     }
 
-    const payload = {
-      body: JSON.stringify(data),
-    }
+    await Api.orders.removePurchaseInvoice({
+      body: JSON.stringify(data)
+    })
 
-    await Api.orders.removePurchaseInvoice(payload)
-
-    // Usuń z oryginalnego obiektu zamówienia
     props.order.purchaseInvoices = props.order.purchaseInvoices.filter(
-      (pi) => pi.purchaseInvoiceId !== invoiceId
+      (pi: any) => pi.purchaseInvoiceId !== invoiceId
     )
 
     invoicePurchasePaths.value = props.order.purchaseInvoices.map(
-      (pi) => pi.purchaseInvoiceFilePath
+      (pi: any) => pi.purchaseInvoiceFilePath
     )
 
     toast.success('Faktura została usunięta')
@@ -71,84 +192,107 @@ const generateProforma = async () => {
 
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
-  if (!file) {
-    console.warn('Brak pliku')
-    return
-  }
+  if (!file) return
 
   try {
     const base64String = await toBase64(file)
     const cleanBase64 = base64String.split(',')[1]
 
-    const dataPurchaseInvoice = {
-      orderId: props.order.id,
-      base64File: {
-        base64String: cleanBase64,
-      },
-      fileName: file.name
-    }
+    const response = await Api.orders.uploadPurchaseInvoice({
+      body: JSON.stringify({
+        orderId: props.order.id,
+        base64File: { base64String: cleanBase64 },
+        fileName: file.name
+      })
+    })
 
-    const payload = {
-      body: JSON.stringify(dataPurchaseInvoice),
-    }
-
-    // Backend zwraca PurchaseInvoiceEntity
-    const response = await Api.orders.uploadPurchaseInvoice(payload)
-
-    // Upewniamy się, że lista istnieje
     if (!props.order.purchaseInvoices) {
       props.order.purchaseInvoices = []
     }
 
-    // Dodajemy nową fakturę bez odpytywania backendu
     props.order.purchaseInvoices.push({
       purchaseInvoiceId: response.data.purchaseInvoiceId,
-      purchaseInvoiceFilePath: response.data.purchaseInvoiceFilePath
+      purchaseInvoiceFilePath: response.data.purchaseInvoiceFilePath,
+      purchaseInvoiceName: response.data.purchaseInvoiceName
     })
 
-    // Aktualizujemy ścieżki do wyświetlenia
-    invoicePurchasePaths.value = props.order.purchaseInvoices.map(p => p.purchaseInvoiceFilePath)
-
+    invoicePurchasePaths.value = props.order.purchaseInvoices.map((p: any) => p.purchaseInvoiceFilePath)
     toast.success('Faktura zakupowa została przesłana')
-
   } catch (error) {
     console.error('Błąd przesyłania faktury:', error)
     toast.error('Błąd przesyłania faktury zakupowej')
   }
 }
 
-
 const handleUploadInvoice = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
-  if (!file) {
-    console.warn('Brak pliku')
-    return
-  }
+  if (!file) return
 
   try {
     const base64String = await toBase64(file)
     const cleanBase64 = base64String.split(',')[1]
 
-   const dataInovice = {
-      orderId: props.order.id,
-      base64File: {
-        base64String: cleanBase64,
-      }
-    }
+    const response = await Api.orders.uploadInvoice({
+      body: JSON.stringify({
+        orderId: props.order.id,
+        base64File: { base64String: cleanBase64 }
+      })
+    })
 
-    const payload = {
-      body: JSON.stringify(dataInovice),
-    };
-
-    var response = await Api.orders.uploadInvoice(payload)
     invoicePath.value = response.data
-      toast.success('Faktura zakupowa została przesłana')
-
+    toast.success('Faktura sprzedażowa została przesłana')
   } catch (error) {
     console.error('Błąd przesyłania faktury:', error)
+    toast.error('Błąd przesyłania faktury')
   }
 }
 
+const handleOrderAttachmentUpload = async (uploadInfo: any) => {
+  const file = uploadInfo.raw || uploadInfo.file?.raw
+  if (!file) return
+
+  try {
+    const base64String = await toBase64(file)
+    const cleanBase64 = base64String.split(',')[1]
+
+    const response = await Api.orders.uploadOrderAttachment({
+      body: JSON.stringify({
+        orderId: props.order.id,
+        base64File: { base64String: cleanBase64 },
+        fileName: file.name
+      })
+    })
+
+    if (!props.order.attachments) {
+      props.order.attachments = []
+    }
+
+    props.order.attachments.push(response.data)
+    toast.success('Załącznik został dodany')
+  } catch (error) {
+    console.error('Błąd przesyłania załącznika:', error)
+    toast.error('Nie udało się dodać załącznika')
+  }
+}
+
+const removeOrderAttachment = async (attachmentId: string) => {
+  try {
+    await Api.orders.removeOrderAttachment({
+      body: JSON.stringify({
+        orderId: props.order.id,
+        attachmentId
+      })
+    })
+
+    props.order.attachments = (props.order.attachments || []).filter(
+      (a: any) => a.attachmentId !== attachmentId
+    )
+    toast.success('Załącznik został usunięty')
+  } catch (error) {
+    console.error('Błąd usuwania załącznika:', error)
+    toast.error('Nie udało się usunąć załącznika')
+  }
+}
 
 const toBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -159,14 +303,13 @@ const toBase64 = (file: File): Promise<string> => {
   })
 }
 
-onMounted(() => {
-  invoicePurchasePaths.value = props.order?.purchaseInvoices?.map(p => p.purchaseInvoiceFilePath) || []
-  invoicePath.value = props.order?.invoicePath || null
-})
+watch(() => props.order?.id, initFormsFromOrder, { immediate: true })
+
+onMounted(initFormsFromOrder)
 </script>
+
 <template>
- <div>
-    <!-- Zamknięcie -->
+  <div>
     <div class="flex justify-between border-b pb-2">
       <div class="right">
         <h1 class="text-xl font-semibold">Zamówienie: {{ order.orderNumber }}</h1>
@@ -180,7 +323,7 @@ onMounted(() => {
         </a>
       </div>
     </div>
-    <!-- Zarządzaj -->
+
     <div class="mt-5">
       <h2 class="text-xl font-semibold">Zarządzaj</h2>
       <div class="flex gap-4 mt-5">
@@ -190,64 +333,176 @@ onMounted(() => {
         >
           Wyślij proformę
         </button>
-
         <div v-if="proformaPath" class="flex items-center gap-2">
-          <a
-            :href="proformaPath"
-            target="_blank"
-            class="text-blue-600 underline text-sm flex items-center gap-1"
-          >
-            <!-- ikona PDF -->
-            <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24">
-              <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zM8 8h7v1H8zm0 4h7v1H8zm0 4h4v1H8zM13 3.5 18.5 9H14z"/>
-            </svg>
-            Zobacz proformę
-          </a>
+          <a :href="proformaPath" target="_blank" class="text-blue-600 underline text-sm">Zobacz proformę</a>
         </div>
       </div>
     </div>
-    <!-- Rozliczenie & Dostawa -->
+
     <div class="mt-5">
       <h2 class="text-xl font-semibold">Rozliczenie & Dostawa</h2>
+
+      <div class="mt-4 p-4 border rounded shadow bg-gray-50">
+        <label class="block text-sm font-semibold mb-1">Numer zamówienia klienta</label>
+        <p class="text-xs text-gray-500 mb-2">
+          Na fakturze w polu numeru zamówienia pojawi się: {{ order.orderNumber }} | numer klienta
+        </p>
+        <input
+          v-model="customerOrderNumber"
+          type="text"
+          class="w-full border rounded px-3 py-2 text-sm"
+          placeholder="np. PO-2026/123"
+        />
+      </div>
+
       <div class="flex gap-4 mt-5">
-        <!-- Billing -->
-        <div class="w-1/2 border rounded shadow p-4 flex flex-col justify-between">
-          <div>
-            <h2 class="text-lg font-semibold mb-4">Billing address</h2>
-          </div>
-          <div class="mt-4 text-right">
-            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
-              Edit
+        <div class="w-1/2 border rounded shadow p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Dane rozliczeniowe (klient)</h2>
+            <button
+              @click="billingEditing = !billingEditing"
+              class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded"
+            >
+              {{ billingEditing ? 'Anuluj' : 'Edytuj' }}
             </button>
+          </div>
+
+          <div v-if="!billingEditing" class="whitespace-pre-line text-sm text-gray-700">
+            {{ formatAddress(billingForm) }}
+          </div>
+
+          <div v-else class="flex flex-col gap-2 text-sm">
+            <label class="flex items-center gap-2">
+              <input v-model="billingForm.isCompany" type="checkbox" />
+              Firma
+            </label>
+            <input v-model="billingForm.email" class="border rounded px-2 py-1" placeholder="Email" />
+            <input v-if="billingForm.isCompany" v-model="billingForm.companyName" class="border rounded px-2 py-1" placeholder="Nazwa firmy" />
+            <input v-if="billingForm.isCompany" v-model="billingForm.nip" class="border rounded px-2 py-1" placeholder="NIP" />
+            <template v-if="!billingForm.isCompany">
+              <input v-model="billingForm.firstName" class="border rounded px-2 py-1" placeholder="Imię" />
+              <input v-model="billingForm.lastName" class="border rounded px-2 py-1" placeholder="Nazwisko" />
+            </template>
+            <input v-model="billingForm.phone" class="border rounded px-2 py-1" placeholder="Telefon" />
+            <input v-model="billingForm.addressLine1" class="border rounded px-2 py-1" placeholder="Ulica i numer" />
+            <div class="flex gap-2">
+              <input v-model="billingForm.zipCode" class="border rounded px-2 py-1 w-1/3" placeholder="Kod pocztowy" />
+              <input v-model="billingForm.city" class="border rounded px-2 py-1 flex-1" placeholder="Miasto" />
+            </div>
           </div>
         </div>
 
-        <!-- Shipping -->
-        <div class="w-1/2 border rounded shadow p-4 flex flex-col justify-between">
-          <div>
-            <h2 class="text-lg font-semibold mb-4">Shipping address</h2>
+        <div class="w-1/2 border rounded shadow p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Adres dostawy</h2>
+            <button
+              v-if="separateShipping"
+              @click="shippingEditing = !shippingEditing"
+              class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded"
+            >
+              {{ shippingEditing ? 'Anuluj' : 'Edytuj' }}
+            </button>
           </div>
-          <div class="mt-4 text-right">
-            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
-              Edit
+
+          <label class="flex items-center gap-2 text-sm mb-3">
+            <input v-model="separateShipping" type="checkbox" />
+            Dostawa pod inny adres
+          </label>
+
+          <div v-if="!separateShipping" class="text-sm text-gray-500 italic">
+            Taki sam jak adres rozliczeniowy
+          </div>
+
+          <template v-else>
+            <div v-if="!shippingEditing" class="whitespace-pre-line text-sm text-gray-700">
+              {{ formatAddress(shippingForm) }}
+            </div>
+            <div v-else class="flex flex-col gap-2 text-sm">
+              <label class="flex items-center gap-2">
+                <input v-model="shippingForm.isCompany" type="checkbox" />
+                Firma
+              </label>
+              <input v-model="shippingForm.email" class="border rounded px-2 py-1" placeholder="Email" />
+              <input v-if="shippingForm.isCompany" v-model="shippingForm.companyName" class="border rounded px-2 py-1" placeholder="Nazwa firmy" />
+              <input v-if="shippingForm.isCompany" v-model="shippingForm.nip" class="border rounded px-2 py-1" placeholder="NIP" />
+              <template v-if="!shippingForm.isCompany">
+                <input v-model="shippingForm.firstName" class="border rounded px-2 py-1" placeholder="Imię" />
+                <input v-model="shippingForm.lastName" class="border rounded px-2 py-1" placeholder="Nazwisko" />
+              </template>
+              <input v-model="shippingForm.phone" class="border rounded px-2 py-1" placeholder="Telefon" />
+              <input v-model="shippingForm.addressLine1" class="border rounded px-2 py-1" placeholder="Ulica i numer" />
+              <div class="flex gap-2">
+                <input v-model="shippingForm.zipCode" class="border rounded px-2 py-1 w-1/3" placeholder="Kod pocztowy" />
+                <input v-model="shippingForm.city" class="border rounded px-2 py-1 flex-1" placeholder="Miasto" />
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="mt-4 text-right">
+        <button
+          @click="saveBillingAndShipping"
+          :disabled="savingAddresses"
+          class="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 px-6 rounded"
+        >
+          {{ savingAddresses ? 'Zapisywanie...' : 'Zapisz dane klienta i dostawy' }}
+        </button>
+      </div>
+
+      <h2 class="text-xl font-semibold mt-8">Załączniki do zamówienia</h2>
+      <p class="text-sm text-gray-500 mt-1">Dodaj np. PDF od klienta — pliki niezwiązane z fakturą sprzedażową ani zakupową.</p>
+      <div class="mt-3 border rounded shadow p-4 max-w-xl">
+        <el-upload
+          class="upload-demo w-full"
+          drag
+          :auto-upload="false"
+          :show-file-list="false"
+          accept=".pdf,.png,.jpg,.jpeg"
+          @change="handleOrderAttachmentUpload"
+        >
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">
+            Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
+          </div>
+          <template #tip>
+            <div class="el-upload__tip">PDF, JPG, PNG do 5MB</div>
+          </template>
+        </el-upload>
+
+        <div v-if="order.attachments?.length" class="mt-3 flex flex-col gap-2">
+          <div
+            v-for="attachment in order.attachments"
+            :key="attachment.attachmentId"
+            class="flex items-center justify-between gap-2"
+          >
+            <a
+              :href="attachment.filePath"
+              target="_blank"
+              class="text-blue-600 underline text-sm truncate"
+            >
+              {{ attachment.fileName }}
+            </a>
+            <button
+              @click="removeOrderAttachment(attachment.attachmentId)"
+              class="text-red-500 hover:text-red-700 p-1 shrink-0"
+              title="Usuń załącznik"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M9 3V4H4V6H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V6H20V4H15V3H9ZM7 6H17V19H7V6ZM9 8V17H11V8H9ZM13 8V17H15V8H13Z"/>
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Faktury -->
       <h2 class="text-xl font-semibold mt-8">Faktury</h2>
       <div class="flex gap-4 mt-5">
-        <!-- Lewa kolumna: faktura sprzedażowa -->
         <div class="w-1/2 border rounded shadow p-4 flex flex-col gap-4">
           <h2 class="text-lg font-semibold mb-2">Faktura sprzedażowa</h2>
-          <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-4 rounded">
-            Generuj fakturę
-          </button>
           <button @click="sendInvoice()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
             Wyślij fakturę
           </button>
-          <!-- Drop zone -->
           <el-upload
             class="upload-demo w-full"
             drag
@@ -255,75 +510,66 @@ onMounted(() => {
             :show-file-list="false"
             accept=".pdf"
             @change="handleUploadInvoice"
-            >
+          >
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
-                Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
+              Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
             </div>
             <template #tip>
-                <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
+              <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
             </template>
-            </el-upload>
-            <div v-if="invoicePath" class="mt-2">
+          </el-upload>
+          <div v-if="invoicePath" class="mt-2">
             <a
-                :href="invoicePath + '?inline=yes'"
-                target="_blank"
-                class="text-blue-600 underline text-sm flex items-center gap-1"
+              :href="invoicePath + '?inline=yes'"
+              target="_blank"
+              class="text-blue-600 underline text-sm"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16">
-                <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zm1 7H8V8h7zm0 4H8v-1h7zm-3 4H8v-1h4zM13 3.5L18.5 9H14z"/>
-                </svg>
-                Zobacz wgraną fakturę
+              Zobacz wgraną fakturę
             </a>
-            </div>
+          </div>
         </div>
 
-        <!-- Prawa kolumna: faktura zakupowa -->
         <div class="w-1/2 border rounded shadow p-4 flex flex-col gap-4">
-        <h2 class="text-lg font-semibold mb-2">Faktura zakupowa za towar</h2>
-
-        <el-upload
+          <h2 class="text-lg font-semibold mb-2">Faktura zakupowa za towar</h2>
+          <el-upload
             class="upload-demo w-full"
             drag
             :auto-upload="false"
             :show-file-list="false"
             accept=".pdf"
             @change="handlePurchaseInvoiceUpload"
-        >
+          >
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
-            Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
+              Przeciągnij plik tutaj lub <em>kliknij aby wgrać</em>
             </div>
             <template #tip>
-            <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
+              <div class="el-upload__tip">Obsługiwane pliki PDF do 5MB</div>
             </template>
-        </el-upload>
-
-        <div v-if="invoicePurchasePaths.length > 0" class="mt-2 flex flex-col gap-2">
-          <template v-for="(pi, index) in props.order.purchaseInvoices" :key="pi.purchaseInvoiceId">
-            <div class="flex items-center justify-between gap-2">
+          </el-upload>
+          <div v-if="invoicePurchasePaths.length > 0" class="mt-2 flex flex-col gap-2">
+            <template v-for="(pi, index) in props.order.purchaseInvoices" :key="pi.purchaseInvoiceId">
+              <div class="flex items-center justify-between gap-2">
                 <a
-                :href="pi.purchaseInvoiceFilePath"
-                target="_blank"
-                class="text-blue-600 underline text-sm flex items-center gap-1"
+                  :href="pi.purchaseInvoiceFilePath"
+                  target="_blank"
+                  class="text-blue-600 underline text-sm truncate"
                 >
-                <svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16">
-                    <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8zm1 7H8V8h7zm0 4H8v-1h7zm-3 4H8v-1h4zM13 3.5L18.5 9H14z" />
-                </svg>
-                {{ pi.purchaseInvoiceName || `Faktura ${index + 1}` }}
+                  {{ pi.purchaseInvoiceName || `Faktura ${index + 1}` }}
                 </a>
-                    <button
-                    @click="removePurchaseInvoice(pi.purchaseInvoiceId)"
-                    class="text-red-500 hover:text-red-700 p-1"
-                    title="Usuń fakturę"
-                    >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path fill="currentColor" d="M9 3V4H4V6H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V6H20V4H15V3H9ZM7 6H17V19H7V6ZM9 8V17H11V8H9ZM13 8V17H15V8H13Z"/>
-                    </svg>
+                <button
+                  @click="removePurchaseInvoice(pi.purchaseInvoiceId)"
+                  class="text-red-500 hover:text-red-700 p-1 shrink-0"
+                  title="Usuń fakturę"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M9 3V4H4V6H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V6H20V4H15V3H9ZM7 6H17V19H7V6ZM9 8V17H11V8H9ZM13 8V17H15V8H13Z"/>
+                  </svg>
                 </button>
-            </div>
+              </div>
             </template>
-        </div>
+          </div>
         </div>
       </div>
     </div>
