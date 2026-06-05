@@ -16,6 +16,12 @@
           </span>
 
           <span class="ml-4 flex hover:bg-sky-100 p-1">
+            <a @click="syncBilling" class="rounded-md p-1 text-xs font-semibold">
+              Synchronizuj prowizję
+            </a>
+          </span>
+
+          <span class="ml-4 flex hover:bg-sky-100 p-1">
             <a @click="createLocalOrder" class="rounded-md p-1 text-xs font-semibold">
               Utwórz zamówienie lokalne
             </a>
@@ -303,11 +309,50 @@
           </div>
         </FormSection>
 
+        <FormSection title="Zysk ze sprzedaży">
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+            <div class="border border-[#d6dfe9] rounded-lg p-3">
+              <strong>Sprzedaż produktów</strong>
+              <p class="text-base mt-1">{{ formatPrice(order.productsRevenueAmount) }}</p>
+            </div>
+
+            <div class="border border-[#d6dfe9] rounded-lg p-3">
+              <strong>Prowizja Allegro</strong>
+              <p class="text-base mt-1 text-[#b45309]">{{ formatPrice(order.commissionAmount) }}</p>
+            </div>
+
+            <div class="border border-[#d6dfe9] rounded-lg p-3">
+              <strong>Koszt produktów</strong>
+              <p class="text-base mt-1">{{ formatPrice(order.productCostAmount) }}</p>
+              <p class="text-[#64748b] mt-1">Cena producenta × ilość</p>
+            </div>
+
+            <div class="border border-[#d6dfe9] rounded-lg p-3">
+              <strong>Opłaty łącznie</strong>
+              <p class="text-base mt-1">{{ formatPrice(order.totalFeesAmount) }}</p>
+            </div>
+
+            <div class="border border-[#d6dfe9] rounded-lg p-3 bg-[#f0fdf4]">
+              <strong>Zysk netto</strong>
+              <p class="text-lg mt-1 font-bold" :class="profitClass(order.netProfitAmount)">
+                {{ formatPrice(order.netProfitAmount) }}
+              </p>
+            </div>
+          </div>
+
+          <p v-if="!order.billingSyncedAtUtc" class="text-xs text-[#b45309] mt-3">
+            Prowizja nie została jeszcze pobrana z Allegro. Kliknij „Synchronizuj prowizję”.
+          </p>
+          <p v-else class="text-xs text-[#64748b] mt-3">
+            Prowizja zsynchronizowana: {{ formatDate(order.billingSyncedAtUtc) }}
+          </p>
+        </FormSection>
+
         <FormSection title="Produkty">
           <el-table :data="orderItems" :border="true" class="!bg-[#d6dfe9]">
             <el-table-column label="Nazwa produktu" prop="name">
               <template #default="scope">
-                {{ scope.row.name || scope.row.productName || '-' }}
+                {{ scope.row.name || scope.row.productName || scope.row.offerName || '-' }}
               </template>
             </el-table-column>
 
@@ -323,9 +368,35 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="Cena" width="140">
+            <el-table-column label="Cena" width="120">
               <template #default="scope">
                 {{ formatPrice(scope.row.price || scope.row.amount) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="Prowizja" width="100">
+              <template #default="scope">
+                {{ formatPrice(scope.row.commissionAmount) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="Cena prod." width="100">
+              <template #default="scope">
+                {{ formatPrice(scope.row.producerPrice) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="Koszt" width="100">
+              <template #default="scope">
+                {{ formatPrice(scope.row.productCostAmount) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="Zysk" width="100">
+              <template #default="scope">
+                <span :class="profitClass(scope.row.netProfit)">
+                  {{ formatPrice(scope.row.netProfit) }}
+                </span>
               </template>
             </el-table-column>
           </el-table>
@@ -362,6 +433,7 @@ const carriersLoading = ref(false)
 const shipmentLoading = ref(false)
 const fulfillmentLoading = ref(false)
 const invoiceLoading = ref(false)
+const billingLoading = ref(false)
 
 const fulfillmentForm = ref({
   status: 'PROCESSING'
@@ -439,6 +511,37 @@ const loadAllegroOrderExtras = async () => {
     loadShipments(),
     loadInvoices()
   ])
+}
+
+const profitClass = (value?: number | null) => {
+  if (value === null || value === undefined) return ''
+  if (value > 0) return 'text-[#15803d]'
+  if (value < 0) return 'text-[#b91c1c]'
+  return ''
+}
+
+const syncBilling = async () => {
+  if (!checkoutFormId.value) return
+
+  billingLoading.value = true
+
+  try {
+    const result = await Api.allegro.syncOrderBilling(checkoutFormId.value)
+    const data = result?.data || result
+
+    if (data?.success === false) {
+      toast.warning(data?.message || 'Nie udało się pobrać prowizji z Allegro')
+      return
+    }
+
+    toast.success('Zsynchronizowano prowizję i przeliczono zysk')
+    await loadOrder()
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zsynchronizować prowizji Allegro')
+  } finally {
+    billingLoading.value = false
+  }
 }
 
 const loadOrder = async () => {

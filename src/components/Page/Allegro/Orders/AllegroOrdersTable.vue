@@ -20,6 +20,12 @@
               Utwórz zamówienie lokalne
             </a>
           </span>
+
+          <span class="ml-4 flex hover:bg-sky-100 p-1">
+            <a @click="syncBillingForVisibleOrders" class="rounded-md p-1 text-xs font-semibold">
+              Synchronizuj prowizje
+            </a>
+          </span>
         </div>
 
         <el-input
@@ -70,6 +76,17 @@
                   <p>Sandbox: {{ props.row.sandbox ? 'Tak' : 'Nie' }}</p>
                   <p>Lokalne zamówienie: {{ props.row.localOrderId ? 'Tak' : 'Nie' }}</p>
                 </div>
+
+                <div>
+                  <span class="font-bold text-base">Zysk</span>
+                  <p>Sprzedaż produktów: {{ formatPrice(props.row.productsRevenueAmount) }}</p>
+                  <p>Prowizja Allegro: {{ formatPrice(props.row.commissionAmount) }}</p>
+                  <p>Koszt produktów: {{ formatPrice(props.row.productCostAmount) }}</p>
+                  <p class="font-semibold">Zysk netto: {{ formatPrice(props.row.netProfitAmount) }}</p>
+                  <p v-if="!props.row.billingSyncedAtUtc" class="text-[#b45309]">
+                    Prowizja niezsynchronizowana — użyj „Synchronizuj prowizje”.
+                  </p>
+                </div>
               </div>
 
               <div class="table__product py-4 px-8">
@@ -88,6 +105,21 @@
                   <el-table-column label="Cena" width="120">
                     <template #default="scope">
                       {{ formatPrice(scope.row.price || scope.row.amount) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Prowizja" width="100">
+                    <template #default="scope">
+                      {{ formatPrice(scope.row.commissionAmount) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Koszt" width="100">
+                    <template #default="scope">
+                      {{ formatPrice(scope.row.productCostAmount) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Zysk" width="100">
+                    <template #default="scope">
+                      {{ formatPrice(scope.row.netProfit) }}
                     </template>
                   </el-table-column>
                 </el-table>
@@ -204,7 +236,37 @@
           </template>
 
           <template #default="prop">
-            {{ formatPrice(prop.row.totalAmount || prop.row.amount || prop.row.orderTotal) }}
+            {{ formatPrice(prop.row.totalAmount || prop.row.amount || prop.row.orderTotal || prop.row.totalToPay) }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="Prowizja" width="100" label-class-name="order_label">
+          <template #default="prop">
+            {{ formatPrice(prop.row.commissionAmount) }}
+          </template>
+          <template #header>
+            <div class="header-content">
+              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
+                Prowizja
+              </div>
+              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="Zysk" width="100" label-class-name="order_label">
+          <template #default="prop">
+            <span :class="profitClass(prop.row.netProfitAmount)">
+              {{ formatPrice(prop.row.netProfitAmount) }}
+            </span>
+          </template>
+          <template #header>
+            <div class="header-content">
+              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
+                Zysk
+              </div>
+              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
+            </div>
           </template>
         </el-table-column>
 
@@ -541,6 +603,42 @@ const showSelectedOrder = () => {
 
   const checkoutFormId = selectedRow.value.checkoutFormId || selectedRow.value.id
   router.push(`/allegro/orders/${checkoutFormId}`)
+}
+
+const syncingBilling = ref(false)
+
+const syncBillingForVisibleOrders = async () => {
+  syncingBilling.value = true
+
+  try {
+    const result = await Api.allegro.syncOrdersBilling({
+      sandbox: filter.value.sandbox,
+      fromUtc: toIsoDate(filter.value.from),
+      toUtc: toIsoDate(filter.value.to, true),
+      page: filter.value.page,
+      pageSize: filter.value.pageSize,
+      onlyMissingBilling: true
+    })
+
+    const data = result?.data || result
+    const synced = data?.syncedCount ?? 0
+    const failed = data?.failedCount ?? 0
+
+    toast.success(`Zsynchronizowano prowizje: ${synced}. Błędy: ${failed}.`)
+    await fetchTableData()
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zsynchronizować prowizji Allegro')
+  } finally {
+    syncingBilling.value = false
+  }
+}
+
+const profitClass = (value?: number | null) => {
+  if (value === null || value === undefined) return ''
+  if (value > 0) return 'text-[#15803d] font-semibold'
+  if (value < 0) return 'text-[#b91c1c] font-semibold'
+  return ''
 }
 
 const createLocalOrder = async () => {

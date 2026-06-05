@@ -317,6 +317,33 @@ const getImportedOrders = (
   })
 }
 
+const syncOrderBilling = (checkoutFormId: string, sandbox?: boolean | null) => {
+  const params = new URLSearchParams()
+
+  if (sandbox !== null && sandbox !== undefined) {
+    params.append('sandbox', sandbox.toString())
+  }
+
+  const query = params.toString()
+
+  return request(`${baseUrl}/orders/${checkoutFormId}/sync-billing${query ? `?${query}` : ''}`, {
+    method: 'POST'
+  })
+}
+
+const syncOrdersBilling = (body: any = {}) =>
+  request(`${baseUrl}/orders/sync-billing`, {
+    method: 'POST',
+    body: JSON.stringify({
+      sandbox: body.sandbox ?? null,
+      fromUtc: body.fromUtc ?? null,
+      toUtc: body.toUtc ?? null,
+      page: body.page ?? 1,
+      pageSize: body.pageSize ?? 50,
+      onlyMissingBilling: body.onlyMissingBilling ?? true
+    })
+  })
+
 const getImportedOrder = (checkoutFormId: string, sandbox?: boolean | null) => {
   const params = new URLSearchParams()
 
@@ -502,6 +529,8 @@ export const allegro = {
   importOrders,
   getImportedOrders,
   getImportedOrder,
+  syncOrderBilling,
+  syncOrdersBilling,
   createLocalOrder,
   buildCreateLocalOrderBody,
   getAllegroLocalOrderEnvDefaults,
