@@ -476,6 +476,71 @@ const router = createRouter({
       },
       component: route => import(`../views/Sale/Statistics/index.vue`)
     },
+    //ALLEGRO
+    {
+      path: '/allegro/account',
+      name: 'AllegroAccount',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Account/index.vue')
+    },
+    {
+      path: '/allegro/products',
+      name: 'AllegroProducts',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Products/index.vue')
+    },
+    {
+      path: '/allegro/products/:productId',
+      name: 'AllegroProductMapping',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Products/ProductMapping.vue')
+    },
+    {
+      path: '/allegro/offers',
+      name: 'AllegroOffers',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Offers/index.vue')
+    },
+    {
+      path: '/allegro/offers/:id',
+      name: 'AllegroOfferDetail',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Offers/Detail.vue')
+    },
+    {
+      path: '/allegro/orders',
+      name: 'AllegroOrders',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Orders/index.vue')
+    },
+    {
+      path: '/allegro/orders/:checkoutFormId',
+      name: 'AllegroOrderDetail',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Orders/Detail.vue')
+    },
+    {
+      path: '/allegro/settings',
+      name: 'AllegroSettings',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Allegro/Settings/index.vue')
+    },    
   ]
 })
 

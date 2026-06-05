@@ -21,6 +21,7 @@ import { chatGpt } from './chatgpt/chatgpt'
 import { productValuePrice } from './product/productValuePrice'
 import { tracking } from './tracking/tracking'
 import { productFaq } from './productFaq/productFaq'
+import { allegro } from './allegro/allegro'
 
 
 export const Api = {
@@ -46,5 +47,6 @@ export const Api = {
   chatGpt,
   productValuePrice,
   tracking,
-  productFaq
+  productFaq,
+  allegro
 }
