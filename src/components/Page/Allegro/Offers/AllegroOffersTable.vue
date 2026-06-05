@@ -111,15 +111,15 @@
                   <el-option label="Aktywne" value="ACTIVE" />
                   <el-option label="Nieaktywne" value="INACTIVE" />
                   <el-option label="Zakończone" value="ENDED" />
-                  <el-option label="Szkic" value="DRAFT" />
+                  <el-option label="Szkic" value="Draft" />
                 </el-select>
               </div>
             </div>
           </template>
 
           <template #default="prop">
-            <el-tag>
-              {{ prop.row.status || '-' }}
+            <el-tag :type="getStatusTagType(prop.row.status)">
+              {{ formatStatus(prop.row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -183,6 +183,29 @@
           </template>
         </el-table-column>
 
+        <el-table-column label="Akcje" width="130" fixed="right" label-class-name="order_label">
+          <template #header>
+            <div class="header-content">
+              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
+                Akcje
+              </div>
+              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
+            </div>
+          </template>
+
+          <template #default="{ row }">
+            <button
+              v-if="isActivatableOffer(row)"
+              type="button"
+              class="activate-btn"
+              :disabled="isActivating(row)"
+              @click.stop="activateOfferRow(row)"
+            >
+              {{ isActivating(row) ? 'Aktywuję...' : 'Aktywuj' }}
+            </button>
+          </template>
+        </el-table-column>
+
         <el-table-column label="Ostatnia synchronizacja" width="180" label-class-name="order_label">
           <template #header>
             <div class="header-content">
@@ -224,6 +247,7 @@ const toast = useToast()
 
 const selectedRow = ref<any>(null)
 const selectedRowId = ref<string | null>(null)
+const activatingOfferIds = ref<Record<string, boolean>>({})
 
 const dataTable = ref<any>({
   items: [],
@@ -261,7 +285,75 @@ const rowClassName = ({ row }: any) => {
 }
 
 const getOfferId = (row: any) => {
-  return row.allegroOfferId
+  return row.allegroOfferId || row.offerId || row.id || ''
+}
+
+const normalizeStatus = (status?: string) => String(status || '').trim().toUpperCase()
+
+const isActivatableOffer = (row: any) => {
+  const status = normalizeStatus(row?.status)
+  return status === 'DRAFT' || status === 'INACTIVE'
+}
+
+const isActivating = (row: any) => {
+  const offerId = getOfferId(row)
+  return !!offerId && !!activatingOfferIds.value[offerId]
+}
+
+const formatStatus = (status?: string) => {
+  const normalized = normalizeStatus(status)
+
+  if (normalized === 'DRAFT') return 'Szkic'
+  if (normalized === 'INACTIVE') return 'Nieaktywna'
+  if (normalized === 'ACTIVE') return 'Aktywna'
+  if (normalized === 'ENDED') return 'Zakończona'
+  if (normalized === 'ACTIVATING') return 'Aktywacja...'
+  if (normalized === 'PUBLISHREQUESTED') return 'Publikacja...'
+
+  return status || '-'
+}
+
+const getStatusTagType = (status?: string) => {
+  const normalized = normalizeStatus(status)
+
+  if (normalized === 'ACTIVE') return 'success'
+  if (normalized === 'DRAFT' || normalized === 'INACTIVE') return 'warning'
+  if (normalized === 'ENDED') return 'info'
+  if (normalized === 'ACTIVATING' || normalized === 'PUBLISHREQUESTED') return 'warning'
+
+  return ''
+}
+
+const activateOfferRow = async (row: any) => {
+  const offerId = getOfferId(row)
+
+  if (!offerId) {
+    toast.error('Brak ID oferty Allegro')
+    return
+  }
+
+  const offerName = row.productName || row.name || row.title || offerId
+
+  if (!window.confirm(`Aktywować ofertę „${offerName}” na Allegro?`)) {
+    return
+  }
+
+  activatingOfferIds.value[offerId] = true
+
+  try {
+    await Api.allegro.activateOffer(offerId)
+    row.status = 'ACTIVATING'
+    toast.success('Wysłano żądanie aktywacji oferty. Status zaktualizuje się po chwili.')
+
+    window.setTimeout(() => {
+      fetchTableData()
+    }, 3000)
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się aktywować oferty')
+  } finally {
+    delete activatingOfferIds.value[offerId]
+  }
 }
 
 const fetchTableData = async () => {
@@ -489,5 +581,25 @@ onMounted(async () => {
 .filter-compact.el-input-number .el-input-number__increase,
 .filter-compact.el-input-number .el-input-number__decrease {
   display: none !important;
+}
+
+.activate-btn {
+  border: 0;
+  border-radius: 4px;
+  background: #00796b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.activate-btn:hover:not(:disabled) {
+  background: #00695c;
+}
+
+.activate-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 </style>

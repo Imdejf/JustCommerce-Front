@@ -37,16 +37,101 @@ export const fileToBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file)
   })
 
-export const createDefaultDescriptionRows = (): AllegroDescriptionRow[] => [
-  {
-    id: createId(),
-    text: '',
-    active: true,
-    layout: 'TEXT_ONLY',
-    imageUrl: null,
-    imageFile: null,
-  },
-]
+export const hasDescriptionText = (text?: string | null): boolean => {
+  if (!text?.trim()) return false
+
+  const plain = String(text)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return plain.length > 0
+}
+
+export const normalizeDescriptionHtmlFromAllegro = (html?: string | null): string => {
+  if (!html?.trim()) return ''
+
+  let text = String(html).trim()
+
+  text = text.replace(/<img\b[^>]*>/gi, '')
+  text = text.replace(/<br\s*\/?>/gi, '</p><p>')
+  text = text.replace(
+    /<\/?(div|span|section|article|figure|figcaption|a|button|table|tbody|thead|tr|td|th|iframe|video|source|picture)[^>]*>/gi,
+    ''
+  )
+  text = text.replace(/<p[^>]*>/gi, '<p>')
+  text = text.replace(/<h1[^>]*>/gi, '<h1>')
+  text = text.replace(/<h2[^>]*>/gi, '<h2>')
+  text = text.replace(/<h3[^>]*>/gi, '<h3>')
+  text = text.replace(/<ul[^>]*>/gi, '<ul>')
+  text = text.replace(/<ol[^>]*>/gi, '<ol>')
+  text = text.replace(/<li[^>]*>/gi, '<li>')
+  text = text.replace(/<strong[^>]*>/gi, '<strong>')
+  text = text.replace(/<\/strong>/gi, '</strong>')
+  text = text.replace(/<p>\s*<\/p>/gi, '')
+
+  return text.trim()
+}
+
+export const isHtmlDescription = (text?: string | null): boolean =>
+  /<\/?[a-z][\s\S]*>/i.test(String(text ?? ''))
+
+export const prepareDescriptionTextForAllegro = (text?: string | null): string => {
+  if (!hasDescriptionText(text)) return ''
+
+  if (isHtmlDescription(text)) {
+    return normalizeDescriptionHtmlFromAllegro(text)
+  }
+
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n/g, '<br />')
+
+  return `<p>${escaped}</p>`
+}
+
+export const mapDescriptionSectionsFromAllegroApi = (description: any): AllegroDescriptionRow[] => {
+  const sections = description?.sections || []
+
+  if (!Array.isArray(sections) || !sections.length) {
+    return []
+  }
+
+  return sections
+    .map((section: any) => {
+      const items = section.items || []
+
+      const textItem = items.find((x: any) => x.type === 'TEXT')
+      const imageItem = items.find((x: any) => x.type === 'IMAGE')
+
+      const firstType = items[0]?.type
+      const layout =
+        textItem && imageItem && firstType === 'IMAGE'
+          ? 'IMAGE_TEXT_RIGHT'
+          : textItem && imageItem
+            ? 'TEXT_IMAGE_RIGHT'
+            : imageItem
+              ? 'IMAGE_ONLY'
+              : 'TEXT_ONLY'
+
+      return {
+        id: createId(),
+        text: normalizeDescriptionHtmlFromAllegro(textItem?.content || ''),
+        active: true,
+        layout,
+        imageUrl: imageItem?.url || null,
+        imageFile: null,
+      } as AllegroDescriptionRow
+    })
+    .filter((row) => hasDescriptionText(row.text) || !!row.imageUrl)
+}
+
+export const createDefaultDescriptionRows = (): AllegroDescriptionRow[] => []
 
 export const normalizeAllegroImages = (images: unknown): AllegroPhoto[] => {
   if (!Array.isArray(images)) return []
@@ -72,35 +157,78 @@ export const normalizeAllegroImages = (images: unknown): AllegroPhoto[] => {
 
 export const mapDescriptionRowsFromApi = (rows: any[]): AllegroDescriptionRow[] => {
   if (!Array.isArray(rows) || !rows.length) {
-    return createDefaultDescriptionRows()
+    return []
   }
 
-  return rows.map((row: any) => ({
-    id: createId(),
-    text: row.text || '',
-    active: row.active !== false,
-    layout: row.layout || 'TEXT_ONLY',
-    imageUrl: row.imageUrl || null,
-    imageFile: null,
-  }))
+  return rows
+    .map((row: any) => ({
+      id: createId(),
+      text: normalizeDescriptionHtmlFromAllegro(row.text || ''),
+      active: row.active !== false,
+      layout: row.layout || 'TEXT_ONLY',
+      imageUrl: row.imageUrl || null,
+      imageFile: null,
+    }))
+    .filter((row) => hasDescriptionText(row.text) || !!row.imageUrl)
 }
 
 export const filterDescriptionRowsForSave = (rows: AllegroDescriptionRow[]) =>
-  rows.filter(row =>
-    row.active &&
-    (
-      String(row.text || '').trim() ||
-      isValidAllegroImageUrl(row.imageUrl)
-    )
+  rows.filter(
+    (row) =>
+      row.active && (hasDescriptionText(row.text) || isValidAllegroImageUrl(row.imageUrl))
   )
 
 export const mapDescriptionRowsForSave = (rows: AllegroDescriptionRow[]) =>
-  filterDescriptionRowsForSave(rows).map(row => ({
-    text: row.text,
+  filterDescriptionRowsForSave(rows).map((row) => ({
+    text: prepareDescriptionTextForAllegro(row.text),
     active: true,
     layout: row.layout,
     imageUrl: isValidAllegroImageUrl(row.imageUrl) ? row.imageUrl : null,
   }))
+
+export const mapAllegroLayoutToProductLayout = (
+  layout: AllegroDescriptionRow['layout'],
+): string => {
+  switch (layout) {
+    case 'TEXT_IMAGE_RIGHT':
+      return 'text-left-image-right'
+    case 'IMAGE_TEXT_RIGHT':
+      return 'image-left-text-right'
+    case 'IMAGE_ONLY':
+      return 'image-only'
+    default:
+      return 'text-only'
+  }
+}
+
+export const mapAllegroRowsToRewriteSource = (rows: AllegroDescriptionRow[]) =>
+  rows.map((row) => ({
+    layout: mapAllegroLayoutToProductLayout(row.layout),
+    text: row.text || '',
+  }))
+
+export const buildAllegroRowsFromRewriteSections = (
+  sections: any[],
+  sourceRows: AllegroDescriptionRow[],
+): AllegroDescriptionRow[] =>
+  sections
+    .map((section: any, index: number) => {
+      const html = section?.description ?? section?.Description ?? ''
+
+      if (!hasDescriptionText(html)) return null
+
+      const source = sourceRows[index]
+
+      return {
+        id: createId(),
+        text: html,
+        active: true,
+        layout: source?.layout || 'TEXT_ONLY',
+        imageUrl: source?.imageUrl || null,
+        imageFile: source?.imageFile || null,
+      } as AllegroDescriptionRow
+    })
+    .filter(Boolean) as AllegroDescriptionRow[]
 
 type UploadFn = (base64: string) => Promise<any>
 

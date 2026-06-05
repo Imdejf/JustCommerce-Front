@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import ProductDescriptionAiModal from '/@/components/Form/Modal/ProductDescriptionAiModal.vue'
+import ProductDescriptionRewriteModal from '/@/components/Form/Modal/ProductDescriptionRewriteModal.vue'
 import ProductCompetitorImportModal from '/@/components/Form/Modal/ProductCompetitorImportModal.vue'
 import ProductCompetitorImportReviewModal, {
   type CompetitorImportAttributeItem,
@@ -83,6 +84,8 @@ const aiSectionModal = reactive({
 
 const descriptionAiModalVisible = ref(false)
 const descriptionAiLoading = ref(false)
+const descriptionRewriteModalVisible = ref(false)
+const descriptionRewriteLoading = ref(false)
 const competitorImportModalVisible = ref(false)
 const competitorImportReviewVisible = ref(false)
 const importCompetitorSeoLoading = ref(false)
@@ -515,6 +518,130 @@ const addSectionWithAI = (insertAfterIndex?: number) => {
 
 const openDescriptionVisionModal = () => {
   descriptionAiModalVisible.value = true
+}
+
+const storefrontBaseUrl = String(import.meta.env.VITE_STOREFRONT_URL || '').replace(/\/$/, '')
+
+const defaultProductPageUrl = computed(() => {
+  const slug = String(currentProduct.slug || '').trim()
+  if (!storefrontBaseUrl || !slug) return ''
+  return `${storefrontBaseUrl}/${slug}`
+})
+
+const getSourceDescriptionRows = () => {
+  if (descriptionRows.value.length) {
+    return descriptionRows.value
+  }
+
+  return normalizeDescriptionToRows(currentProduct.description)
+}
+
+const mapSourceSectionsForApi = (rows: any[]) =>
+  rows.map((row) => ({
+    layout: row.type || 'text-only',
+    text: row.text || ''
+  }))
+
+const buildRowsFromRewriteSections = (sections: any[], sourceRows: any[]) =>
+  sections
+    .map((section: any, index: number) => {
+      const html =
+        section?.description ??
+        section?.Description ??
+        ''
+
+      if (!html || !String(html).trim()) return null
+
+      const source = sourceRows[index]
+
+      if (!source) {
+        return createDescriptionRow('text-only', html)
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        type: source.type || 'text-only',
+        imageUrl: source.imageUrl || null,
+        imageAlt: source.imageAlt || '',
+        imageTitle: source.imageTitle || '',
+        text: html
+      }
+    })
+    .filter(Boolean)
+
+const openDescriptionRewriteModal = () => {
+  if (!canCallAI()) {
+    toast.error('Podaj nazwę produktu, zanim użyjesz AI.', { timeout: 2000 })
+    return
+  }
+
+  descriptionRewriteModalVisible.value = true
+}
+
+const handleDescriptionRewriteGenerate = async (config: { productPageUrl: string }) => {
+  const sourceRows = getSourceDescriptionRows()
+
+  if (!sourceRows.length && !config.productPageUrl?.trim()) {
+    toast.error(
+      'Dodaj sekcje opisu w formularzu lub podaj URL produktu na stronie sklepu.',
+      { timeout: 3000 }
+    )
+    return
+  }
+
+  try {
+    descriptionRewriteLoading.value = true
+
+    const body = {
+      productDescriptionRewriteBriefDTO: {
+        productName: currentProduct.name,
+        shortDescription: currentProduct.shortDescription || '',
+        specification: currentProduct.specification || ai.specification || '',
+        productPageUrl: config.productPageUrl || '',
+        sourceSections: mapSourceSectionsForApi(sourceRows)
+      }
+    }
+
+    const res = await Api.chatGpt.generateProductDescriptionRewrite({
+      body: JSON.stringify(body)
+    })
+
+    if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
+
+    const json = await res.json()
+    const d = (json?.data ?? json) as any
+    const sections = d?.sections ?? d?.Sections ?? []
+
+    if (!sections.length) {
+      toast.error('AI nie zwróciło przepisanych sekcji.', { timeout: 2500 })
+      return
+    }
+
+    const newRows = buildRowsFromRewriteSections(sections, sourceRows)
+
+    if (!newRows.length) {
+      toast.error('Nie udało się zbudować sekcji z odpowiedzi AI.', { timeout: 2500 })
+      return
+    }
+
+    const shouldReplace = window.confirm(
+      'AI przepisało sekcje opisu (unikalna treść). OK = nadpisz sekcje, Anuluj = dodaj na końcu.'
+    )
+
+    if (shouldReplace) {
+      descriptionRows.value = newRows
+    } else {
+      descriptionRows.value.push(...newRows)
+    }
+
+    descriptionRewriteModalVisible.value = false
+    toast.success(`Wygenerowano ${newRows.length} unikalnych sekcji opisu.`, { timeout: 2500 })
+  } catch (err) {
+    console.error(err)
+    toast.error('Nie udało się wygenerować unikalnych sekcji opisu.', { timeout: 2500 })
+  } finally {
+    descriptionRewriteLoading.value = false
+  }
 }
 
 const applyCompetitorSeoToProduct = (data: any) => {
@@ -1402,6 +1529,7 @@ watch(
             @improve-ai="improveSectionWithAI"
             @add-ai-below="addSectionWithAI"
             @generate-vision-ai="openDescriptionVisionModal"
+            @generate-rewrite-ai="openDescriptionRewriteModal"
           />
         </FormSection>
 
@@ -1516,6 +1644,15 @@ watch(
   :image-count="availableDescriptionImages.totalCount"
   @close="descriptionAiModalVisible = false"
   @generate="handleDescriptionVisionGenerate"
+/>
+
+<ProductDescriptionRewriteModal
+  v-if="descriptionRewriteModalVisible"
+  :loading="descriptionRewriteLoading"
+  :sections-count="getSourceDescriptionRows().length"
+  :default-product-page-url="defaultProductPageUrl"
+  @close="descriptionRewriteModalVisible = false"
+  @generate="handleDescriptionRewriteGenerate"
 />
 
 <el-dialog

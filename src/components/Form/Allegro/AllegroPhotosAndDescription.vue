@@ -30,111 +30,129 @@
         <div
           v-for="(row, index) in descriptionRowsModel"
           :key="row.id"
-          class="relative min-h-[155px] border-b border-[#e5e7eb] last:border-b-0"
+          class="border-b border-[#e5e7eb] last:border-b-0"
         >
-          <button
-            v-if="!row.active && !row.text && !row.imageUrl"
-            type="button"
-            class="w-full h-[155px] flex items-center justify-center text-sm italic text-[#6b7280] hover:bg-[#f9fafb]"
-            @click="activateRow(row.id)"
+          <div class="flex items-center justify-between px-3 pt-3 pb-2 border-b-2 border-[#ef4444]">
+            <div class="flex items-center gap-1">
+              <button
+                v-for="layout in layoutOptions"
+                :key="layout.value"
+                type="button"
+                class="layout-btn"
+                :class="{ 'layout-btn--active': row.layout === layout.value }"
+                :title="layout.title"
+                @click="setRowLayout(row, layout.value)"
+              >
+                <component :is="layout.icon" />
+              </button>
+            </div>
+
+            <div class="flex items-center gap-4 text-[#6b7280]">
+              <button
+                type="button"
+                class="section-action-btn"
+                title="Usuń sekcję"
+                @click="removeRow(row.id)"
+              >
+                <IconTrash />
+              </button>
+
+              <button
+                type="button"
+                class="section-action-btn"
+                title="Duplikuj sekcję"
+                @click="duplicateRow(row)"
+              >
+                <IconDuplicate />
+              </button>
+
+              <button
+                type="button"
+                class="section-action-btn"
+                title="Przenieś wyżej"
+                :disabled="index === 0"
+                @click="moveRowUp(index)"
+              >
+                <IconArrowUp />
+              </button>
+
+              <button
+                type="button"
+                class="section-action-btn"
+                title="Przenieś niżej"
+                :disabled="index === descriptionRowsModel.length - 1"
+                @click="moveRowDown(index)"
+              >
+                <IconArrowDown />
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="grid gap-0 min-h-[280px]"
+            :class="{
+              'grid-cols-1': row.layout === 'TEXT_ONLY' || row.layout === 'IMAGE_ONLY',
+              'grid-cols-2': row.layout === 'TEXT_IMAGE_RIGHT' || row.layout === 'IMAGE_TEXT_RIGHT'
+            }"
           >
-            Dodaj tekst / zdjęcie
-          </button>
+            <div
+              v-if="showImageColumn(row.layout)"
+              :class="{
+                'order-1': row.layout === 'IMAGE_TEXT_RIGHT',
+                'order-2': row.layout === 'TEXT_IMAGE_RIGHT',
+                'border-r': row.layout === 'IMAGE_TEXT_RIGHT',
+              }"
+              class="border-[#e5e7eb] min-h-[280px] bg-[#f8fafc] flex items-center justify-center relative p-4"
+            >
+              <img
+                v-if="row.imageUrl"
+                :src="row.imageUrl"
+                class="max-h-[320px] max-w-full object-contain"
+                alt=""
+              >
 
-          <div v-else class="p-3">
-            <div class="flex items-center justify-between border-b border-[#ef4444] pb-2 mb-3">
-              <div class="flex items-center gap-3">
-                <button type="button" class="text-xs text-[#ef4444]">
-                  Sekcja opisu
-                </button>
+              <button
+                v-if="row.imageUrl"
+                type="button"
+                class="absolute right-3 top-3 bg-white border border-[#d1d5db] text-[11px] px-2 py-1 hover:bg-[#fee2e2]"
+                @click="clearRowImage(row)"
+              >
+                Usuń zdjęcie
+              </button>
 
-                <el-select
-                  v-model="row.layout"
-                  class="!w-[300px] allegro-select"
-                  placeholder="Układ opisu"
-                >
-                  <el-option label="Sam tekst" value="TEXT_ONLY" />
-                  <el-option label="Tekst z lewej, zdjęcie z prawej" value="TEXT_IMAGE_RIGHT" />
-                  <el-option label="Zdjęcie z lewej, tekst z prawej" value="IMAGE_TEXT_RIGHT" />
-                  <el-option label="Samo zdjęcie" value="IMAGE_ONLY" />
-                </el-select>
-              </div>
-
-              <div class="flex items-center gap-3 text-[#6b7280] text-lg">
-                <button type="button" @click="removeRow(row.id)">🗑</button>
-                <button type="button" @click="duplicateRow(row)">▣</button>
-                <button type="button" @click="moveRowUp(index)">↑</button>
-                <button type="button" @click="moveRowDown(index)">↓</button>
-              </div>
+              <button
+                v-else
+                type="button"
+                class="text-xs font-bold tracking-[0.18em] text-[#00796b] hover:underline"
+                @click="openImagePicker(row)"
+              >
+                WYBIERZ ZDJĘCIE Z DODANYCH
+              </button>
             </div>
 
             <div
-              class="grid gap-4"
+              v-if="showTextColumn(row.layout)"
               :class="{
-                'grid-cols-1': row.layout === 'TEXT_ONLY' || row.layout === 'IMAGE_ONLY',
-                'grid-cols-2': row.layout === 'TEXT_IMAGE_RIGHT' || row.layout === 'IMAGE_TEXT_RIGHT'
+                'order-1': row.layout === 'TEXT_IMAGE_RIGHT',
+                'order-2': row.layout === 'IMAGE_TEXT_RIGHT',
+                'border-r': row.layout === 'TEXT_IMAGE_RIGHT',
               }"
+              class="border-[#e5e7eb] min-h-[280px]"
             >
-              <div
-                v-if="row.layout === 'TEXT_ONLY' || row.layout === 'TEXT_IMAGE_RIGHT' || row.layout === 'IMAGE_TEXT_RIGHT'"
-                :class="{ 'order-2': row.layout === 'IMAGE_TEXT_RIGHT' }"
-                class="border border-[#e5e7eb] rounded-md overflow-hidden"
-              >
-                <textarea
-                  v-model="row.text"
-                  class="w-full min-h-[160px] p-4 outline-none resize-none text-sm"
-                  placeholder="Wpisz opis produktu"
-                />
-
-                <div class="h-[42px] border-t border-[#e5e7eb] flex items-center gap-4 px-4 text-xs text-[#111827]">
-                  <button type="button">↶</button>
-                  <button type="button">↷</button>
-
-                  <select class="outline-none bg-white text-xs">
-                    <option>Podstawowy tekst</option>
-                    <option>Nagłówek</option>
-                  </select>
-
-                  <button type="button" class="font-bold">B</button>
-                  <button type="button">• lista</button>
-                  <button type="button">1. lista</button>
-                </div>
-              </div>
-
-              <div
-                v-if="row.layout === 'IMAGE_ONLY' || row.layout === 'TEXT_IMAGE_RIGHT' || row.layout === 'IMAGE_TEXT_RIGHT'"
-                :class="{ 'order-1': row.layout === 'IMAGE_TEXT_RIGHT' }"
-                class="border border-[#e5e7eb] rounded-md min-h-[220px] bg-[#f8fafc] flex items-center justify-center relative"
-              >
-                <img
-                  v-if="row.imageUrl"
-                  :src="row.imageUrl"
-                  class="max-h-[260px] max-w-full object-contain"
-                >
-
-                <button
-                  v-if="row.imageUrl"
-                  type="button"
-                  class="absolute right-2 top-2 bg-white border border-[#d1d5db] text-xs px-2 py-1 hover:bg-[#fee2e2]"
-                  @click="clearRowImage(row)"
-                >
-                  Usuń zdjęcie
-                </button>
-
-                <button
-                  v-else
-                  type="button"
-                  class="text-xs font-bold text-[#00796b] hover:underline"
-                  @click="openImagePicker(row)"
-                >
-                  WYBIERZ ZDJĘCIE Z DODANYCH
-                </button>
-              </div>
+              <AllegroDescriptionEditor v-model="row.text" />
             </div>
           </div>
         </div>
 
-        <div class="h-[90px] flex items-center justify-center">
+        <div class="min-h-[90px] flex flex-col items-center justify-center gap-3 py-4 px-4">
+          <button
+            type="button"
+            class="rewrite-btn"
+            @click="emit('generate-rewrite-ai')"
+          >
+            GENERUJ UNIKALNE SEKCJE JAK NA STRONIE
+          </button>
+
           <button
             type="button"
             class="text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline"
@@ -162,6 +180,7 @@
           <img
             :src="photo.url"
             class="w-full h-[120px] object-contain"
+            alt=""
           >
         </button>
       </div>
@@ -175,8 +194,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineComponent, h, ref } from 'vue'
 import AllegroPhotoUploader from './AllegroPhotoUploader.vue'
+import AllegroDescriptionEditor from './AllegroDescriptionEditor.vue'
 import {
   isValidAllegroImageUrl,
   type AllegroDescriptionRow,
@@ -184,6 +204,8 @@ import {
 } from './allegroOfferForm.ts'
 
 export type { AllegroDescriptionRow }
+
+type DescriptionLayout = AllegroDescriptionRow['layout']
 
 const props = defineProps<{
   photos: AllegroPhoto[]
@@ -193,6 +215,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:photos': [value: AllegroPhoto[]]
   'update:descriptionRows': [value: AllegroDescriptionRow[]]
+  'generate-rewrite-ai': []
 }>()
 
 const imagePickerVisible = ref(false)
@@ -208,29 +231,102 @@ const descriptionRowsModel = computed({
   set: value => emit('update:descriptionRows', value),
 })
 
+const iconProps = {
+  width: 28,
+  height: 22,
+  viewBox: '0 0 28 22',
+  fill: 'none',
+  xmlns: 'http://www.w3.org/2000/svg',
+}
+
+const IconImageOnly = defineComponent({
+  render: () => h('svg', iconProps, [
+    h('rect', { x: 4, y: 3, width: 20, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('path', { d: 'M8 14l3-3 3 3 5-5 3 3', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+    h('circle', { cx: 10, cy: 8, r: 1.5, fill: 'currentColor' }),
+  ]),
+})
+
+const IconTextOnly = defineComponent({
+  render: () => h('svg', iconProps, [
+    h('rect', { x: 4, y: 3, width: 20, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('path', { d: 'M8 8h12M8 12h12M8 16h8', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' }),
+  ]),
+})
+
+const IconImageTextRight = defineComponent({
+  render: () => h('svg', iconProps, [
+    h('rect', { x: 3, y: 3, width: 10, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('rect', { x: 15, y: 3, width: 10, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('path', { d: 'M5 14l2-2 2 2 3-3', stroke: 'currentColor', 'stroke-width': 1.2, 'stroke-linecap': 'round' }),
+    h('path', { d: 'M17 8h6M17 12h6M17 16h4', stroke: 'currentColor', 'stroke-width': 1.2, 'stroke-linecap': 'round' }),
+  ]),
+})
+
+const IconTextImageRight = defineComponent({
+  render: () => h('svg', iconProps, [
+    h('rect', { x: 3, y: 3, width: 10, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('rect', { x: 15, y: 3, width: 10, height: 16, rx: 1, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('path', { d: 'M5 8h6M5 12h6M5 16h4', stroke: 'currentColor', 'stroke-width': 1.2, 'stroke-linecap': 'round' }),
+    h('path', { d: 'M17 14l2-2 2 2 3-3', stroke: 'currentColor', 'stroke-width': 1.2, 'stroke-linecap': 'round' }),
+  ]),
+})
+
+const IconTrash = defineComponent({
+  render: () => h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' }, [
+    h('path', { d: 'M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' }),
+  ]),
+})
+
+const IconDuplicate = defineComponent({
+  render: () => h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' }, [
+    h('rect', { x: 8, y: 8, width: 11, height: 11, rx: 1.5, stroke: 'currentColor', 'stroke-width': 1.5 }),
+    h('rect', { x: 5, y: 5, width: 11, height: 11, rx: 1.5, stroke: 'currentColor', 'stroke-width': 1.5 }),
+  ]),
+})
+
+const IconArrowUp = defineComponent({
+  render: () => h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' }, [
+    h('path', { d: 'M12 19V5M6 11l6-6 6 6', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+  ]),
+})
+
+const IconArrowDown = defineComponent({
+  render: () => h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' }, [
+    h('path', { d: 'M12 5v14M6 13l6 6 6-6', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+  ]),
+})
+
+const layoutOptions = [
+  { value: 'IMAGE_ONLY' as DescriptionLayout, title: 'Samo zdjęcie', icon: IconImageOnly },
+  { value: 'TEXT_ONLY' as DescriptionLayout, title: 'Sam tekst', icon: IconTextOnly },
+  { value: 'IMAGE_TEXT_RIGHT' as DescriptionLayout, title: 'Zdjęcie z lewej, tekst z prawej', icon: IconImageTextRight },
+  { value: 'TEXT_IMAGE_RIGHT' as DescriptionLayout, title: 'Tekst z lewej, zdjęcie z prawej', icon: IconTextImageRight },
+]
+
 const createId = () => crypto.randomUUID()
 
 const createEmptyRow = (): AllegroDescriptionRow => ({
   id: createId(),
   text: '',
-  active: false,
-  layout: 'TEXT_ONLY',
+  active: true,
+  layout: 'IMAGE_TEXT_RIGHT',
   imageUrl: null,
   imageFile: null,
 })
 
-const activateRow = (id: string) => {
-  descriptionRowsModel.value = descriptionRowsModel.value.map(row => {
-    if (row.id !== id) return row
+const showImageColumn = (layout: DescriptionLayout) =>
+  layout === 'IMAGE_ONLY' || layout === 'TEXT_IMAGE_RIGHT' || layout === 'IMAGE_TEXT_RIGHT'
 
-    return {
-      ...row,
-      active: true,
-      layout: row.layout || 'TEXT_ONLY',
-      imageUrl: row.imageUrl || null,
-      imageFile: row.imageFile || null,
-    }
-  })
+const showTextColumn = (layout: DescriptionLayout) =>
+  layout === 'TEXT_ONLY' || layout === 'TEXT_IMAGE_RIGHT' || layout === 'IMAGE_TEXT_RIGHT'
+
+const setRowLayout = (row: AllegroDescriptionRow, layout: DescriptionLayout) => {
+  descriptionRowsModel.value = descriptionRowsModel.value.map(item =>
+    item.id === row.id
+      ? { ...item, layout, active: true }
+      : item
+  )
 }
 
 const addRow = () => {
@@ -241,12 +337,8 @@ const addRow = () => {
 }
 
 const removeRow = (id: string) => {
-  if (descriptionRowsModel.value.length === 1) {
-    descriptionRowsModel.value = [createEmptyRow()]
-    return
-  }
-
-  descriptionRowsModel.value = descriptionRowsModel.value.filter(row => row.id !== id)
+  const nextRows = descriptionRowsModel.value.filter(row => row.id !== id)
+  descriptionRowsModel.value = nextRows.length ? nextRows : []
 }
 
 const duplicateRow = (row: AllegroDescriptionRow) => {
@@ -256,6 +348,7 @@ const duplicateRow = (row: AllegroDescriptionRow) => {
   rows.splice(index + 1, 0, {
     ...row,
     id: createId(),
+    active: true,
   })
 
   descriptionRowsModel.value = rows
@@ -301,6 +394,7 @@ const chooseImageForRow = (photo: AllegroPhoto) => {
 
   selectedImageRow.value.imageUrl = photo.allegroUrl || photo.url
   selectedImageRow.value.imageFile = photo.file || null
+  selectedImageRow.value.active = true
 
   if (
     selectedImageRow.value.imageUrl &&
@@ -321,9 +415,58 @@ const clearRowImage = (row: AllegroDescriptionRow) => {
 </script>
 
 <style scoped>
-:deep(.allegro-select .el-select__wrapper) {
-  min-height: 36px;
-  border-radius: 4px;
-  box-shadow: 0 0 0 1px #9ca3af inset;
+.layout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.layout-btn:hover {
+  color: #111827;
+  background: #f9fafb;
+}
+
+.layout-btn--active {
+  color: #ea580c;
+  background: #fff7ed;
+}
+
+.section-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.section-action-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rewrite-btn {
+  border: 0;
+  border-radius: 6px;
+  background: #00796b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.rewrite-btn:hover {
+  background: #00695c;
 }
 </style>

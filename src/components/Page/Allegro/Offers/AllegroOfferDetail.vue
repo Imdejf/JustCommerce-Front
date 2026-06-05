@@ -261,6 +261,7 @@
         <AllegroPhotosAndDescription
           v-model:photos="form.photos"
           v-model:descriptionRows="form.descriptionRows"
+          @generate-rewrite-ai="openDescriptionRewriteModal"
         />
 
         <!-- DOSTAWA -->
@@ -510,6 +511,15 @@
         </div>
       </template>
     </div>
+
+    <ProductDescriptionRewriteModal
+      v-if="descriptionRewriteModalVisible"
+      :loading="descriptionRewriteLoading"
+      :sections-count="form.descriptionRows.length"
+      :default-product-page-url="defaultProductPageUrl"
+      @close="descriptionRewriteModalVisible = false"
+      @generate="handleDescriptionRewriteGenerate"
+    />
   </div>
 </template>
 
@@ -519,8 +529,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Api } from '/@/services/api'
 import AllegroPhotosAndDescription from '/@/components/Form/Allegro/AllegroPhotosAndDescription.vue'
+import ProductDescriptionRewriteModal from '/@/components/Form/Modal/ProductDescriptionRewriteModal.vue'
 import {
   applyParameterValuesFromApi,
+  buildAllegroRowsFromRewriteSections,
+  buildFeePreviewBody,
   buildParameterValuesForApi,
   createDefaultDescriptionRows,
   extractAllegroUrlFromUpload,
@@ -529,10 +542,11 @@ import {
   getParamValues,
   isBooleanParameter,
   isNumberParameter,
+  mapAllegroRowsToRewriteSource,
   mapDescriptionRowsFromApi,
+  mapDescriptionSectionsFromAllegroApi,
   normalizeAllegroImages,
   prepareDescriptionRowsForAllegro,
-  buildFeePreviewBody,
 } from '/@/components/Form/Allegro/allegroOfferForm.ts'
 
 const route = useRoute()
@@ -543,6 +557,16 @@ const offerId = computed(() => String(route.params.id || ''))
 const loading = ref(false)
 const saving = ref(false)
 const loadingInitialData = ref(false)
+const descriptionRewriteModalVisible = ref(false)
+const descriptionRewriteLoading = ref(false)
+
+const storefrontBaseUrl = String(import.meta.env.VITE_STOREFRONT_URL || '').replace(/\/$/, '')
+
+const defaultProductPageUrl = computed(() => {
+  const slug = String(offer.value?.productSlug || offer.value?.slug || '').trim()
+  if (!storefrontBaseUrl || !slug) return ''
+  return `${storefrontBaseUrl}/${slug}`
+})
 
 const offer = ref<any>(null)
 const liveOffer = ref<any>(null)
@@ -785,7 +809,7 @@ const fillFormFromLiveOffer = (data: any) => {
   ])
   savedParameterValues.value = extractParametersFromLiveOffer(data)
 
-  form.descriptionRows = normalizeDescription(data.description)
+  form.descriptionRows = mapDescriptionSectionsFromAllegroApi(data.description)
 }
 
 const loadCategoryParameters = async (categoryId: string) => {
@@ -814,105 +838,77 @@ const syncCategoryParameters = async (apiParams: any[] = []) => {
   applyParameterValuesFromApi(form.parameterValues, apiParams)
 }
 
-const normalizeDescription = (description: any) => {
-  const sections = description?.sections || []
-
-  if (!Array.isArray(sections) || !sections.length) {
-    return createDefaultDescriptionRows()
+const openDescriptionRewriteModal = () => {
+  if (!form.title?.trim()) {
+    ElMessage.warning('Uzupełnij tytuł oferty, zanim użyjesz AI.')
+    return
   }
 
-  return sections.map((section: any) => {
-    const items = section.items || []
+  descriptionRewriteModalVisible.value = true
+}
 
-    const textItem = items.find((x: any) => x.type === 'TEXT')
-    const imageItem = items.find((x: any) => x.type === 'IMAGE')
+const handleDescriptionRewriteGenerate = async (config: { productPageUrl: string }) => {
+  const sourceRows = form.descriptionRows
 
-    const firstType = items[0]?.type
-    const layout =
-      textItem && imageItem && firstType === 'IMAGE'
-        ? 'IMAGE_TEXT_RIGHT'
-        : textItem && imageItem
-          ? 'TEXT_IMAGE_RIGHT'
-          : imageItem
-            ? 'IMAGE_ONLY'
-            : 'TEXT_ONLY'
+  if (!sourceRows.length && !config.productPageUrl?.trim()) {
+    ElMessage.warning(
+      'Załaduj opis oferty (Pobierz live z Allegro) lub podaj URL produktu na stronie sklepu.'
+    )
+    return
+  }
 
-    return {
-      id: crypto.randomUUID(),
-      text: stripHtml(textItem?.content || ''),
-      active: true,
-      layout,
-      imageUrl: imageItem?.url || null,
-      imageFile: null,
+  try {
+    descriptionRewriteLoading.value = true
+
+    const body = {
+      productDescriptionRewriteBriefDTO: {
+        productName: form.title,
+        shortDescription: '',
+        specification: '',
+        productPageUrl: config.productPageUrl || '',
+        sourceSections: mapAllegroRowsToRewriteSource(sourceRows),
+      },
     }
-  })
-}
 
-const stripHtml = (html: string) => {
-  if (!html) return ''
+    const res = await Api.chatGpt.generateProductDescriptionRewrite({
+      body: JSON.stringify(body),
+    })
 
-  return String(html)
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .trim()
-}
+    if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
 
-const toAllegroHtml = (text: string) => {
-  if (!text) return ''
+    const json = await res.json()
+    const data = json?.data ?? json
+    const sections = data?.sections ?? data?.Sections ?? []
 
-  const escaped = String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n/g, '<br />')
+    if (!sections.length) {
+      ElMessage.error('AI nie zwróciło przepisanych sekcji.')
+      return
+    }
 
-  return `<p>${escaped}</p>`
-}
+    const newRows = buildAllegroRowsFromRewriteSections(sections, sourceRows)
 
-const buildDescription = () => {
-  return {
-    sections: form.descriptionRows
-      .filter((row: any) =>
-        row.active &&
-        (
-          String(row.text || '').trim() ||
-          String(row.imageUrl || '').trim()
-        )
-      )
-      .map((row: any) => {
-        const items: any[] = []
+    if (!newRows.length) {
+      ElMessage.error('Nie udało się zbudować sekcji z odpowiedzi AI.')
+      return
+    }
 
-        const addText = () => {
-          if (String(row.text || '').trim()) {
-            items.push({
-              type: 'TEXT',
-              content: toAllegroHtml(row.text)
-            })
-          }
-        }
+    const shouldReplace = window.confirm(
+      'AI przepisało sekcje opisu (unikalna treść). OK = nadpisz sekcje, Anuluj = dodaj na końcu.'
+    )
 
-        const addImage = () => {
-          if (String(row.imageUrl || '').trim()) {
-            items.push({
-              type: 'IMAGE',
-              url: row.imageUrl
-            })
-          }
-        }
+    if (shouldReplace) {
+      form.descriptionRows = newRows
+    } else {
+      form.descriptionRows = [...form.descriptionRows, ...newRows]
+    }
 
-        if (row.layout === 'IMAGE_TEXT_RIGHT') {
-          addImage()
-          addText()
-        } else {
-          addText()
-          addImage()
-        }
-
-        return { items }
-      })
-      .filter((section: any) => section.items.length)
+    descriptionRewriteModalVisible.value = false
+    ElMessage.success(`Wygenerowano ${newRows.length} unikalnych sekcji opisu.`)
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('Nie udało się wygenerować unikalnych sekcji opisu.')
+  } finally {
+    descriptionRewriteLoading.value = false
   }
 }
 

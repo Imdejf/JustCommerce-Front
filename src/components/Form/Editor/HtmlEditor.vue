@@ -16,7 +16,7 @@
             Akapit
           </a>
           <a
-            v-for="level in [2, 3, 4, 5, 6]"
+            v-for="level in [1, 2, 3, 4, 5, 6]"
             :key="level"
             :class="{ active: editor.isActive('heading', { level }) }"
             @click="onHeadingClick(level)"
@@ -761,7 +761,7 @@ export default {
           heading: false
         }),
         CustomHeading.configure({
-          levels: [2, 3, 4, 5, 6]
+          levels: [1, 2, 3, 4, 5, 6]
         }),
         Underline,
         TextStyle,

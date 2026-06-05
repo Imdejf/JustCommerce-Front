@@ -41,6 +41,14 @@ const generateProductDescriptionVision = (payload) =>
     body: payload.body
   })
 
+const generateProductDescriptionRewrite = (payload) =>
+  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionRewrite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: payload.body
+  })
+
 const generateProductAttributesFromDescription = (payload) =>
   fetch(`${APISettings.baseURL}administration/chatGpt/generateProductAttributesFromDescription`, {
     method: 'POST',
@@ -56,5 +64,6 @@ export const chatGpt = {
   generateProductSeoFromCompetitor,
   generateProductAttributesFromDescription,
   generateProductDescriptionVision,
+  generateProductDescriptionRewrite,
   ...CreateBaseApiService('administration/chatGpt')
 }

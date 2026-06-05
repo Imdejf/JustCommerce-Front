@@ -118,6 +118,14 @@
         CHAT – GENERUJ OPIS ZE ZDJĘĆ
       </button>
 
+      <button
+        type="button"
+        class="add-row-btn add-row-btn--rewrite"
+        @click="$emit('generate-rewrite-ai')"
+      >
+        GENERUJ UNIKALNE SEKCJE JAK NA STRONIE
+      </button>
+
       <button type="button" class="add-row-btn" @click="addRow">
         DODAJ KOLEJNY WIERSZ
       </button>
@@ -174,7 +182,7 @@ export default defineComponent({
       default: () => []
     }
   },
-  emits: ['update:modelValue', 'improve-ai', 'add-ai-below', 'generate-vision-ai'],
+  emits: ['update:modelValue', 'improve-ai', 'add-ai-below', 'generate-vision-ai', 'generate-rewrite-ai'],
   data() {
     return {
       localRows: [] as ProductDescriptionRow[],
@@ -450,5 +458,13 @@ export default defineComponent({
   border: none;
   padding: 10px 16px;
   letter-spacing: 1px;
+}
+
+.add-row-btn--rewrite {
+  background: #00796b;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  letter-spacing: 0.5px;
 }
 </style>
