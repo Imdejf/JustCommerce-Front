@@ -95,6 +95,22 @@ const generateOrDownloadOffer = async (offerId) => {
 };
 
 
+const getStatistics = async (storeId) => {
+  const res = await fetch(`${APISettings.baseURL}administration/offer/Statistics/${storeId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  })
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '')
+    throw new Error(msg || `GetOfferStatistics failed (${res.status})`)
+  }
+
+  const json = await res.json()
+  return json?.data ?? json
+}
+
 const changeOfferStatus = (payload) => {
   fetch(`${APISettings.baseURL}administration/offer/ChangeStatusOffer`, {
     method: 'POST',
@@ -112,6 +128,7 @@ const changeOfferStatus = (payload) => {
 
 export const offers = {
     smartTable,
+    getStatistics,
     getDetailById,
     createOffer,
     updateOffer,

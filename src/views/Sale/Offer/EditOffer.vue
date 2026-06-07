@@ -2,116 +2,119 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import OfferForm from '/@/components/Page/Sale/Offer/OfferForm.vue'
-import Cookies from 'universal-cookie'
-import jwt_decode from 'jwt-decode'
 import { Api } from '/@/services/api'
 
-const cookies = new Cookies()
-const token = cookies.get('Authorization')
-const decoded = jwt_decode(token)
-
 const route = useRoute()
-const offer = ref(null)
-
-const getExpirationDate = () => {
-  const date = new Date();
-  date.setMonth(date.getMonth() + 1);
-  return date.toISOString();
-};
-
-const currentOffer = ref(null);
-
-const getById = (slug: string) => {
-  return Api.offers.getDetailById(slug)
-}
+const loading = ref(true)
+const currentOffer = ref<any>(null)
 
 onMounted(async () => {
-  const slug = route.params.slug
-  const result = await getById(slug)
-  offer.value = result.data
-  currentOffer.value = {
-  offerId: result.data.id,
-  languageId: result.data.languageId,
-  storeId: result.data.storeId,
-  createdById: result.data.createdById,
-  updatedById: result.data.createdById,
-  createdOn: result.data.createdOn,
-  latestUpdatedOn: result.data.latestUpdatedOn,
-  expirationTime: result.data.expirationTime,
-  sendToClientDate: result.data.sendToClientDate,
-  offerNumber: result.data.offerNumber,
-  customerName: result.data.customerName,
-  customerEmail: result.data.customerEmail,
-  customerPhone: result.data.customerPhone,
-  shippingPrice: result.data.shippingPrice,
-  shippingPriceGross: result.data.shippingPriceGross,
-  totalItemPrice: result.data.totalItemPrice,
-  totalItemPriceGross: result.data.totalItemPriceGross,
-  totalPrice: result.data.totalPrice,
-  totalPriceGross: result.data.totalPriceGross,
-  realizationTerm: result.data.realizationTerm,
-  offerNote: result.data.offerNote,
-  comment: result.data.comment,
-  sendToClient: result.data.sendToClient,
-  useShippingAddressAsBillingAddress: result.data.billingAddressId === result.data.shippingAddressId,
-  deliveryMethod: result.data.deliveryMethod,
-  payment: result.data.payment,
-  transportIndividualPricing: result.data.transportIndividualPricing ?? false,
-  paymentTerm: result.data.paymentTerm,
-  billingAddress: {
-    isCompany: result.data.billingAddress?.isCompany ?? false,
-    firstName: result.data.billingAddress?.firstName ?? '',
-    lastName: result.data.billingAddress?.lastName ?? '',
-    email: result.data.billingAddress?.email ?? '',
-    companyName: result.data.billingAddress?.companyName ?? '',
-    nip: result.data.billingAddress?.nip ?? '',
-    phone: result.data.billingAddress?.phone ?? '',
-    addressLine1: result.data.billingAddress?.addressLine1 ?? '',
-    city: result.data.billingAddress?.city ?? '',
-    zipCode: result.data.billingAddress?.zipCode ?? '',
-    stateOrProvinceId: '', // Dodaj jeśli masz w osobnym DTO
-    countryId: '0b64292c-e249-4906-ab48-429441745899'
-  },
-  shippingAddress: {
-    isCompany: result.data.shippingAddress?.isCompany ?? false,
-    firstName: result.data.shippingAddress?.firstName ?? '',
-    lastName: result.data.shippingAddress?.lastName ?? '',
-    email: result.data.shippingAddress?.email ?? '',
-    companyName: result.data.shippingAddress?.companyName ?? '',
-    nip: result.data.shippingAddress?.nip ?? '',
-    phone: result.data.shippingAddress?.phone ?? '',
-    addressLine1: result.data.shippingAddress?.addressLine1 ?? '',
-    city: result.data.shippingAddress?.city ?? '',
-    zipCode: result.data.shippingAddress?.zipCode ?? '',
-    stateOrProvinceId: '', // Dodaj jeśli masz w osobnym DTO
-    countryId: '0b64292c-e249-4906-ab48-429441745899'
-  },
-  products: result.data.offerItems.map(item => ({
-    id: item.id,
-    productId: item.productId,
-    brandId: item.brandId,
-    sku: item.sku,
-    slug: item.slug,
-    name: item.productName,
-    productImage: item.productImage,
-    quantity: item.quantity,
-    identificationCode: item.identificationCode,
-    taxAmount: item.taxAmount,
-    taxPercent: item.taxPercent,
-    startingPriceNetto: item.startingPriceNetto,
-    priceNetto: item.priceNetto,
-    priceGross: item.priceGross,
-    tax: item.tax,
-    producerPriceNetto: item.producerPriceNetto,
-    totalPriceNetto: item.totalPriceNetto,
-    totalPriceGross: item.totalPriceGross,
-    offerItemAttributes: item.offerItemAttributes
-  }))
-}
+  try {
+    const slug = route.params.slug as string
+    const result = await Api.offers.getDetailById(slug)
+    const data = result.data
+
+    currentOffer.value = {
+      offerId: data.id,
+      id: data.id,
+      languageId: data.languageId,
+      storeId: data.storeId,
+      createdById: data.createdById,
+      updatedById: data.createdById,
+      createdOn: data.createdOn,
+      latestUpdatedOn: data.latestUpdatedOn,
+      expirationTime: data.expirationTime,
+      sendToClientDate: data.sendToClientDate,
+      offerNumber: data.offerNumber,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      shippingPrice: data.shippingPrice,
+      shippingPriceGross: data.shippingPriceGross,
+      totalItemPrice: data.totalItemPrice,
+      totalItemPriceGross: data.totalItemPriceGross,
+      totalPrice: data.totalPrice,
+      totalPriceGross: data.totalPriceGross,
+      realizationTerm: data.realizationTerm,
+      offerNote: data.offerNote,
+      comment: data.comment,
+      sendToClient: data.sendToClient,
+      useShippingAddressAsBillingAddress: data.billingAddressId === data.shippingAddressId,
+      deliveryMethod: data.deliveryMethod,
+      payment: data.payment,
+      transportIndividualPricing: data.transportIndividualPricing ?? false,
+      paymentTerm: data.paymentTerm,
+      billingAddress: {
+        isCompany: data.billingAddress?.isCompany ?? false,
+        firstName: data.billingAddress?.firstName ?? '',
+        lastName: data.billingAddress?.lastName ?? '',
+        email: data.billingAddress?.email ?? '',
+        companyName: data.billingAddress?.companyName ?? '',
+        nip: data.billingAddress?.nip ?? '',
+        phone: data.billingAddress?.phone ?? '',
+        addressLine1: data.billingAddress?.addressLine1 ?? '',
+        city: data.billingAddress?.city ?? '',
+        zipCode: data.billingAddress?.zipCode ?? '',
+        stateOrProvinceId: '',
+        countryId: '0b64292c-e249-4906-ab48-429441745899'
+      },
+      shippingAddress: {
+        isCompany: data.shippingAddress?.isCompany ?? false,
+        firstName: data.shippingAddress?.firstName ?? '',
+        lastName: data.shippingAddress?.lastName ?? '',
+        email: data.shippingAddress?.email ?? '',
+        companyName: data.shippingAddress?.companyName ?? '',
+        nip: data.shippingAddress?.nip ?? '',
+        phone: data.shippingAddress?.phone ?? '',
+        addressLine1: data.shippingAddress?.addressLine1 ?? '',
+        city: data.shippingAddress?.city ?? '',
+        zipCode: data.shippingAddress?.zipCode ?? '',
+        stateOrProvinceId: '',
+        countryId: '0b64292c-e249-4906-ab48-429441745899'
+      },
+      products: data.offerItems.map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        brandId: item.brandId,
+        sku: item.sku,
+        slug: item.slug,
+        name: item.productName,
+        productImage: item.productImage,
+        quantity: item.quantity,
+        identificationCode: item.identificationCode,
+        taxAmount: item.taxAmount,
+        taxPercent: item.taxPercent,
+        startingPriceNetto: item.startingPriceNetto,
+        priceNetto: item.priceNetto,
+        priceGross: item.priceGross,
+        tax: item.tax,
+        producerPriceNetto: item.producerPriceNetto,
+        totalPriceNetto: item.totalPriceNetto,
+        totalPriceGross: item.totalPriceGross,
+        offerItemAttributes: item.offerItemAttributes
+      }))
+    }
+  } finally {
+    loading.value = false
+  }
 })
 </script>
+
 <template>
-    <div v-if="currentOffer != null">
-        <OfferForm :offer="currentOffer" :updated="true"/>
+  <div v-if="loading" class="offer-edit-loading">
+    <el-skeleton animated>
+      <template #template>
+        <el-skeleton-item variant="h1" style="width: 40%; height: 40px; margin-bottom: 16px" />
+        <el-skeleton-item variant="rect" style="width: 100%; height: 200px; border-radius: 18px" />
+      </template>
+    </el-skeleton>
   </div>
+  <OfferForm v-else-if="currentOffer" :offer="currentOffer" :updated="true" />
 </template>
+
+<style scoped>
+.offer-edit-loading {
+  padding: 24px 20px;
+  max-width: 900px;
+}
+</style>

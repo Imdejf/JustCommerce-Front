@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 
-const emit = defineEmits(['close'])
+const emit = defineEmits<{ close: [success?: boolean] }>()
 const basePath = import.meta.env.VITE_API_URL
 
 defineProps<{ visible: boolean }>()
@@ -46,9 +46,8 @@ async function submitFile() {
   // 1️⃣ Wyślij do administration
   const adminResponse = await fetch(`${basePath}administration/product/ImportProductFromExcel`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload)
   })
 
@@ -62,9 +61,8 @@ async function submitFile() {
   // 2️⃣ Wyślij do product
   const productResponse = await fetch(`${basePath}product/ImportProductFromExcel`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload)
   })
 
@@ -77,11 +75,12 @@ async function submitFile() {
 
   // Zamknij modal/okno
   file.value = null
-  emit('close')
+  emit('close', true)
 } catch (error) {
   file.value = null
   console.error('Błąd podczas wysyłania pliku:', error)
   alert('Wystąpił błąd podczas przesyłania pliku.')
+  emit('close', false)
 } finally {
   isLoading.value = false
   file.value = null
@@ -130,7 +129,7 @@ async function submitFile() {
       <!-- Guzik zamknięcia -->
       <button
         class="absolute -top-1 right-2 text-gray-500 hover:text-gray-800 dark:hover:text-white text-lg font-bold"
-        @click="emit('close')"
+        @click="emit('close', false)"
         :disabled="isLoading"
       >
         X

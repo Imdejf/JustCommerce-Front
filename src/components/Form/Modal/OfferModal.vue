@@ -100,7 +100,7 @@ const createOrderFromOffer = (offerId: string) => {
         </div>
     </div>
     <div class="pt-5">
-        <div class="flex grid grid-cols-3 gap-2 text-center font-semibold border-b border-gray-400 pb-2 text-xs">
+        <div class="flex grid grid-cols-2 md:grid-cols-5 gap-2 text-center font-semibold border-b border-gray-400 pb-2 text-xs">
             <div class="col-span-1">
                 Całość (brutto): <span class="!text-[15px]">{{ offer.totalPriceGross }} PLN</span>
             </div>
@@ -109,6 +109,12 @@ const createOrderFromOffer = (offerId: string) => {
             </div>
             <div class="col-span-1">
                 Wysyłka (brutto): <span class="!text-[15px]">{{ offer.shippingPriceGross }} PLN</span>
+            </div>
+            <div class="col-span-1">
+                Zysk netto: <span class="!text-[15px] text-emerald-600">{{ (offer.profitNet ?? 0).toFixed(2) }} PLN</span>
+            </div>
+            <div class="col-span-1">
+                Marża: <span class="!text-[15px]" :class="(offer.marginPct ?? 0) < 12 ? 'text-amber-600' : 'text-emerald-600'">{{ (offer.marginPct ?? 0).toFixed(1) }}%</span>
             </div>
         </div>
     </div>

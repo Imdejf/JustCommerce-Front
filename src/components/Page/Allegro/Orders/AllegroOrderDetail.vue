@@ -48,14 +48,14 @@
             <div>
               <strong>Status Allegro:</strong>
               <p>
-                <el-tag>{{ order.status || '-' }}</el-tag>
+                <el-tag>{{ translateAllegroOrderStatus(order.status) }}</el-tag>
               </p>
             </div>
 
             <div>
               <strong>Status realizacji:</strong>
               <p>
-                <el-tag>{{ order.fulfillmentStatus || '-' }}</el-tag>
+                <el-tag>{{ translateAllegroFulfillmentStatus(order.fulfillmentStatus) }}</el-tag>
               </p>
             </div>
 
@@ -419,6 +419,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
+import {
+  ALLEGRO_FULFILLMENT_STATUS_OPTIONS,
+  translateAllegroFulfillmentStatus,
+  translateAllegroOrderStatus
+} from '/@/utils/allegroStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -444,15 +449,7 @@ const shipmentForm = ref({
   waybill: ''
 })
 
-const fulfillmentStatusOptions = [
-  { value: 'NEW', label: 'Nowe (NEW)' },
-  { value: 'PROCESSING', label: 'W realizacji (PROCESSING)' },
-  { value: 'READY_FOR_SHIPMENT', label: 'Gotowe do wysyłki (READY_FOR_SHIPMENT)' },
-  { value: 'READY_FOR_PICKUP', label: 'Gotowe do odbioru (READY_FOR_PICKUP)' },
-  { value: 'SENT', label: 'Wysłane (SENT)' },
-  { value: 'PICKED_UP', label: 'Odebrane (PICKED_UP)' },
-  { value: 'CANCELLED', label: 'Anulowane (CANCELLED)' }
-]
+const fulfillmentStatusOptions = ALLEGRO_FULFILLMENT_STATUS_OPTIONS
 
 const checkoutFormId = computed(() => String(route.params.checkoutFormId || ''))
 

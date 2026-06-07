@@ -1,520 +1,604 @@
 <template>
-  <div class="stats-page">
-    <!-- Header -->
-    <div class="page-header">
-      <div class="title-wrap">
-        <div class="title">Statystyki zamówień</div>
-        <div class="subtitle">Podsumowanie sprzedaży, przychodu i produktów w wybranym okresie</div>
+  <div class="cosmos-stats">
+    <header class="cosmos-stats__header">
+      <div>
+        <p class="cosmos-stats__eyebrow">Sprzedaż · analityka</p>
+        <h1 class="cosmos-stats__title">Statystyki zamówień</h1>
+        <p class="cosmos-stats__subtitle">Podsumowanie sprzedaży, przychodu i produktów w wybranym okresie</p>
       </div>
-
-      <div class="header-actions">
-        <el-button type="primary" @click="fetchRaport" :loading="loading" class="btn-primary">
-          Generuj
-        </el-button>
+      <div class="cosmos-stats__actions">
+        <el-button type="primary" :loading="loading" @click="fetchRaport">Generuj raport</el-button>
         <el-button @click="resetFilters">Wyczyść</el-button>
       </div>
-    </div>
+    </header>
 
-    <!-- Filters (sticky) -->
-    <el-card class="filters-card" shadow="never">
-      <div class="filters">
-<div class="filters-left">
-  <div class="field">
-    <div class="label">Zakres dat</div>
-    <el-date-picker
-      v-model="dateRange"
-      type="daterange"
-      range-separator="→"
-      start-placeholder="Od"
-      end-placeholder="Do"
-      value-format="YYYY-MM-DD"
-      class="control"
-    />
-  </div>
-
-  <div class="field">
-    <div class="label">Sklep</div>
-    <el-select v-model="filters.storeId" placeholder="Wszystkie" clearable class="control" filterable>
-      <el-option :value="null" label="Wszystkie" />
-      <el-option
-        v-for="s in stores"
-        :key="s.value ?? 'all'"
-        :value="s.value"
-        :label="s.label"
-      />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Opłacone</div>
-    <el-select v-model="filters.isPaid" placeholder="Wszystkie" clearable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option :value="true" label="Tak" />
-      <el-option :value="false" label="Nie" />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Wysłane</div>
-    <el-select v-model="filters.isShipped" placeholder="Wszystkie" clearable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option :value="true" label="Tak" />
-      <el-option :value="false" label="Nie" />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Dostawa</div>
-    <el-select v-model="filters.deliveryMethod" placeholder="Wszystkie" clearable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option
-        v-for="o in deliveryMethodOptions"
-        :key="String(o.value)"
-        :value="o.value"
-        :label="o.label"
-      />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Płatność</div>
-    <el-select v-model="filters.paymentProvider" placeholder="Wszystkie" clearable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option
-        v-for="o in paymentProviderOptions"
-        :key="String(o.value)"
-        :value="o.value"
-        :label="o.label"
-      />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Źródło</div>
-    <el-select v-model="filters.orderSourceType" placeholder="Wszystkie" clearable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option
-        v-for="o in orderSourceOptions"
-        :key="String(o.value)"
-        :value="o.value"
-        :label="o.label"
-      />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Producent</div>
-    <el-select v-model="filters.brandId" placeholder="Wszyscy" clearable filterable class="control">
-      <el-option
-        v-for="b in brands"
-        :key="b.value ?? 'all'"
-        :value="b.value"
-        :label="b.label"
-      />
-    </el-select>
-  </div>
-
-  <div class="field">
-    <div class="label">Produkt</div>
-    <el-select v-model="filters.productId" placeholder="Wszystkie" clearable filterable class="control">
-      <el-option :value="null" label="Wszystkie" />
-      <el-option
-        v-for="p in products"
-        :key="p.value ?? 'all'"
-        :value="p.value"
-        :label="p.label"
-      />
-    </el-select>
-  </div>
-</div>
-
-
-        <div class="filters-right">
-          <el-tag type="info" effect="plain">
-            {{ dateRange?.[0] ?? '—' }} → {{ dateRange?.[1] ?? '—' }}
+    <section class="cosmos-filters">
+      <button type="button" class="cosmos-filters__toggle" @click="filtersOpen = !filtersOpen">
+        <span class="cosmos-filters__toggle-left">
+          <el-icon><Filter /></el-icon>
+          Filtry raportu
+          <el-tag v-if="activeFiltersCount" size="small" type="warning" effect="dark" round>
+            {{ activeFiltersCount }}
           </el-tag>
-        </div>
-      </div>
-    </el-card>
+        </span>
+        <el-icon :class="{ 'cosmos-filters__chevron--open': filtersOpen }"><ArrowDown /></el-icon>
+      </button>
 
-    <!-- Content -->
+      <el-collapse-transition>
+        <div v-show="filtersOpen" class="cosmos-filters__body">
+          <div class="cosmos-filters__grid">
+            <label class="cosmos-field">
+              <span>Zakres dat</span>
+              <el-date-picker
+                v-model="dateRange"
+                type="daterange"
+                range-separator="→"
+                start-placeholder="Od"
+                end-placeholder="Do"
+                value-format="YYYY-MM-DD"
+                class="!w-full"
+              />
+            </label>
+
+            <label class="cosmos-field">
+              <span>Sklep</span>
+              <el-select v-model="filters.storeId" placeholder="Wszystkie" clearable filterable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option v-for="s in stores" :key="String(s.value)" :value="s.value" :label="s.label" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Opłacone</span>
+              <el-select v-model="filters.isPaid" placeholder="Wszystkie" clearable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option :value="true" label="Tak" />
+                <el-option :value="false" label="Nie" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Wysłane</span>
+              <el-select v-model="filters.isShipped" placeholder="Wszystkie" clearable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option :value="true" label="Tak" />
+                <el-option :value="false" label="Nie" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Dostawa</span>
+              <el-select v-model="filters.deliveryMethod" placeholder="Wszystkie" clearable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option v-for="o in deliveryMethodOptions" :key="String(o.value)" :value="o.value" :label="o.label" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Płatność</span>
+              <el-select v-model="filters.paymentProvider" placeholder="Wszystkie" clearable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option v-for="o in paymentProviderOptions" :key="String(o.value)" :value="o.value" :label="o.label" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Źródło</span>
+              <el-select v-model="filters.orderSourceType" placeholder="Wszystkie" clearable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option v-for="o in orderSourceOptions" :key="String(o.value)" :value="o.value" :label="o.label" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field">
+              <span>Producent</span>
+              <el-select v-model="filters.brandId" placeholder="Wszyscy" clearable filterable class="!w-full">
+                <el-option v-for="b in brands" :key="String(b.value)" :value="b.value" :label="b.label" />
+              </el-select>
+            </label>
+
+            <label class="cosmos-field cosmos-field--wide">
+              <span>Produkt</span>
+              <el-select v-model="filters.productId" placeholder="Wszystkie" clearable filterable class="!w-full">
+                <el-option :value="null" label="Wszystkie" />
+                <el-option v-for="p in products" :key="String(p.value)" :value="p.value" :label="p.label" />
+              </el-select>
+            </label>
+          </div>
+
+          <div class="cosmos-filters__foot">
+            <el-tag effect="dark" round>{{ rangeLabel }}</el-tag>
+            <span class="cosmos-filters__hint">Zysk liczony netto: cena netto − cena producenta</span>
+          </div>
+        </div>
+      </el-collapse-transition>
+    </section>
+
     <el-skeleton :loading="loading" animated>
       <template #template>
-        <div class="kpis">
-          <div v-for="i in 4" :key="i" class="kpi-skeleton"></div>
+        <div class="cosmos-stats__kpi">
+          <div v-for="i in 4" :key="i" class="cosmos-skel" />
         </div>
-        <div class="charts modern-grid">
-          <div class="chart-skeleton" v-for="i in 3" :key="i"></div>
+        <div class="cosmos-stats__grid">
+          <div v-for="i in 4" :key="`p-${i}`" class="cosmos-skel cosmos-skel--panel" />
         </div>
       </template>
 
       <template #default>
-        <!-- Empty state -->
-        <el-empty
-          v-if="!raport"
-          description="Ustaw filtry i kliknij „Generuj”, aby zobaczyć dane."
-          class="empty"
-        />
+        <div v-if="!raport" class="cosmos-empty">
+          <div class="cosmos-empty__icon">📊</div>
+          <h3>Brak danych raportu</h3>
+          <p>Ustaw filtry i kliknij „Generuj raport”, aby zobaczyć statystyki sprzedaży.</p>
+          <el-button type="primary" @click="fetchRaport">Generuj raport</el-button>
+        </div>
 
         <template v-else>
-          <!-- KPI -->
-          <div class="kpis">
-            <el-card shadow="never" class="kpi kpi-a">
-              <div class="kpi-row">
-                <div class="kpi-meta">
-                  <div class="kpi-title">Przychód bez transportu</div>
-                  <div class="kpi-value">{{ money(raport.revenueWithoutShipping) }}</div>
+          <div class="cosmos-stats__kpi">
+            <div class="cosmic-card cosmic-card--net">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Towar brutto</span>
+                  <span class="cosmic-card__glyph">◎</span>
                 </div>
-                <div class="kpi-icon">₿</div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ money(raport.revenueWithoutShipping) }}</div>
+                <div class="cosmic-card__foot">przychód bez transportu</div>
+                <v-chart class="cosmic-card__chart" :option="revenueSparkOption" autoresize />
               </div>
-            </el-card>
+            </div>
 
-            <el-card shadow="never" class="kpi kpi-b">
-              <div class="kpi-row">
-                <div class="kpi-meta">
-                  <div class="kpi-title">Przychód z transportem</div>
-                  <div class="kpi-value">{{ money(raport.revenueWithShipping) }}</div>
+            <div class="cosmic-card cosmic-card--gross">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Razem brutto</span>
+                  <span class="cosmic-card__glyph">◈</span>
                 </div>
-                <div class="kpi-icon">🚚</div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ money(raport.revenueWithShipping) }}</div>
+                <div class="cosmic-card__foot">z transportem · {{ summary.ordersTotal }} zamówień</div>
+                <v-chart class="cosmic-card__chart" :option="ordersSparkOption" autoresize />
               </div>
-            </el-card>
+            </div>
 
-            <el-card shadow="never" class="kpi kpi-c">
-              <div class="kpi-row">
-                <div class="kpi-meta">
-                  <div class="kpi-title">Zysk</div>
-                  <div class="kpi-value">{{ money(raport.profit) }}</div>
+            <div class="cosmic-card cosmic-card--profit">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Zysk netto</span>
+                  <span class="cosmic-card__glyph">✦</span>
                 </div>
-                <div class="kpi-icon">📈</div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(raport.profit) }}</div>
+                <div class="cosmic-card__foot">
+                  marża {{ percent(summary.marginPct) }} · baza {{ moneyNet(summary.revenueNet) }}
+                </div>
+                <v-chart class="cosmic-card__chart" :option="profitProductsSparkOption" autoresize />
               </div>
-            </el-card>
+            </div>
 
-            <el-card shadow="never" class="kpi kpi-d">
-              <div class="kpi-row">
-                <div class="kpi-meta">
-                  <div class="kpi-title">Średnia wartość zamówienia</div>
-                  <div class="kpi-value">{{ money(raport.averageOrderValue) }}</div>
+            <div class="cosmic-card cosmic-card--aov">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Średnia wartość</span>
+                  <span class="cosmic-card__glyph">❖</span>
                 </div>
-                <div class="kpi-icon">🧾</div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ money(raport.averageOrderValue) }}</div>
+                <div class="cosmic-card__foot">AOV brutto · {{ productsTable.length }} produktów w raporcie</div>
+                <v-chart class="cosmic-card__chart cosmic-card__chart--donut" :option="qtyDonutOption" autoresize />
               </div>
-            </el-card>
+            </div>
           </div>
 
-          <!-- Charts -->
-          <div class="modern-grid">
-            <el-card shadow="never" class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Liczba zamówień</div>
-                <div class="panel-subtitle">Dzień lub miesiąc w zależności od zakresu</div>
+          <div class="cosmos-stats__grid cosmos-stats__grid--main">
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Liczba zamówień</h2>
+                  <p>Dzień lub miesiąc w zależności od zakresu</p>
+                </div>
               </div>
-              <v-chart class="chart" :option="ordersCountOption" autoresize />
-            </el-card>
+              <v-chart class="cosmos-panel__chart" :option="ordersCountOption" autoresize />
+            </section>
 
-            <el-card shadow="never" class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Przychód</div>
-                <div class="panel-subtitle">Z transportem vs bez transportu</div>
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Przychód brutto</h2>
+                  <p>Z transportem vs bez transportu</p>
+                </div>
               </div>
-              <v-chart class="chart" :option="revenueOption" autoresize />
-            </el-card>
-
-            <el-card shadow="never" class="panel panel-wide">
-              <div class="panel-head">
-                <div class="panel-title">Top produkty</div>
-                <div class="panel-subtitle">Najczęściej sprzedawane (ilość)</div>
-              </div>
-              <v-chart class="chart" :option="topProductsOption" autoresize />
-            </el-card>
+              <v-chart class="cosmos-panel__chart" :option="revenueOption" autoresize />
+            </section>
           </div>
 
-          <!-- Table -->
-          <el-card shadow="never" class="panel mt-3">
-            <div class="panel-head">
-              <div class="panel-title">Produkty</div>
-              <div class="panel-subtitle">Szczegóły sprzedaży w wybranym okresie</div>
+          <div class="cosmos-stats__grid cosmos-stats__grid--wide">
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Top produkty — ilość</h2>
+                  <p>10 najczęściej sprzedawanych pozycji</p>
+                </div>
+              </div>
+              <v-chart class="cosmos-panel__chart" :option="topProductsQtyOption" autoresize />
+            </section>
+
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Top produkty — zysk netto</h2>
+                  <p>10 pozycji z najwyższym zyskiem</p>
+                </div>
+              </div>
+              <v-chart class="cosmos-panel__chart" :option="topProductsProfitOption" autoresize />
+            </section>
+          </div>
+
+          <section class="cosmos-panel cosmos-panel--table">
+            <div class="cosmos-panel__head">
+              <div>
+                <h2>Szczegóły produktów</h2>
+                <p>Przychód brutto/netto, koszt i zysk netto w wybranym okresie</p>
+              </div>
             </div>
 
             <el-table
               :data="productsTable"
               stripe
-              style="width: 100%"
+              class="cosmos-table"
               :default-sort="{ prop: 'profit', order: 'descending' }"
             >
-              <el-table-column prop="name" label="Produkt" min-width="260" />
-              <el-table-column prop="sku" label="SKU" width="140" />
-              <el-table-column prop="brandName" label="Marka" width="180" />
-              <el-table-column prop="quantity" label="Ilość" width="90" sortable />
-              <el-table-column prop="revenueGross" label="Przychód brutto" width="160" sortable>
+              <el-table-column prop="name" label="Produkt" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="sku" label="SKU" width="120" show-overflow-tooltip />
+              <el-table-column prop="brandName" label="Marka" width="140" show-overflow-tooltip />
+              <el-table-column prop="quantity" label="Ilość" width="80" sortable align="center" />
+              <el-table-column prop="revenueGross" label="Przychód brutto" width="130" sortable align="right">
                 <template #default="{ row }">{{ money(row.revenueGross) }}</template>
               </el-table-column>
-              <el-table-column prop="cost" label="Koszt" width="140" sortable>
-                <template #default="{ row }">{{ money(row.cost) }}</template>
+              <el-table-column prop="revenueNet" label="Przychód netto" width="130" sortable align="right">
+                <template #default="{ row }">{{ moneyNet(row.revenueNet) }}</template>
               </el-table-column>
-              <el-table-column prop="profit" label="Zysk" width="140" sortable>
-                <template #default="{ row }">{{ money(row.profit) }}</template>
+              <el-table-column prop="cost" label="Koszt netto" width="120" sortable align="right">
+                <template #default="{ row }">{{ moneyNet(row.cost) }}</template>
+              </el-table-column>
+              <el-table-column prop="profit" label="Zysk netto" width="130" sortable align="right">
+                <template #default="{ row }">
+                  <span class="profit-net">{{ moneyNet(row.profit) }}</span>
+                </template>
               </el-table-column>
             </el-table>
-          </el-card>
+          </section>
         </template>
       </template>
     </el-skeleton>
   </div>
 </template>
 
-
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import VChart from "vue-echarts";
+import { computed, onMounted, ref } from 'vue'
+import VChart from 'vue-echarts'
 import { Api } from '/@/services/api'
-import * as echarts from "echarts/core";
+import * as echarts from 'echarts/core'
 import { useToast } from 'vue-toastification'
-import { BarChart, LineChart } from "echarts/charts";
-import { onMounted } from "vue";
-import {
-  GridComponent,
-  TooltipComponent,
-  LegendComponent,
-  DataZoomComponent,
-} from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
+import { ArrowDown, Filter } from '@element-plus/icons-vue'
+import { BarChart, LineChart, PieChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 
-echarts.use([
-  BarChart,
-  LineChart,
-  GridComponent,
-  TooltipComponent,
-  LegendComponent,
-  DataZoomComponent,
-  CanvasRenderer,
-]);
-
-type OrderRaportPeriodType = "Day" | "Month" | 0 | 1;
+echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, CanvasRenderer])
 
 type OrderRaportPeriodDTO = {
-  period: string;
-  periodType: OrderRaportPeriodType;
-  ordersCount: number;
-  revenueWithShipping: number;
-  revenueWithoutShipping: number;
-};
+  period: string
+  ordersCount: number
+  revenueWithShipping: number
+  revenueWithoutShipping: number
+}
 
 type OrderRaportProductDTO = {
-  productId?: string | null;
-  brandId?: string | null;
-  name: string;
-  sku?: string | null;
-  brandName?: string | null;
-  quantity: number;
-  revenueGross: number;
-  revenueNet: number;
-  cost: number;
-  profit: number;
-};
+  name: string
+  sku?: string | null
+  brandName?: string | null
+  quantity: number
+  revenueGross: number
+  revenueNet: number
+  cost: number
+  profit: number
+}
 
 type OrderRaportDTO = {
-  revenueWithoutShipping: number;
-  revenueWithShipping: number;
-  profit: number;
-  averageOrderValue: number;
-  ordersByPeriod: OrderRaportPeriodDTO[];
-  products: OrderRaportProductDTO[];
-};
+  revenueWithoutShipping: number
+  revenueWithShipping: number
+  profit: number
+  averageOrderValue: number
+  ordersByPeriod: OrderRaportPeriodDTO[]
+  products: OrderRaportProductDTO[]
+}
 
-const loading = ref(false);
-const raport = ref<OrderRaportDTO | null>(null);
-
-const dateRange = ref<[string, string] | null>(null);
+const loading = ref(false)
+const raport = ref<OrderRaportDTO | null>(null)
+const filtersOpen = ref(true)
+const dateRange = ref<[string, string] | null>(null)
 const toast = useToast()
 
-const brands = ref<{ value: string | null; label: string }[]>([
-  { value: null, label: 'Wszyscy' }
-])
-
-
+const brands = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszyscy' }])
 
 const filters = ref({
   storeId: null as string | null,
-
   isPaid: null as boolean | null,
   isShipped: null as boolean | null,
-
   deliveryMethod: null as number | null,
   paymentProvider: null as number | null,
   orderSourceType: null as number | null,
-
   productId: null as string | null,
-  brandId: null as string | null,
+  brandId: null as string | null
 })
 
-const stores = ref<{ value: string | null; label: string }[]>([
-  { value: null, label: "Wszystkie" },
-]);
+const stores = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszystkie' }])
+const products = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszystkie' }])
 
-const products = ref<{ value: string | null; label: string }[]>([
-  { value: null, label: "Wszystkie" },
-]);
-
-// Opcje enumów – PODMIEŃ labelki i wartości wg Twoich enumów
 const deliveryMethodOptions = [
-  { value: 0, label: "Kurier" },
-  { value: 1, label: "Odbiór osobisty" },
-];
+  { value: 0, label: 'Kurier' },
+  { value: 1, label: 'Odbiór osobisty' }
+]
 
 const paymentProviderOptions = [
-  { value: 0, label: "Przelew" },
-  { value: 1, label: "Pobranie" },
-  { value: 2, label: "Termin" },
-];
+  { value: 0, label: 'Przelewy24' },
+  { value: 1, label: 'Przelew standardowy' },
+  { value: 2, label: 'Za pobraniem' },
+  { value: 3, label: 'PayPo' },
+  { value: 4, label: 'BLIK' },
+  { value: 5, label: 'Termin' },
+  { value: 6, label: 'Allegro' }
+]
 
 const orderSourceOptions = [
-  { value: 0, label: "Cart" },
-  { value: 1, label: "Inne" },
-];
+  { value: 0, label: 'Koszyk' },
+  { value: 1, label: 'Stały klient' },
+  { value: 2, label: 'Oferta' },
+  { value: 3, label: 'Telefon' },
+  { value: 4, label: 'Czat' },
+  { value: 5, label: 'E-mail' },
+  { value: 6, label: 'Allegro' }
+]
 
-// (opcjonalnie) jeśli masz endpointy na sklepy/produkty – podepniesz tu
-const allStores = async () => {
-  try {
-    // const result = await Api.stores.list() // <- podmień na swój endpoint
-    // stores.value = [{ value: null, label: "Wszystkie" }, ...result.items.map(x => ({value:x.id,label:x.name}))]
-
-    stores.value = [{ value: null, label: "Wszystkie" }]; // placeholder
-  } catch (e) {
-    console.error("Błąd podczas pobierania sklepów:", e);
-  }
-};
-
-const allProducts = async () => {
-  try {
-    // const result = await Api.products.listByStoreId(...) // <- podmień
-    // products.value = [{ value: null, label: "Wszystkie" }, ...result.items.map(x => ({value:x.id,label:x.name}))]
-
-    products.value = [{ value: null, label: "Wszystkie" }]; // placeholder
-  } catch (e) {
-    console.error("Błąd podczas pobierania produktów:", e);
-  }
-};
-
-
-const allBrands = async () => {
-  try {
-    const result = await Api.brands.listByStoreId()
-    brands.value = [
-      { value: null, label: 'Wszyscy' },
-      ...result.items.map((item: any) => ({
-        value: item.id,
-        label: item.name
-      }))
-    ]
-  } catch (error) {
-    console.error('Błąd podczas pobierania producentów:', error)
-  }
+const chartTheme = {
+  axis: '#94a3b8',
+  split: 'rgba(148, 163, 184, 0.15)',
+  cur: '#60a5fa',
+  alt: '#a78bfa',
+  profit: '#34d399',
+  text: '#e2e8f0'
 }
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (filters.value.storeId) count++
+  if (filters.value.isPaid !== null) count++
+  if (filters.value.isShipped !== null) count++
+  if (filters.value.deliveryMethod !== null) count++
+  if (filters.value.paymentProvider !== null) count++
+  if (filters.value.orderSourceType !== null) count++
+  if (filters.value.productId) count++
+  if (filters.value.brandId) count++
+  return count
+})
 
-function resetFilters() {
-  dateRange.value = null;
+const rangeLabel = computed(() => `${dateRange.value?.[0] ?? '—'} → ${dateRange.value?.[1] ?? '—'}`)
 
-  filters.value.storeId = null;
-  filters.value.isPaid = null;
-  filters.value.isShipped = null;
+const periods = computed(() => raport.value?.ordersByPeriod ?? [])
+const productsTable = computed(() => raport.value?.products ?? [])
 
-  filters.value.deliveryMethod = null;
-  filters.value.paymentProvider = null;
-  filters.value.orderSourceType = null;
-
-  filters.value.productId = null;
-  filters.value.brandId = null;
-
-  raport.value = null;
-}
+const summary = computed(() => {
+  const items = productsTable.value
+  const revenueNet = items.reduce((sum, item) => sum + Number(item.revenueNet ?? 0), 0)
+  const profit = Number(raport.value?.profit ?? 0)
+  const marginPct = revenueNet > 0 ? (profit / revenueNet) * 100 : 0
+  const ordersTotal = periods.value.reduce((sum, p) => sum + Number(p.ordersCount ?? 0), 0)
+  return { revenueNet, profit, marginPct, ordersTotal }
+})
 
 function money(v?: number | null) {
-  const value = Number(v ?? 0);
-  return value.toLocaleString("pl-PL", { style: "currency", currency: "PLN" });
+  return Number(v ?? 0).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })
+}
+
+function moneyNet(v?: number | null) {
+  return `${Number(v ?? 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł netto`
+}
+
+function percent(v: number) {
+  return `${Number(v ?? 0).toFixed(1)}%`
 }
 
 function formatPeriodLabel(iso: string) {
-  const d = new Date(iso);
-  // dzień/miesiąc zależy od tego co backend zwraca jako Period (dzień lub 1 dzień miesiąca)
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return dd === "01" ? `${yyyy}-${mm}` : `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return dd === '01' ? `${yyyy}-${mm}` : `${yyyy}-${mm}-${dd}`
 }
 
-const periods = computed(() => raport.value?.ordersByPeriod ?? []);
-
-const ordersCountOption = computed(() => {
-  const x = periods.value.map(p => formatPeriodLabel(p.period));
-  const y = periods.value.map(p => p.ordersCount);
-
-  return {
-    tooltip: { trigger: "axis" },
-    grid: { left: 40, right: 20, top: 30, bottom: 40 },
-    dataZoom: [{ type: "inside" }, { type: "slider" }],
-    xAxis: { type: "category", data: x },
-    yAxis: { type: "value" },
-    series: [{ type: "bar", data: y, name: "Zamówienia" }],
-  };
-});
-
-const revenueOption = computed(() => {
-  const x = periods.value.map(p => formatPeriodLabel(p.period));
-  const withShipping = periods.value.map(p => p.revenueWithShipping);
-  const withoutShipping = periods.value.map(p => p.revenueWithoutShipping);
-
-  return {
-    tooltip: { trigger: "axis" },
-    legend: { top: 0 },
-    grid: { left: 40, right: 20, top: 40, bottom: 40 },
-    dataZoom: [{ type: "inside" }, { type: "slider" }],
-    xAxis: { type: "category", data: x },
-    yAxis: { type: "value" },
-    series: [
-      { type: "line", data: withShipping, name: "Z transportem" },
-      { type: "line", data: withoutShipping, name: "Bez transportu" },
-    ],
-  };
-});
-
-const productsTable = computed(() => raport.value?.products ?? []);
-
-const topProductsOption = computed(() => {
-  const top = [...(raport.value?.products ?? [])]
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 10);
-
-  return {
-    tooltip: { trigger: "axis" },
-    grid: { left: 40, right: 20, top: 30, bottom: 80 },
-    xAxis: {
-      type: "category",
-      data: top.map(x => x.name),
-      axisLabel: { rotate: 35 },
-    },
-    yAxis: { type: "value" },
-    series: [{ type: "bar", data: top.map(x => x.quantity), name: "Ilość" }],
-  };
-});
-
 function toYmd(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const spark = (values: number[], color: string) => ({
+  grid: { left: 0, right: 0, top: 0, bottom: 0 },
+  xAxis: { type: 'category', show: false, data: values.map((_, i) => i) },
+  yAxis: { type: 'value', show: false },
+  series: [{
+    type: 'line',
+    data: values,
+    smooth: true,
+    symbol: 'none',
+    lineStyle: { width: 2, color },
+    areaStyle: { color: `${color}33` }
+  }]
+})
+
+const revenueSparkOption = computed(() =>
+  spark(periods.value.map((p) => p.revenueWithoutShipping), '#93c5fd')
+)
+
+const ordersSparkOption = computed(() =>
+  spark(periods.value.map((p) => p.ordersCount), '#c4b5fd')
+)
+
+const profitProductsSparkOption = computed(() => {
+  const top = [...productsTable.value].sort((a, b) => b.profit - a.profit).slice(0, 8)
+  return spark(top.map((p) => p.profit), '#6ee7b7')
+})
+
+const qtyDonutOption = computed(() => {
+  const top = [...productsTable.value].sort((a, b) => b.quantity - a.quantity).slice(0, 3)
+  const rest = productsTable.value.reduce((sum, p) => sum + p.quantity, 0) -
+    top.reduce((sum, p) => sum + p.quantity, 0)
+
+  return {
+    series: [{
+      type: 'pie',
+      radius: ['58%', '78%'],
+      center: ['50%', '55%'],
+      label: { show: false },
+      data: [
+        ...top.map((p, i) => ({
+          value: p.quantity,
+          name: p.name,
+          itemStyle: { color: ['#60a5fa', '#a78bfa', '#34d399'][i] }
+        })),
+        ...(rest > 0 ? [{ value: rest, name: 'Pozostałe', itemStyle: { color: '#94a3b8' } }] : [])
+      ]
+    }]
+  }
+})
+
+const baseChart = (x: string[], formatter?: (v: number) => string) => ({
+  color: [chartTheme.cur, chartTheme.alt, chartTheme.profit],
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    borderColor: 'rgba(148, 163, 184, 0.2)',
+    textStyle: { color: chartTheme.text },
+    valueFormatter: (val: number) => (formatter ? formatter(Number(val)) : String(val))
+  },
+  legend: { top: 0, textStyle: { color: '#64748b' } },
+  grid: { left: 48, right: 20, top: 36, bottom: 48 },
+  dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 4 }],
+  xAxis: {
+    type: 'category',
+    data: x,
+    axisLine: { lineStyle: { color: chartTheme.split } },
+    axisLabel: { color: chartTheme.axis }
+  },
+  yAxis: {
+    type: 'value',
+    splitLine: { lineStyle: { color: chartTheme.split } },
+    axisLabel: { color: chartTheme.axis }
+  }
+})
+
+const trendX = computed(() => periods.value.map((p) => formatPeriodLabel(p.period)))
+
+const ordersCountOption = computed(() => ({
+  ...baseChart(trendX.value),
+  series: [{
+    type: 'bar',
+    name: 'Zamówienia',
+    data: periods.value.map((p) => p.ordersCount),
+    barMaxWidth: 28,
+    itemStyle: { borderRadius: [6, 6, 0, 0] }
+  }]
+}))
+
+const revenueOption = computed(() => ({
+  ...baseChart(trendX.value, (v) => money(v)),
+  series: [
+    {
+      type: 'line',
+      name: 'Z transportem',
+      data: periods.value.map((p) => p.revenueWithShipping),
+      smooth: true,
+      areaStyle: { color: 'rgba(96, 165, 250, 0.12)' }
+    },
+    {
+      type: 'line',
+      name: 'Bez transportu',
+      data: periods.value.map((p) => p.revenueWithoutShipping),
+      smooth: true,
+      lineStyle: { type: 'dashed' }
+    }
+  ]
+}))
+
+const topProductsQtyOption = computed(() => {
+  const top = [...productsTable.value].sort((a, b) => b.quantity - a.quantity).slice(0, 10)
+  return {
+    ...baseChart(top.map((p) => p.name)),
+    grid: { left: 48, right: 20, top: 36, bottom: 90 },
+    xAxis: {
+      type: 'category',
+      data: top.map((p) => p.name),
+      axisLabel: { color: chartTheme.axis, rotate: 28, fontSize: 10 }
+    },
+    series: [{
+      type: 'bar',
+      name: 'Ilość',
+      data: top.map((p) => p.quantity),
+      barMaxWidth: 24,
+      itemStyle: { color: chartTheme.cur, borderRadius: [6, 6, 0, 0] }
+    }]
+  }
+})
+
+const topProductsProfitOption = computed(() => {
+  const top = [...productsTable.value].sort((a, b) => b.profit - a.profit).slice(0, 10)
+  return {
+    ...baseChart(top.map((p) => p.name), (v) => moneyNet(v)),
+    grid: { left: 48, right: 20, top: 36, bottom: 90 },
+    xAxis: {
+      type: 'category',
+      data: top.map((p) => p.name),
+      axisLabel: { color: chartTheme.axis, rotate: 28, fontSize: 10 }
+    },
+    series: [{
+      type: 'bar',
+      name: 'Zysk netto',
+      data: top.map((p) => p.profit),
+      barMaxWidth: 24,
+      itemStyle: { color: chartTheme.profit, borderRadius: [6, 6, 0, 0] }
+    }]
+  }
+})
+
+function resetFilters() {
+  dateRange.value = null
+  filters.value = {
+    storeId: null,
+    isPaid: null,
+    isShipped: null,
+    deliveryMethod: null,
+    paymentProvider: null,
+    orderSourceType: null,
+    productId: null,
+    brandId: null
+  }
+  raport.value = null
 }
 
 async function fetchRaport() {
-  loading.value = true;
+  loading.value = true
   try {
-    const defaultTo = new Date();
-    const defaultFrom = new Date();
-    defaultFrom.setDate(defaultTo.getDate() - 30);
+    const defaultTo = new Date()
+    const defaultFrom = new Date()
+    defaultFrom.setDate(defaultTo.getDate() - 30)
 
-    const from = dateRange.value?.[0] ?? toYmd(defaultFrom);
-    const to = dateRange.value?.[1] ?? toYmd(defaultTo);
+    const from = dateRange.value?.[0] ?? toYmd(defaultFrom)
+    const to = dateRange.value?.[1] ?? toYmd(defaultTo)
 
-    const query = {
+    if (!dateRange.value) dateRange.value = [from, to]
+
+    const data = await Api.orders.getOrderRaport({
       from,
       to,
       storeId: filters.value.storeId,
@@ -524,228 +608,403 @@ async function fetchRaport() {
       paymentProvider: filters.value.paymentProvider,
       orderSourceType: filters.value.orderSourceType,
       productId: filters.value.productId,
-      brandId: filters.value.brandId,
-    };
+      brandId: filters.value.brandId
+    })
 
-    const data = await Api.orders.getOrderRaport(query);
-    raport.value = data as OrderRaportDTO;
-  } catch (e: any) {
-    console.error(e);
-    toast.error("Nie udało się pobrać raportu zamówień.");
-    raport.value = null;
+    raport.value = data as OrderRaportDTO
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się pobrać raportu zamówień.')
+    raport.value = null
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
+async function allBrands() {
+  try {
+    const result = await Api.brands.listByStoreId()
+    brands.value = [
+      { value: null, label: 'Wszyscy' },
+      ...result.items.map((item: any) => ({ value: item.id, label: item.name }))
+    ]
+  } catch (error) {
+    console.error('Błąd podczas pobierania producentów:', error)
+  }
+}
 
-onMounted(() => {
-  allBrands();
-  allStores();
-  allProducts();
-});
+onMounted(async () => {
+  await allBrands()
+  await fetchRaport()
+})
 </script>
 
 <style scoped>
-.stats-page {
+.cosmos-stats {
+  min-height: calc(100vh - 72px);
+  padding: 16px 18px 28px;
+  background:
+    radial-gradient(ellipse 90% 60% at 0% 0%, rgba(99, 102, 241, 0.14), transparent),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(14, 165, 233, 0.12), transparent),
+    linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #f1f5f9 100%);
+}
+
+.cosmos-stats__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+}
+
+.cosmos-stats__eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cosmos-stats__title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+}
+
+.cosmos-stats__subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.cosmos-stats__actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.cosmos-filters {
+  margin-bottom: 14px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.94);
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.cosmos-filters__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: linear-gradient(180deg, #f8fafc, #fff);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.cosmos-filters__toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cosmos-filters__chevron--open {
+  transform: rotate(180deg);
+}
+
+.cosmos-filters__body {
+  padding: 0 18px 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cosmos-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.cosmos-field {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 6px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.filters-left {
-  max-width: 100%;
+.cosmos-field--wide {
+  grid-column: span 2;
 }
 
-.control {
-  min-width: 200px;
+.cosmos-field > span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
 }
 
-.page-header {
+.cosmos-filters__foot {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  align-items: flex-end;
-  padding: 6px 2px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
 }
 
-.title {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  opacity: 0.7;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.btn-primary {
-  border-radius: 12px;
-}
-
-/* Filters */
-.filters-card {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  backdrop-filter: blur(8px);
-}
-
-.filters {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.filters-left {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.filters-right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.field .label {
+.cosmos-filters__hint {
   font-size: 12px;
-  opacity: 0.75;
-  margin-bottom: 6px;
+  color: #94a3b8;
 }
 
-.control {
-  min-width: 210px;
-}
-
-/* KPI */
-.kpis {
+.cosmos-stats__kpi {
   display: grid;
-  grid-template-columns: repeat(4, minmax(210px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+  margin-bottom: 14px;
 }
 
-.kpi {
-  border-radius: 18px;
+.cosmic-card {
+  position: relative;
   overflow: hidden;
-  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 18px;
+  min-height: 148px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
 }
 
-.kpi-row {
+.cosmic-card--net {
+  background: linear-gradient(135deg, #172554 0%, #1e3a8a 50%, #4338ca 100%);
+}
+
+.cosmic-card--gross {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
+}
+
+.cosmic-card--profit {
+  background: linear-gradient(135deg, #042f2e 0%, #134e4a 45%, #115e59 100%);
+}
+
+.cosmic-card--aov {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 55%, #6b21a8 100%);
+}
+
+.cosmic-card__stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 70% 20%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 40% 70%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 55% 45%, rgba(255, 255, 255, 0.5), transparent);
+  pointer-events: none;
+}
+
+.cosmic-card__content {
+  position: relative;
+  z-index: 1;
+  padding: 14px 14px 8px;
+  height: 100%;
   display: flex;
+  flex-direction: column;
+}
+
+.cosmic-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cosmic-card__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.cosmic-card__glyph {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cosmic-card__value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.03em;
+}
+
+.cosmic-card__value--money {
+  font-size: 19px;
+}
+
+.cosmic-card__foot {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.75);
+  line-height: 1.35;
+}
+
+.cosmic-card__chart {
+  height: 42px;
+  margin-top: auto;
+}
+
+.cosmic-card__chart--donut {
+  height: 52px;
+}
+
+.cosmos-stats__grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cosmos-stats__grid--main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cosmos-stats__grid--wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cosmos-panel {
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 16px 16px 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+}
+
+.cosmos-panel__head {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  align-items: center;
-}
-
-.kpi-title {
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.kpi-value {
-  margin-top: 6px;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.kpi-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  background: rgba(0,0,0,0.04);
-}
-
-/* delikatne tła (bez kolorów “na sztywno”) */
-.kpi-a { background: var(--el-fill-color-lighter); }
-.kpi-b { background: var(--el-fill-color-light); }
-.kpi-c { background: var(--el-fill-color-lighter); }
-.kpi-d { background: var(--el-fill-color-light); }
-
-/* Panels */
-.modern-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.panel {
-  border-radius: 18px;
-  border: 1px solid var(--el-border-color-lighter);
-}
-
-.panel-wide {
-  grid-column: 1 / -1;
-}
-
-.panel-head {
   margin-bottom: 8px;
 }
 
-.panel-title {
+.cosmos-panel__head h2 {
+  margin: 0;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  color: #0f172a;
 }
 
-.panel-subtitle {
-  margin-top: 2px;
+.cosmos-panel__head p {
+  margin: 4px 0 0;
   font-size: 12px;
-  opacity: 0.7;
+  color: #64748b;
 }
 
-.chart {
+.cosmos-panel__chart {
   width: 100%;
-  height: 320px;
+  height: 300px;
 }
 
-.mt-3 { margin-top: 12px; }
+.cosmos-panel--table {
+  margin-bottom: 8px;
+}
 
-/* Skeleton */
-.kpi-skeleton {
-  height: 92px;
+.cosmos-table {
+  width: 100%;
+}
+
+.profit-net {
+  font-weight: 800;
+  color: #047857;
+}
+
+.cosmos-empty {
+  padding: 56px 24px;
+  text-align: center;
   border-radius: 18px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px dashed #cbd5e1;
+  background: rgba(255, 255, 255, 0.7);
 }
 
-.chart-skeleton {
-  height: 360px;
+.cosmos-empty__icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.cosmos-empty h3 {
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.cosmos-empty p {
+  margin: 0 0 16px;
+  color: #64748b;
+}
+
+.cosmos-skel {
+  height: 148px;
   border-radius: 18px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
 }
 
-.empty {
-  margin-top: 12px;
+.cosmos-skel--panel {
+  height: 300px;
 }
 
-/* Responsive */
-@media (max-width: 1100px) {
-  .kpis { grid-template-columns: repeat(2, minmax(210px, 1fr)); }
-  .modern-grid { grid-template-columns: 1fr; }
-  .panel-wide { grid-column: auto; }
-  .control { min-width: 180px; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-@media (max-width: 600px) {
-  .kpis { grid-template-columns: 1fr; }
-  .header-actions { width: 100%; justify-content: flex-end; }
-  .page-header { flex-direction: column; align-items: flex-start; }
-  .control { width: 100%; min-width: 0; }
+@media (max-width: 1200px) {
+  .cosmos-stats__kpi,
+  .cosmos-filters__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cosmos-field--wide {
+    grid-column: span 2;
+  }
+
+  .cosmos-stats__grid--main,
+  .cosmos-stats__grid--wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .cosmos-stats__header {
+    flex-direction: column;
+  }
+
+  .cosmos-stats__kpi,
+  .cosmos-filters__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cosmos-field--wide {
+    grid-column: span 1;
+  }
+
+  .cosmos-filters__foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

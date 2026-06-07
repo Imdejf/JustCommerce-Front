@@ -3,7 +3,5 @@ import Statistics from '/@/components/Page/Statistics/Statistic.vue'
 </script>
 
 <template>
-  <div>
-    <Statistics />
-  </div>
+  <Statistics />
 </template>
