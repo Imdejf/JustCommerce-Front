@@ -41,7 +41,14 @@ const toast = useToast()
 const router = useRouter()
 const language = useLanguageStore()
 
-const currentProduct = reactive({ ...props.product })
+const currentProduct = reactive({
+  cashOnDelivery: true,
+  ...props.product
+})
+
+if (currentProduct.cashOnDelivery === undefined || currentProduct.cashOnDelivery === null) {
+  currentProduct.cashOnDelivery = true
+}
 const fileThumbnail = ref<FileDTO | null>(null)
 const uploadedFileThumbnail = ref<any>(null)
 const currentFile = ref<any>(null)
@@ -55,14 +62,6 @@ const deletedMediaIds = ref<string[]>([])
 const dropzone = ref<any>(null)
 
 const generatedThumbnailBase64 = ref('')
-const productPhotoAi = reactive({
-  isLoading: false,
-  userInstruction: '',
-  quality: 'high',
-  size: '1024x1024',
-  outputFormat: 'png',
-  count: 1
-})
 
 const aiCollapse = ref<string[]>(['ai'])
 const ai = reactive({
@@ -125,79 +124,6 @@ const createDescriptionRow = (type: string, html = '') => ({
   imageTitle: '',
   text: html
 })
-
-async function generateProductPhotoAI() {
-  try {
-    if (!canCallAI()) {
-      toast.error('Podaj nazwę produktu, zanim użyjesz AI.', { timeout: 2000 })
-      return
-    }
-
-    const base64Image =
-      uploadedFileThumbnail.value?.base64String ||
-      uploadedFileThumbnail.value?.base64 ||
-      uploadedFileThumbnail.value?.file?.base64String ||
-      ''
-
-    if (!base64Image) {
-      toast.error('Najpierw dodaj zdjęcie bazowe produktu do pola "Zdjęcie produktu".', {
-        timeout: 2500
-      })
-      return
-    }
-
-    productPhotoAi.isLoading = true
-
-    const body = {
-      productPhotoBriefDTO: {
-        productName: currentProduct.name,
-        base64Image,
-        mimeType: uploadedFileThumbnail.value?.mimeType || 'image/png',
-        userInstruction: productPhotoAi.userInstruction || "",
-        quality: productPhotoAi.quality,
-        size: productPhotoAi.size,
-        outputFormat: productPhotoAi.outputFormat,
-        count: productPhotoAi.count
-      }
-    }
-
-    const res = await Api.chatGpt.generateProductPhoto({
-      body: JSON.stringify(body)
-    })
-
-    if (!res.ok) {
-      throw new Error('Błąd odpowiedzi serwera')
-    }
-
-    const json = await res.json()
-    const d = (json?.data ?? json) as any
-
-    const firstImage =
-      d?.images?.[0]?.base64Image ??
-      d?.Images?.[0]?.Base64Image ??
-      ''
-
-    if (!firstImage) {
-      toast.error('AI nie zwróciło obrazu.', { timeout: 2500 })
-      return
-    }
-
-    generatedThumbnailBase64.value = firstImage
-
-    uploadedFileThumbnail.value = {
-      ...(uploadedFileThumbnail.value || {}),
-      base64String: firstImage,
-      mimeType: `image/${productPhotoAi.outputFormat === 'jpg' ? 'jpeg' : productPhotoAi.outputFormat}`
-    }
-
-    toast.success('Wygenerowano nowe zdjęcie produktu przez AI.', { timeout: 2000 })
-  } catch (err) {
-    console.error(err)
-    toast.error('Nie udało się wygenerować zdjęcia przez AI.', { timeout: 2500 })
-  } finally {
-    productPhotoAi.isLoading = false
-  }
-}
 
 const parseDescriptionHtmlToRows = (html: string) => {
   if (!html || !html.trim()) return []
@@ -1217,14 +1143,21 @@ const handleSave = async () => {
     const payload = { body: JSON.stringify(currentProduct) }
 
     if (!props.updated) {
-      await Api.products.create(payload)
+      const result = await Api.products.create(payload)
+      const productId = result?.data ?? result
+
       toast.success('Dodano produkt', { timeout: 2000 })
+
+      if (productId) {
+        router.push(`/catalog/product/detail/${productId}`)
+      } else {
+        router.push('/catalog/product')
+      }
     } else {
       await Api.products.update(payload)
       toast.success('Edytowano produkt', { timeout: 2000 })
+      router.push(`/catalog/product/detail/${currentProduct.id}`)
     }
-
-    router.go(-1)
   } catch (e) {
     console.error(e)
     toast.error('Wystąpił błąd', { timeout: 2000 })
@@ -1401,66 +1334,6 @@ watch(
           v-model="uploadedFileThumbnail"
           @base64Changed="onThumbnailBase64Changed"
         />
-        <div class="border rounded-md w-[800px] p-4 bg-white">
-          <div class="text-sm font-semibold mb-2">AI – generowanie zdjęcia produktu</div>
-
-          <FormKit
-            type="textarea"
-            v-model="productPhotoAi.userInstruction"
-            label="Instrukcja dla AI"
-            rows="4"
-            placeholder="Np. zmień kolor na czarny mat, zachowaj packshot ecommerce"
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <FormKit
-              type="select"
-              v-model="productPhotoAi.quality"
-              label="Jakość"
-              :options="[
-                { label: 'Low', value: 'low' },
-                { label: 'Medium', value: 'medium' },
-                { label: 'High', value: 'high' }
-              ]"
-            />
-
-            <FormKit
-              type="select"
-              v-model="productPhotoAi.size"
-              label="Rozmiar"
-              :options="[
-                { label: '1024x1024', value: '1024x1024' },
-                { label: '1536x1024', value: '1536x1024' },
-                { label: '1024x1536', value: '1024x1536' }
-              ]"
-            />
-
-            <FormKit
-              type="select"
-              v-model="productPhotoAi.outputFormat"
-              label="Format"
-              :options="[
-                { label: 'PNG', value: 'png' },
-                { label: 'JPEG', value: 'jpeg' },
-                { label: 'WEBP', value: 'webp' }
-              ]"
-            />
-          </div>
-
-          <div class="flex items-center gap-3 mt-3">
-            <el-button
-              type="primary"
-              :loading="productPhotoAi.isLoading"
-              @click="generateProductPhotoAI"
-            >
-              Wygeneruj zdjęcie AI
-            </el-button>
-
-            <span class="text-xs text-gray-500">
-              AI użyje aktualnie wgranego zdjęcia jako bazy.
-            </span>
-          </div>
-        </div>
       </div>
     </FormSection>
 
@@ -1559,6 +1432,16 @@ watch(
 
         <FormSection :title="'Dostępność'">
           <DropDown label="Czas realiazacji" v-model="currentProduct.productAvailability" :value="currentProduct.productAvailability" :options="productAvailableList" />
+        </FormSection>
+
+        <FormSection :title="'Płatność i dostawa'">
+          <FormKit
+            type="checkbox"
+            label="Pobranie (za pobraniem)"
+            v-model="currentProduct.cashOnDelivery"
+            :value="true"
+            help="Odznacz, aby wyłączyć płatność za pobraniem dla tego produktu."
+          />
         </FormSection>
 
         <FormSection>

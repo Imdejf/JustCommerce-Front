@@ -13,6 +13,7 @@ export interface ProductDTO {
     specialPriceEnd?: string;
     isCallForPricing: boolean;
     isAllowToOrder: boolean;
+    cashOnDelivery?: boolean;
     isBestseller: boolean;
     isHomePage: boolean;
     isNew: boolean;

@@ -48,8 +48,7 @@
   </ElTable>
 </template>
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const props = defineProps({
   dataTable: {
@@ -66,9 +65,13 @@ const props = defineProps({
   }
 })
 
+const route = useRoute()
 const router = useRouter()
 
 const handleRowClick = (row: any) => {
-  router.push({ path: props.link + '/' + row.id })
+  router.push({
+    path: props.link + '/' + row.id,
+    query: route.query
+  })
 }
 </script>

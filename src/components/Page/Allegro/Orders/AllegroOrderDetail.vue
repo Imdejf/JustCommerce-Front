@@ -668,7 +668,10 @@ const createLocalOrder = async () => {
 }
 
 const goBack = () => {
-  router.push('/allegro/orders')
+  router.push({
+    path: '/allegro/orders',
+    query: route.query
+  })
 }
 
 const formatDate = (dateIso: string) => {

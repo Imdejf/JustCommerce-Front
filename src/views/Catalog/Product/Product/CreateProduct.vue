@@ -19,6 +19,7 @@ const product = computed(() => {
     specialPriceEnd: null,
     isCallForPricing: false,
     isAllowToOrder: false,
+    cashOnDelivery: true,
     isBestseller: false,
     isHomePage: false,
     isNew: false,

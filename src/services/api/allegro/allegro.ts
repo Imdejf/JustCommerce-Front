@@ -291,15 +291,43 @@ const importOrders = (body: any) =>
     body: JSON.stringify(body)
   })
 
-const getImportedOrders = (
-  sandbox?: boolean | null,
-  status?: string | null,
-  fulfillmentStatus?: string | null,
-  search?: string | null,
-  page = 1,
-  pageSize = 50
-) => {
+type ImportedOrdersFilters = {
+  sandbox?: boolean | null
+  status?: string | null
+  fulfillmentStatus?: string | null
+  search?: string | null
+  page?: number
+  pageSize?: number
+  fromUtc?: string | null
+  toUtc?: string | null
+  hasLocalOrder?: boolean | null
+  deliveryMethod?: string | null
+  minTotal?: number | null
+  maxTotal?: number | null
+  minProfit?: number | null
+  maxProfit?: number | null
+  billingSynced?: boolean | null
+}
+
+const getImportedOrders = (filters: ImportedOrdersFilters = {}) => {
   const params = new URLSearchParams()
+  const {
+    sandbox = null,
+    status = null,
+    fulfillmentStatus = null,
+    search = null,
+    page = 1,
+    pageSize = 50,
+    fromUtc = null,
+    toUtc = null,
+    hasLocalOrder = null,
+    deliveryMethod = null,
+    minTotal = null,
+    maxTotal = null,
+    minProfit = null,
+    maxProfit = null,
+    billingSynced = null
+  } = filters
 
   if (sandbox !== null && sandbox !== undefined) {
     params.append('sandbox', sandbox.toString())
@@ -308,6 +336,19 @@ const getImportedOrders = (
   if (status) params.append('status', status)
   if (fulfillmentStatus) params.append('fulfillmentStatus', fulfillmentStatus)
   if (search) params.append('search', search)
+  if (fromUtc) params.append('fromUtc', fromUtc)
+  if (toUtc) params.append('toUtc', toUtc)
+  if (hasLocalOrder !== null && hasLocalOrder !== undefined) {
+    params.append('hasLocalOrder', hasLocalOrder.toString())
+  }
+  if (deliveryMethod) params.append('deliveryMethod', deliveryMethod)
+  if (minTotal !== null && minTotal !== undefined) params.append('minTotal', minTotal.toString())
+  if (maxTotal !== null && maxTotal !== undefined) params.append('maxTotal', maxTotal.toString())
+  if (minProfit !== null && minProfit !== undefined) params.append('minProfit', minProfit.toString())
+  if (maxProfit !== null && maxProfit !== undefined) params.append('maxProfit', maxProfit.toString())
+  if (billingSynced !== null && billingSynced !== undefined) {
+    params.append('billingSynced', billingSynced.toString())
+  }
 
   params.append('page', page.toString())
   params.append('pageSize', pageSize.toString())

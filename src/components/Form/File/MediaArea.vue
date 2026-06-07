@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, watch, reactive, ref, nextTick } from 'vue'
-import { Check, Delete, MagicStick } from '@element-plus/icons-vue'
+import { Check, Delete } from '@element-plus/icons-vue'
 import DropZone from '/@/components/Form/File/DropZone'
 import type { MediaFileDTO } from '/@/types/file/File'
 import { useStoreStore } from '/@/stores/store'
@@ -13,7 +13,6 @@ interface FileModel {
   id: string
   file: MediaFileDTO | null
   orderValue: number
-  aiInstruction: string
 }
 
 const props = defineProps({
@@ -71,41 +70,6 @@ const resetSeoCounter = () => {
 
 resetSeoCounter()
 
-const productPhotoAiDefaults = {
-  quality: 'high',
-  size: '1024x1024',
-  outputFormat: 'png'
-}
-
-const buildDefaultAiInstruction = () => `
-Wygeneruj profesjonalne zdjęcie produktowe do sklepu internetowego.
-
-Cechy stylu:
-- produkt na jasnym lub białym tle
-- miękkie, studyjne oświetlenie
-- lustrzane odbicie na dole jak na błyszczącej powierzchni
-- produkt centralnie ustawiony
-- bardzo czysty katalogowy / e-commerce look
-- lekka perspektywa 3D pod kątem
-
-Dodatkowe wymagania:
-- zachowaj dokładnie ten sam produkt z obrazu wejściowego
-- nie zmieniaj konstrukcji, proporcji ani najważniejszych cech produktu
-- nie dodawaj nowych elementów
-- wynik ma wyglądać jak profesjonalny packshot ecommerce
-`
-
-const buildMergedInstruction = (customInstruction?: string) => {
-  if (!customInstruction || !customInstruction.trim()) {
-    return buildDefaultAiInstruction()
-  }
-
-  return `${buildDefaultAiInstruction()}
-
-Dodatkowa instrukcja użytkownika:
-${customInstruction}`
-}
-
 const addFile = (): FileModel => {
   const base = sanitize(props.baseSeo || 'image')
   const suffix = seoCounter.value++
@@ -115,7 +79,6 @@ const addFile = (): FileModel => {
   const newModel: FileModel = {
     id: guid,
     orderValue: 0,
-    aiInstruction: '',
     file: {
       id: guid,
       storeId: store.selectedStore?.id,
@@ -280,7 +243,6 @@ const selectedFile = ref('')
 const editBuffer = ref<FileModel | null>(null)
 const editDropzone = ref<any>(null)
 const uploadedEdit = ref<any>(null)
-const editAiInstruction = ref('')
 
 const setEditDropzoneRef = (el: any) => {
   editDropzone.value = el
@@ -294,7 +256,6 @@ const handleSelectToEdit = (id: string) => {
   const buf: FileModel = {
     id,
     orderValue: selectFile?.displayOrder ?? 0,
-    aiInstruction: '',
     file: {
       storeId: store.selectedStore?.id,
       blobFolder: props.folder,
@@ -324,7 +285,6 @@ const handleSelectToEdit = (id: string) => {
   editBuffer.value = buf
   uploadedEdit.value = null
   changeFile.value = false
-  editAiInstruction.value = ''
 }
 
 const handleChangeFile = (value: boolean) => {
@@ -380,7 +340,6 @@ const handleSaveEdit = async () => {
   editBuffer.value = null
   editId.value = null
   uploadedEdit.value = null
-  editAiInstruction.value = ''
 }
 
 const handleCancelFile = () => {
@@ -388,7 +347,6 @@ const handleCancelFile = () => {
   editBuffer.value = null
   editId.value = null
   uploadedEdit.value = null
-  editAiInstruction.value = ''
 }
 
 const handleSelectFile = (id: string) => {
@@ -399,144 +357,6 @@ const handleSelectFile = (id: string) => {
 const handleRemove = () => {
   removeModal.value = false
   emit('handleRemove', selectedFile.value)
-}
-
-const generateAiForPendingRow = async (row: FileModel) => {
-  try {
-    const meta = uploadedFiles[row.id]
-    const base64Image = meta?.base64String || ''
-
-    if (!base64Image) {
-      toast.error('Najpierw dodaj zdjęcie bazowe do tego wiersza.', { timeout: 2000 })
-      return
-    }
-
-    uploadedFiles[row.id] = {
-      ...(uploadedFiles[row.id] || {}),
-      aiLoading: true
-    }
-
-    const body = {
-      productPhotoBriefDTO: {
-        productName: props.productName || '',
-        base64Image,
-        mimeType: meta?.mimeType || 'image/png',
-        userInstruction: buildMergedInstruction(row.aiInstruction),
-        quality: productPhotoAiDefaults.quality,
-        size: productPhotoAiDefaults.size,
-        outputFormat: productPhotoAiDefaults.outputFormat,
-        count: 1
-      }
-    }
-
-    const res = await Api.chatGpt.generateProductPhoto({
-      body: JSON.stringify(body)
-    })
-
-    if (!res.ok) {
-      throw new Error('Błąd odpowiedzi serwera')
-    }
-
-    const json = await res.json()
-    const d = json?.data ?? json
-
-    const firstImage =
-      d?.images?.[0]?.base64Image ??
-      d?.Images?.[0]?.Base64Image ??
-      ''
-
-    if (!firstImage) {
-      toast.error('AI nie zwróciło obrazu.', { timeout: 2000 })
-      return
-    }
-
-    uploadedFiles[row.id] = {
-      ...(uploadedFiles[row.id] || {}),
-      base64String: firstImage,
-      mimeType: `image/${productPhotoAiDefaults.outputFormat}`
-    }
-
-    toast.success('Wygenerowano zdjęcie AI.', { timeout: 2000 })
-  } catch (e) {
-    console.error(e)
-    toast.error('Nie udało się wygenerować zdjęcia.', { timeout: 2000 })
-  } finally {
-    uploadedFiles[row.id] = {
-      ...(uploadedFiles[row.id] || {}),
-      aiLoading: false
-    }
-  }
-}
-
-const generateAiForEditRow = async () => {
-  try {
-    if (!editBuffer.value?.file) return
-
-    const base64Image = uploadedEdit.value?.base64String || ''
-
-    if (!base64Image) {
-      toast.error('Najpierw dodaj lub podmień zdjęcie bazowe.', { timeout: 2000 })
-      return
-    }
-
-    uploadedEdit.value = {
-      ...(uploadedEdit.value || {}),
-      aiLoading: true
-    }
-
-    const body = {
-      productPhotoBriefDTO: {
-        productName: props.productName || '',
-        base64Image,
-        mimeType: uploadedEdit.value?.mimeType || 'image/png',
-        userInstruction: buildMergedInstruction(editAiInstruction.value),
-        quality: productPhotoAiDefaults.quality,
-        size: productPhotoAiDefaults.size,
-        outputFormat: productPhotoAiDefaults.outputFormat,
-        count: 1
-      }
-    }
-
-    const res = await Api.chatGpt.generateProductPhoto({
-      body: JSON.stringify(body)
-    })
-
-    if (!res.ok) {
-      throw new Error('Błąd odpowiedzi serwera')
-    }
-
-    const json = await res.json()
-    const d = json?.data ?? json
-
-    const firstImage =
-      d?.images?.[0]?.base64Image ??
-      d?.Images?.[0]?.Base64Image ??
-      ''
-
-    if (!firstImage) {
-      toast.error('AI nie zwróciło obrazu.', { timeout: 2000 })
-      return
-    }
-
-    uploadedEdit.value = {
-      ...(uploadedEdit.value || {}),
-      base64String: firstImage,
-      mimeType: `image/${productPhotoAiDefaults.outputFormat}`,
-      aiLoading: false
-    }
-
-    changeFile.value = true
-    toast.success('Wygenerowano zdjęcie AI.', { timeout: 2000 })
-  } catch (e) {
-    console.error(e)
-
-    uploadedEdit.value = {
-      ...(uploadedEdit.value || {}),
-      aiLoading: false
-    }
-
-    toast.error('Nie udało się wygenerować zdjęcia.', { timeout: 2000 })
-  }
 }
 
 watch(
@@ -657,14 +477,6 @@ watch(
               @base64Changed="(val:string) => onPendingBase64Changed(row.id, val)"
             />
 
-            <div class="mt-2 px-2">
-              <FormKit
-                type="textarea"
-                v-model="row.aiInstruction"
-                rows="3"
-                placeholder="Np. zmień kolor na czarny mat"
-              />
-            </div>
           </td>
 
           <td class="area_input">
@@ -718,13 +530,6 @@ watch(
 
           <td>
             <el-button
-              type="warning"
-              :icon="MagicStick"
-              :loading="uploadedFiles[row.id]?.aiLoading"
-              @click="generateAiForPendingRow(row)"
-              circle
-            />
-            <el-button
               type="success"
               :icon="Check"
               @click="handleAddFile(row)"
@@ -760,15 +565,6 @@ watch(
               @base64Changed="onEditBase64Changed"
             />
 
-            <div class="media_area_ai mt-2 px-2">
-              <FormKit
-                type="textarea"
-                v-model="editAiInstruction"
-                rows="3"
-                placeholder="Np. zmień kolor na czarny mat"
-                class="!w-[300px]"
-              />
-            </div>
           </td>
 
           <th
@@ -855,12 +651,6 @@ watch(
 
             <template v-else>
               <a
-                @click="generateAiForEditRow"
-                class="mr-3 font-medium text-orange-500 hover:underline"
-              >
-                AI
-              </a>
-              <a
                 @click="handleSaveEdit"
                 class="mr-3 font-medium text-blue-600 hover:underline"
               >
@@ -896,6 +686,7 @@ watch(
       </tbody>
     </table>
   </div>
+
 </template>
 
 <style>

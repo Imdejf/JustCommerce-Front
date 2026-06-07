@@ -1,40 +1,186 @@
 <template>
   <div class="p-3 h-[100%]">
-    <div class="bg-[#f1f4f9] p-2 border-t-[3px] border-[#64748b] rounded-t-xl">
-      <div class="flex justify-between">
-        <div class="flex">
-          <span class="flex hover:bg-sky-100 p-1">
-            <a @click="openImportDialog" class="rounded-md p-1 text-xs font-semibold">
-              Pobierz z Allegro
-            </a>
+    <el-collapse v-model="filtersExpanded" class="mb-2">
+      <el-collapse-item name="filters">
+        <template #title>
+          <span class="font-bold text-sm px-2">
+            Filtry zamówień
+            <el-tag v-if="activeFiltersCount > 0" size="small" class="ml-2" type="warning">
+              {{ activeFiltersCount }}
+            </el-tag>
           </span>
+        </template>
 
-          <span class="ml-4 flex hover:bg-sky-100 p-1">
-            <a @click="showSelectedOrder" class="rounded-md p-1 text-xs font-semibold">
-              Szczegóły zamówienia
-            </a>
-          </span>
+        <div class="px-3 py-3 bg-white border border-[#d6dfe9] rounded">
+          <el-row :gutter="12">
+            <el-col :span="6">
+              <label class="filter-label">Szukaj</label>
+              <el-input
+                v-model="filter.search"
+                placeholder="ID, kupujący, e-mail, telefon..."
+                clearable
+                @keyup.enter="applyFilters"
+              />
+            </el-col>
 
-          <span class="ml-4 flex hover:bg-sky-100 p-1">
-            <a @click="createLocalOrder" class="rounded-md p-1 text-xs font-semibold">
-              Utwórz zamówienie lokalne
-            </a>
-          </span>
+            <el-col :span="3">
+              <label class="filter-label">Data od</label>
+              <el-date-picker
+                v-model="filter.from"
+                type="date"
+                placeholder="Od"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                class="!w-full"
+                clearable
+              />
+            </el-col>
 
-          <span class="ml-4 flex hover:bg-sky-100 p-1">
-            <a @click="syncBillingForVisibleOrders" class="rounded-md p-1 text-xs font-semibold">
-              Synchronizuj prowizje
-            </a>
-          </span>
+            <el-col :span="3">
+              <label class="filter-label">Data do</label>
+              <el-date-picker
+                v-model="filter.to"
+                type="date"
+                placeholder="Do"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                class="!w-full"
+                clearable
+              />
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Status Allegro</label>
+              <el-select v-model="filter.status" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Nowe" value="READY_FOR_PROCESSING" />
+                <el-option label="Anulowane" value="CANCELLED" />
+              </el-select>
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Realizacja</label>
+              <el-select v-model="filter.fulfillmentStatus" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Nowe" value="NEW" />
+                <el-option label="W trakcie" value="PROCESSING" />
+                <el-option label="Wysłane" value="SENT" />
+                <el-option label="Anulowane" value="CANCELLED" />
+              </el-select>
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Sandbox</label>
+              <el-select v-model="filter.sandbox" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Tak" :value="true" />
+                <el-option label="Nie" :value="false" />
+              </el-select>
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Zamówienie lokalne</label>
+              <el-select v-model="filter.hasLocalOrder" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Tak" :value="true" />
+                <el-option label="Nie" :value="false" />
+              </el-select>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="12" class="mt-3">
+            <el-col :span="4">
+              <label class="filter-label">Dostawa</label>
+              <el-input
+                v-model="filter.deliveryMethod"
+                placeholder="Metoda dostawy..."
+                clearable
+                @keyup.enter="applyFilters"
+              />
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Kwota od</label>
+              <el-input-number
+                v-model="filter.minTotal"
+                :controls="false"
+                :precision="2"
+                placeholder="Min"
+                class="!w-full"
+              />
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Kwota do</label>
+              <el-input-number
+                v-model="filter.maxTotal"
+                :controls="false"
+                :precision="2"
+                placeholder="Max"
+                class="!w-full"
+              />
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Zysk od</label>
+              <el-input-number
+                v-model="filter.minProfit"
+                :controls="false"
+                :precision="2"
+                placeholder="Min"
+                class="!w-full"
+              />
+            </el-col>
+
+            <el-col :span="3">
+              <label class="filter-label">Zysk do</label>
+              <el-input-number
+                v-model="filter.maxProfit"
+                :controls="false"
+                :precision="2"
+                placeholder="Max"
+                class="!w-full"
+              />
+            </el-col>
+
+            <el-col :span="4">
+              <label class="filter-label">Prowizja zsynchronizowana</label>
+              <el-select v-model="filter.billingSynced" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Tak" :value="true" />
+                <el-option label="Nie" :value="false" />
+              </el-select>
+            </el-col>
+
+            <el-col :span="4" class="flex items-end gap-2">
+              <el-button type="primary" @click="applyFilters">Filtruj</el-button>
+              <el-button @click="clearFilters">Wyczyść</el-button>
+            </el-col>
+          </el-row>
         </div>
+      </el-collapse-item>
+    </el-collapse>
 
-        <el-input
-          style="border-radius: 1px !important; font-size:12px;"
-          placeholder="Szukaj Allegro..."
-          v-model="filter.search"
-          class="!font-s !w-[240px]"
-          @blur="fetchTableData"
-        />
+    <div class="bg-[#f1f4f9] p-2 border-t-[3px] border-[#64748b] rounded-t-xl">
+      <div class="flex">
+        <span class="flex hover:bg-sky-100 p-1">
+          <a @click="openImportDialog" class="rounded-md p-1 text-xs font-semibold cursor-pointer">
+            Pobierz z Allegro
+          </a>
+        </span>
+
+        <span class="ml-4 flex hover:bg-sky-100 p-1">
+          <a @click="showSelectedOrder" class="rounded-md p-1 text-xs font-semibold cursor-pointer">
+            Szczegóły zamówienia
+          </a>
+        </span>
+
+        <span class="ml-4 flex hover:bg-sky-100 p-1">
+          <a @click="createLocalOrder" class="rounded-md p-1 text-xs font-semibold cursor-pointer">
+            Utwórz zamówienie lokalne
+          </a>
+        </span>
+
+        <span class="ml-4 flex hover:bg-sky-100 p-1">
+          <a @click="syncBillingForVisibleOrders" class="rounded-md p-1 text-xs font-semibold cursor-pointer">
+            Synchronizuj prowizje
+          </a>
+        </span>
       </div>
     </div>
 
@@ -128,23 +274,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="Checkout ID" width="210" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Checkout ID
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1">
-                <el-input
-                  placeholder="Szukaj..."
-                  class="filter-compact"
-                  v-model="filter.search"
-                  @blur="fetchTableData"
-                />
-              </div>
-            </div>
-          </template>
-
+        <el-table-column label="Checkout ID" width="210" prop="checkoutFormId" label-class-name="order_label">
           <template #default="prop">
             <div class="cell-tight">
               {{ prop.row.checkoutFormId || prop.row.id }}
@@ -153,32 +283,6 @@
         </el-table-column>
 
         <el-table-column label="Data" width="150" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Data
-              </div>
-              <div class="bg-[#e0e8f0] h-[50px] px-1 flex flex-col justify-center gap-[4px]">
-                <el-date-picker
-                  v-model="filter.from"
-                  type="date"
-                  placeholder="Od"
-                  format="YYYY-MM-DD"
-                  class="filter-compact"
-                  @change="fetchTableData"
-                />
-                <el-date-picker
-                  v-model="filter.to"
-                  type="date"
-                  placeholder="Do"
-                  format="YYYY-MM-DD"
-                  class="filter-compact"
-                  @change="fetchTableData"
-                />
-              </div>
-            </div>
-          </template>
-
           <template #default="prop">
             {{ formatDate(prop.row.createdAt || prop.row.boughtAt || prop.row.createdOn) }}
           </template>
@@ -190,22 +294,6 @@
               {{ row.buyerLogin || row.buyerEmail || row.buyerName || '-' }}
             </div>
           </template>
-
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Kupujący
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1">
-                <el-input
-                  placeholder="Szukaj..."
-                  class="filter-compact"
-                  v-model="filter.search"
-                  @blur="fetchTableData"
-                />
-              </div>
-            </div>
-          </template>
         </el-table-column>
 
         <el-table-column label="Dostawa" label-class-name="order_label">
@@ -214,27 +302,9 @@
               {{ row.deliveryMethod || row.deliveryMethodName || '-' }}
             </div>
           </template>
-
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Dostawa
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
-            </div>
-          </template>
         </el-table-column>
 
         <el-table-column label="Kwota" width="120" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Kwota
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
-            </div>
-          </template>
-
           <template #default="prop">
             {{ formatPrice(prop.row.totalAmount || prop.row.amount || prop.row.orderTotal || prop.row.totalToPay) }}
           </template>
@@ -244,14 +314,6 @@
           <template #default="prop">
             {{ formatPrice(prop.row.commissionAmount) }}
           </template>
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Prowizja
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
-            </div>
-          </template>
         </el-table-column>
 
         <el-table-column label="Zysk" width="100" label-class-name="order_label">
@@ -260,37 +322,9 @@
               {{ formatPrice(prop.row.netProfitAmount) }}
             </span>
           </template>
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Zysk
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
-            </div>
-          </template>
         </el-table-column>
 
         <el-table-column label="Status Allegro" width="180" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Status Allegro
-              </div>
-              <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
-                <el-select
-                  v-model="filter.status"
-                  clearable
-                  class="filter-compact"
-                  placeholder="Status"
-                  @change="fetchTableData"
-                >
-                  <el-option label="Nowe" value="READY_FOR_PROCESSING" />
-                  <el-option label="Anulowane" value="CANCELLED" />
-                </el-select>
-              </div>
-            </div>
-          </template>
-
           <template #default="prop">
             <el-tag>
               {{ prop.row.status || '-' }}
@@ -299,28 +333,6 @@
         </el-table-column>
 
         <el-table-column label="Realizacja" width="180" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Realizacja
-              </div>
-              <div class="bg-[#e0e8f0] h-[50px] py-2 px-2 block">
-                <el-select
-                  v-model="filter.fulfillmentStatus"
-                  clearable
-                  class="filter-compact"
-                  placeholder="Realizacja"
-                  @change="fetchTableData"
-                >
-                  <el-option label="Nowe" value="NEW" />
-                  <el-option label="W trakcie" value="PROCESSING" />
-                  <el-option label="Wysłane" value="SENT" />
-                  <el-option label="Anulowane" value="CANCELLED" />
-                </el-select>
-              </div>
-            </div>
-          </template>
-
           <template #default="prop">
             <el-tag>
               {{ prop.row.fulfillmentStatus || '-' }}
@@ -329,15 +341,6 @@
         </el-table-column>
 
         <el-table-column label="Lokalne" width="120" label-class-name="order_label">
-          <template #header>
-            <div class="header-content">
-              <div class="p-2 text-[13px] shadow-xs border-b-[1px] border-[#d6dfe9] h-[60px] content-center">
-                Lokalne
-              </div>
-              <div class="search-row search-row--compact bg-[#e0e8f0] h-[50px] flex items-center px-1"></div>
-            </div>
-          </template>
-
           <template #default="prop">
             <el-tag :type="prop.row.localOrderId ? 'success' : 'danger'">
               {{ prop.row.localOrderId ? 'Tak' : 'Nie' }}
@@ -446,10 +449,40 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
+import {
+  filtersChanged,
+  parseDateQuery,
+  parseQueryBoolean,
+  parseQueryNumber,
+  parseQueryPage,
+  parseQueryString,
+  setDateQuery,
+  setQueryBoolean,
+  setQueryNumber,
+  setQueryString
+} from '/@/utils/urlTableFilters'
+
+type OrderFilters = {
+  sandbox: boolean | null
+  status: string | null
+  fulfillmentStatus: string | null
+  search: string | null
+  from: string | null
+  to: string | null
+  hasLocalOrder: boolean | null
+  deliveryMethod: string | null
+  minTotal: number | null
+  maxTotal: number | null
+  minProfit: number | null
+  maxProfit: number | null
+  billingSynced: boolean | null
+  page: number
+  pageSize: number
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -459,6 +492,8 @@ const selectedRow = ref<any>(null)
 const selectedRowId = ref<string | null>(null)
 const importDialogVisible = ref(false)
 const importing = ref(false)
+const filtersExpanded = ref<string[]>(['filters'])
+const isSyncingFromRoute = ref(false)
 
 const importOptions = ref({
   importAll: true,
@@ -474,24 +509,94 @@ const dataTable = ref<any>({
   pageNumber: 1
 })
 
-const filter = ref({
-  sandbox: null as boolean | null,
-  status: null as string | null,
-  fulfillmentStatus: null as string | null,
-  search: null as string | null,
-  from: null as string | null,
-  to: null as string | null,
+const createDefaultFilters = (): OrderFilters => ({
+  sandbox: null,
+  status: null,
+  fulfillmentStatus: null,
+  search: null,
+  from: null,
+  to: null,
+  hasLocalOrder: null,
+  deliveryMethod: null,
+  minTotal: null,
+  maxTotal: null,
+  minProfit: null,
+  maxProfit: null,
+  billingSynced: null,
   page: 1,
   pageSize: 15
 })
 
-const getPageFromQuery = () => {
-  const raw = route.query.page
-  const p = Number(raw)
-  return Number.isFinite(p) && p > 0 ? p : 1
+const buildFiltersFromQuery = (): OrderFilters => {
+  const defaults = createDefaultFilters()
+
+  return {
+    ...defaults,
+    search: parseQueryString(route.query, 'search', null),
+    status: parseQueryString(route.query, 'status', null),
+    fulfillmentStatus: parseQueryString(route.query, 'fulfillmentStatus', null),
+    from: parseDateQuery(route.query, 'from'),
+    to: parseDateQuery(route.query, 'to'),
+    sandbox: parseQueryBoolean(route.query, 'sandbox', null),
+    hasLocalOrder: parseQueryBoolean(route.query, 'hasLocalOrder', null),
+    deliveryMethod: parseQueryString(route.query, 'deliveryMethod', null),
+    minTotal: parseQueryNumber(route.query, 'minTotal', null),
+    maxTotal: parseQueryNumber(route.query, 'maxTotal', null),
+    minProfit: parseQueryNumber(route.query, 'minProfit', null),
+    maxProfit: parseQueryNumber(route.query, 'maxProfit', null),
+    billingSynced: parseQueryBoolean(route.query, 'billingSynced', null),
+    page: parseQueryPage(route.query, 1),
+    pageSize: parseQueryNumber(route.query, 'pageSize', 15) || 15
+  }
 }
 
-filter.value.page = getPageFromQuery()
+const buildQueryFromFilters = (filters: OrderFilters) => {
+  const query: Record<string, string> = {}
+
+  setQueryString(query, 'search', filters.search)
+  setQueryString(query, 'status', filters.status)
+  setQueryString(query, 'fulfillmentStatus', filters.fulfillmentStatus)
+  setDateQuery(query, 'from', filters.from)
+  setDateQuery(query, 'to', filters.to)
+  setQueryBoolean(query, 'sandbox', filters.sandbox)
+  setQueryBoolean(query, 'hasLocalOrder', filters.hasLocalOrder)
+  setQueryString(query, 'deliveryMethod', filters.deliveryMethod)
+  setQueryNumber(query, 'minTotal', filters.minTotal)
+  setQueryNumber(query, 'maxTotal', filters.maxTotal)
+  setQueryNumber(query, 'minProfit', filters.minProfit)
+  setQueryNumber(query, 'maxProfit', filters.maxProfit)
+  setQueryBoolean(query, 'billingSynced', filters.billingSynced)
+  setQueryNumber(query, 'page', filters.page)
+  setQueryNumber(query, 'pageSize', filters.pageSize)
+
+  return query
+}
+
+const filter = ref<OrderFilters>(buildFiltersFromQuery())
+
+const activeFiltersCount = computed(() => {
+  let count = 0
+
+  if (filter.value.search) count++
+  if (filter.value.status) count++
+  if (filter.value.fulfillmentStatus) count++
+  if (filter.value.from) count++
+  if (filter.value.to) count++
+  if (filter.value.sandbox !== null) count++
+  if (filter.value.hasLocalOrder !== null) count++
+  if (filter.value.deliveryMethod) count++
+  if (filter.value.minTotal !== null) count++
+  if (filter.value.maxTotal !== null) count++
+  if (filter.value.minProfit !== null) count++
+  if (filter.value.maxProfit !== null) count++
+  if (filter.value.billingSynced !== null) count++
+
+  return count
+})
+
+const syncFiltersToUrl = (filters: OrderFilters) => {
+  router.replace({ query: buildQueryFromFilters(filters) })
+}
 
 const rowKey = (row: any) => {
   return row.checkoutFormId || row.id
@@ -507,34 +612,6 @@ const rowClassName = ({ row }: any) => {
   return id === selectedRowId.value ? 'selected-row' : ''
 }
 
-const fetchTableData = async () => {
-  try {
-    const result = await Api.allegro.getImportedOrders(
-      filter.value.sandbox,
-      filter.value.status,
-      filter.value.fulfillmentStatus,
-      filter.value.search,
-      filter.value.page,
-      filter.value.pageSize
-    )
-
-    dataTable.value = normalizeTableResult(result)
-  } catch (error) {
-    console.error(error)
-    toast.error('Wystąpił problem z pobraniem zamówień Allegro')
-  }
-}
-
-const normalizeTableResult = (result: any) => {
-  const data = result?.data || result
-
-  return {
-    items: data?.items || data || [],
-    totalCount: data?.totalCount || data?.total || data?.items?.length || 0,
-    pageNumber: data?.pageNumber || filter.value.page
-  }
-}
-
 const toIsoDate = (value: string | null, endOfDay = false) => {
   if (!value) return null
 
@@ -547,6 +624,59 @@ const toIsoDate = (value: string | null, endOfDay = false) => {
   }
 
   return date.toISOString()
+}
+
+const fetchTableData = async () => {
+  try {
+    const result = await Api.allegro.getImportedOrders({
+      sandbox: filter.value.sandbox,
+      status: filter.value.status,
+      fulfillmentStatus: filter.value.fulfillmentStatus,
+      search: filter.value.search,
+      page: filter.value.page,
+      pageSize: filter.value.pageSize,
+      fromUtc: toIsoDate(filter.value.from),
+      toUtc: toIsoDate(filter.value.to, true),
+      hasLocalOrder: filter.value.hasLocalOrder,
+      deliveryMethod: filter.value.deliveryMethod,
+      minTotal: filter.value.minTotal,
+      maxTotal: filter.value.maxTotal,
+      minProfit: filter.value.minProfit,
+      maxProfit: filter.value.maxProfit,
+      billingSynced: filter.value.billingSynced
+    })
+
+    dataTable.value = normalizeTableResult(result)
+  } catch (error) {
+    console.error(error)
+    toast.error('Wystąpił problem z pobraniem zamówień Allegro')
+  }
+}
+
+const normalizeTableResult = (result: any) => {
+  const data = result?.data || result
+
+  return {
+    items: data?.items || [],
+    totalCount: data?.totalCount || 0,
+    pageNumber: data?.pageNumber || filter.value.page
+  }
+}
+
+const applyFilters = async () => {
+  filter.value.page = 1
+  syncFiltersToUrl(filter.value)
+  await fetchTableData()
+}
+
+const clearFilters = async () => {
+  filter.value = {
+    ...createDefaultFilters(),
+    page: 1,
+    pageSize: filter.value.pageSize
+  }
+  syncFiltersToUrl(filter.value)
+  await fetchTableData()
 }
 
 const openImportDialog = () => {
@@ -586,6 +716,7 @@ const importOrders = async () => {
 
     importDialogVisible.value = false
     filter.value.page = 1
+    syncFiltersToUrl(filter.value)
     await fetchTableData()
   } catch (error) {
     console.error(error)
@@ -595,6 +726,8 @@ const importOrders = async () => {
   }
 }
 
+const listQuery = computed(() => JSON.stringify(route.query))
+
 const showSelectedOrder = () => {
   if (!selectedRow.value) {
     toast.warning('Wybierz zamówienie Allegro')
@@ -602,7 +735,10 @@ const showSelectedOrder = () => {
   }
 
   const checkoutFormId = selectedRow.value.checkoutFormId || selectedRow.value.id
-  router.push(`/allegro/orders/${checkoutFormId}`)
+  router.push({
+    path: `/allegro/orders/${checkoutFormId}`,
+    query: route.query
+  })
 }
 
 const syncingBilling = ref(false)
@@ -670,14 +806,7 @@ const createLocalOrder = async () => {
 
 const handlePageChange = async (page: number) => {
   filter.value.page = page
-
-  router.replace({
-    query: {
-      ...route.query,
-      page: String(page)
-    }
-  })
-
+  syncFiltersToUrl(filter.value)
   await fetchTableData()
 }
 
@@ -710,24 +839,41 @@ const formatPrice = (value: any) => {
   return `${value} zł`
 }
 
-watch(
-  () => route.query.page,
-  async () => {
-    const page = getPageFromQuery()
-
-    if (page !== filter.value.page) {
-      filter.value.page = page
-      await fetchTableData()
-    }
+watch(listQuery, async () => {
+  if (isSyncingFromRoute.value) {
+    return
   }
-)
+
+  const parsed = buildFiltersFromQuery()
+
+  if (!filtersChanged(filter.value, parsed)) {
+    return
+  }
+
+  isSyncingFromRoute.value = true
+  filter.value = parsed
+  await fetchTableData()
+  isSyncingFromRoute.value = false
+})
 
 onMounted(async () => {
+  if (activeFiltersCount.value > 0) {
+    filtersExpanded.value = ['filters']
+  }
+
   await fetchTableData()
 })
 </script>
 
 <style>
+.filter-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
 .cell {
   text-align: center;
   font-size: 11px;
@@ -779,11 +925,6 @@ onMounted(async () => {
   border: 1px solid #d6dfe9;
 }
 
-.search-row .el-input__wrapper {
-  border-radius: 0px 15px 15px 0px !important;
-  padding: 0px;
-}
-
 .el-table__body-wrapper {
   max-height: 68vh !important;
   overflow-y: auto;
@@ -799,58 +940,5 @@ onMounted(async () => {
   font-size: 11px;
   padding-top: 2px !important;
   padding-bottom: 2px !important;
-}
-
-.header-content > div:first-child {
-  padding: 6px !important;
-  font-size: 11px !important;
-}
-
-.search-row--compact {
-  padding: 2px 6px !important;
-}
-
-.filter-compact {
-  width: 100% !important;
-}
-
-.filter-compact .el-input__wrapper,
-.filter-compact.el-date-editor .el-input__wrapper,
-.filter-compact.el-select .el-input__wrapper,
-.filter-compact.el-input-number .el-input__wrapper {
-  height: 22px !important;
-  min-height: 22px !important;
-  padding: 0 8px !important;
-}
-
-.filter-compact .el-input__inner,
-.filter-compact.el-date-editor .el-input__inner,
-.filter-compact.el-select .el-input__inner {
-  height: 22px !important;
-  line-height: 22px !important;
-  font-size: 11px !important;
-}
-
-.filter-compact.el-date-editor .el-range-input {
-  font-size: 11px !important;
-  line-height: 22px !important;
-}
-
-.filter-compact.el-input-number {
-  height: 22px !important;
-}
-
-.filter-compact.el-input-number .el-input-number__increase,
-.filter-compact.el-input-number .el-input-number__decrease {
-  display: none !important;
-}
-
-.filter-compact .el-input__prefix {
-  margin-right: 4px !important;
-}
-
-.filter-compact .el-input__icon,
-.filter-compact .el-select__caret {
-  font-size: 14px !important;
 }
 </style>

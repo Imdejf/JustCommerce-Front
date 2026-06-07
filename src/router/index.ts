@@ -250,7 +250,15 @@ const router = createRouter({
         layout: PageLayout
       },
       component: () => import('../views/Catalog/Product/Product/ProductDetail.vue')
-    }, 
+    },
+    {
+      path: '/catalog/tools/product-photo-ai',
+      name: 'ProductPhotoAiTool',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Catalog/Tools/ProductPhotoAi.vue')
+    },
     //SHIPPING RULE
     {
       path: '/system/rule',

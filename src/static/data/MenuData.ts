@@ -90,6 +90,10 @@ export const menuData: MenuItem[] = [
       {
         name: "Atrybuty produktowe",
         route: "/catalog/product-attribute"
+      },
+      {
+        name: "Narzędzie zdjęć AI",
+        route: "/catalog/tools/product-photo-ai"
       }
     ]
   },
