@@ -35,7 +35,8 @@ enum OrderSourceType {
   Offer = 2,
   Phone = 3,
   Chat = 4,
-  Email = 5
+  Email = 5,
+  Allegro = 6
 }
 
 enum DeliveryMethodType {
@@ -228,6 +229,13 @@ function translateOrderStatus(key) {
 
 const handleProductUpdate = (summary) => {
   summaryProductTable.value = summary;
+}
+
+const pageTitle = computed(() => (props.updated ? 'Edycja zamówienia' : 'Nowe zamówienie'))
+
+const formatOrderPrice = (value: number | string | null | undefined) => {
+  const amount = Number(value ?? 0)
+  return `${amount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
 }
 
 const orderSourceOptions = computed(() => {
@@ -450,14 +458,39 @@ watch(
 
 </script>
 <template>
-    <ContentContainer :showLanguage="false" class="offer_input !overflow-auto w-full !h-[90vh]">
-    <div class="mx-[10rem]">
-        <FormKit ref="myForm" type="form" @submit="handleOrder" :actions="false">
-          <div class="inline-flex justify-center items-center w-full">
-            <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
-            <h1 class="absolute px-2 font-semibold text-2xl text-orange-400 bg-blue-50"> Zamówienie </h1>
-          </div>  
-          <div class="flex gap-4 w-full mt-4">
+  <div class="order-form-page offer_input">
+    <FormKit ref="myForm" type="form" @submit="handleOrder" :actions="false">
+      <header class="order-form-header">
+        <div>
+          <p class="order-form-header__eyebrow">{{ updated ? 'Sprzedaż' : 'Sprzedaż · tworzenie' }}</p>
+          <h1 class="order-form-header__title">{{ pageTitle }}</h1>
+          <p class="order-form-header__desc">Uzupełnij dane klienta, produkty i warunki płatności w jednym miejscu.</p>
+        </div>
+        <div class="order-form-header__actions">
+          <el-button @click="router.push('/sale/order')">Anuluj</el-button>
+          <FormKit
+            v-if="!updated"
+            type="submit"
+            label="Utwórz zamówienie"
+            :classes="{ input: 'order-form-submit', outer: 'order-form-submit-wrap' }"
+          />
+          <FormKit
+            v-else
+            type="submit"
+            label="Zapisz zmiany"
+            :classes="{ input: 'order-form-submit', outer: 'order-form-submit-wrap' }"
+          />
+        </div>
+      </header>
+
+      <div class="order-form-layout">
+        <div class="order-form-main">
+          <section class="order-section">
+            <div class="order-section__head">
+              <h2>Podstawowe ustawienia</h2>
+              <p>Źródło, status, dostawa i płatność</p>
+            </div>
+            <div class="order-section__body order-grid-4">
             <div class="flex-1">
             <FormKit
               type="select"
@@ -496,117 +529,85 @@ watch(
                 v-model="currentOrder.paymentProvider"
             />
           </div>
-      </div>
-      <div class="flex gap-10 offer_textarea">
-                <FormSection>
-                <FormKit
-                  type="textarea"
-                  label="Informacje dodatkowe dla sprzedawcy"
-                  validation-visibility="live"
-                  v-model="currentOrder.orderNoteForCustomer"
-                  :sections-schema="{
-                    outer: {
-                      $el: 'div',
-                      attrs: {
-                        style: { width: '500px' }
-                      }
-                    }
-                  }"
-                />
-              </FormSection>
-              <FormSection>
-                <FormKit
-                  type="textarea"
-                  label="Uwagi dla kupującego"
-                  validation-visibility="live"
-                  v-model="currentOrder.orderNoteForClient"
-                  :sections-schema="{
-                    outer: {
-                      $el: 'div',
-                      attrs: {
-                        style: { width: '500px' }
-                      }
-                    }
-                  }"
-                />
-              </FormSection>
-          </div>
-          <div class="inline-flex justify-center items-center w-full">
-            <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
-            <h1 class="absolute px-2 font-semibold text-2xl text-orange-400 bg-blue-50"> Szczegóły faktury </h1>
-          </div>
-          <div class="flex gap-4 w-2/3 mt-5">
-            <div class="">
-                  <FormKit
-                    label="Termin na fakturze"
-                    type="select"
-                    :options="paymentPaymentTerm"
-                    v-model="currentOrder.paymentTerm"
-                    :sections-schema="{
-                    outer: {
-                      $el: 'div',
-                      attrs: {
-                        style: { width: '200px' }
-                      }
-                    }
-                  }"
-                />
             </div>
-            <div>
-              <div class="flex gap-10 offer_textarea">
+          </section>
+
+          <section class="order-section">
+            <div class="order-section__head">
+              <h2>Notatki</h2>
+              <p>Informacje wewnętrzne i komunikaty dla klienta</p>
+            </div>
+            <div class="order-section__body order-grid-2 offer_textarea">
               <FormKit
-                  type="textarea"
-                  label="Dodatkowa informacja na fakturze"
-                  validation-visibility="live"
-                  v-model="currentOrder.orderNoteOnInvoice"
-                  :sections-schema="{
-                    outer: {
-                      $el: 'div',
-                      attrs: {
-                        style: { width: '400px' }
-                      }
-                    }
-                  }"
-                />
-                </div>
+                type="textarea"
+                label="Informacje dodatkowe dla sprzedawcy"
+                validation-visibility="live"
+                v-model="currentOrder.orderNoteForCustomer"
+              />
+              <FormKit
+                type="textarea"
+                label="Uwagi dla kupującego"
+                validation-visibility="live"
+                v-model="currentOrder.orderNoteForClient"
+              />
             </div>
-          </div>
-          <div class="inline-flex justify-center items-center w-full">
-            <hr class="mt-2 w-full bg-gray-200 border-0.5 border-gray-300">
-            <h1 class="absolute px-2 font-semibold text-2xl text-orange-400 bg-blue-50"> Szczegóły zamówienia </h1>
-          </div>
-          <div class="grid grid-cols-2 justify-between mt-3 flex" style="grid-template-columns: 400px 400px;">
-            <div class="w-full">
-              <div class="bg-white rounded-md shadow-md p-4">
-                <h2 class="text-xl font-bold my-2">Dane zamawiającego</h2>
+          </section>
+
+          <section class="order-section">
+            <div class="order-section__head">
+              <h2>Szczegóły faktury</h2>
+              <p>Termin płatności i dodatkowe informacje na dokumencie</p>
+            </div>
+            <div class="order-section__body order-invoice-grid offer_textarea">
+              <FormKit
+                label="Termin na fakturze"
+                type="select"
+                :options="paymentPaymentTerm"
+                v-model="currentOrder.paymentTerm"
+              />
+              <FormKit
+                type="textarea"
+                label="Dodatkowa informacja na fakturze"
+                validation-visibility="live"
+                v-model="currentOrder.orderNoteOnInvoice"
+              />
+            </div>
+          </section>
+
+          <section class="order-section">
+            <div class="order-section__head">
+              <h2>Dane klienta i dostawy</h2>
+              <p>Adres rozliczeniowy oraz opcjonalnie inny adres wysyłki</p>
+            </div>
+            <div class="order-section__body order-address-grid">
+              <div class="order-address-card">
+                <div class="order-address-card__head">
+                  <h3>Dane zamawiającego</h3>
+                  <div class="order-address-card__switch">
+                    <span>Firma</span>
+                    <el-switch
+                      v-model="currentOrder.billingAddress.isCompany"
+                      style="--el-switch-on-color: #3b82f6; --el-switch-off-color: #cbd5e1"
+                    />
+                  </div>
+                </div>
                   <FormKit
                   type="text"
                   outer-class="w-[100%] inline fomik_form_witdh hidden_name "
                   placeholder="Nazwa użytkownika"
                   v-model="filter.SmartTableParam.Search.PredicateObject.Email"
                 />
-                Wybrano: {{ selectedUser?.email }}
-                <div>
-                  <ul>
-                    <li v-for="user in users.items" :key="user.id" class="flex gap-2 mt-5">
-                      <div class="w-[60%] overflow-hidden whitespace-no-wrap overflow-auto"></div>
-                      {{ user.email }}
-                      <div class="w-[25%] m-auto text-center">
-                        <el-button @click="selectUser(user)" color="#60a5fa" round>Wybierz</el-button>
-                      </div>
-                    </li>
-                    <el-button @click="removeUser()" color="#ef4444" round>Usuń użytkownika</el-button>
-                  </ul>
-                  </div>
-                  <div class="mt-3 text-center">
-                    <h3>Zamówienie na firmę?</h3>
-                    <el-switch
-                      v-model="currentOrder.billingAddress.isCompany"
-                      class="ml-2"
-                      style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                    />
-                  </div>
-                    <div>
+                <div v-if="selectedUser?.email" class="order-selected-user">
+                  Wybrany użytkownik: <strong>{{ selectedUser.email }}</strong>
+                  <el-button size="small" type="danger" text @click="removeUser()">Usuń</el-button>
+                </div>
+                <ul v-if="users?.items?.length" class="order-user-list">
+                  <li v-for="user in users.items" :key="user.id" class="order-user-list__item">
+                    <span>{{ user.email }}</span>
+                    <el-button size="small" type="primary" @click="selectUser(user)">Wybierz</el-button>
+                  </li>
+                </ul>
+                    <div class="order-address-fields">
                       <FormKit
                         type="text"
                         outer-class="hidden_name fomik_form_witdh"
@@ -808,19 +809,22 @@ watch(
                 </TransitionRoot>
               </div>
             </Combobox>
+              </div>
+
+              <div class="order-address-card">
+                <div class="order-address-card__head">
+                  <h3>Adres dostawy</h3>
+                  <div class="order-address-card__switch">
+                    <span>Inny adres dostawy</span>
+                    <el-switch
+                      v-model="currentOrder.useShippingAddressAsBillingAddress"
+                      style="--el-switch-on-color: #3b82f6; --el-switch-off-color: #cbd5e1"
+                    />
                   </div>
                 </div>
-                <div class="w-full">
-                  <div class="bg-white rounded-md shadow-md p-4">                  
-                    <div class="mt-3 text-center">
-                      <h3>Dostawa pod inny adres?
-                      </h3>
-                    </div>
-                      <el-switch
-                        v-model="currentOrder.useShippingAddressAsBillingAddress"
-                        class="ml-2"
-                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                      />
+                      <p v-if="!currentOrder.useShippingAddressAsBillingAddress" class="order-address-hint">
+                        Wysyłka na ten sam adres co dane zamawiającego.
+                      </p>
                       <div v-show="currentOrder.useShippingAddressAsBillingAddress">
                         <FormKit
                             outer-class="hidden_name fomik_form_witdh"
@@ -990,40 +994,357 @@ watch(
                         </div>
                       </Combobox>
                       </div>
-                  </div>
-                </div>
-          </div>
+              </div>
+            </div>
+          </section>
+
           <ProductTable
-          :shippingNetto="order.shippingPrice"
-          :shippingBrutto="order.shippingPriceGross"
-          :totalNetto="order.totalItemPrice"
-          :totalBrutto="order.totalItemPriceGross"
-          :totalSumBrutto="order.totalPriceGross"
-          :transportIndividualPricing="order.transportIndividualPricing"
-          :items="order.products"
-          @updateProductTableSummary="handleProductUpdate"/>
-          <div class="save-button w-full my-10">
-            <FormKit v-if="!updated" type="submit" label="Dodaj zamówienie" style="display: flex; justify-content: flex-end" />
-            <FormKit v-if="updated" type="submit" label="Edytuj zamówienie" style="display: flex; justify-content: flex-end" />
+            :shipping-netto="currentOrder.shippingPrice ?? currentOrder.shippingFeeAmountNetto ?? 0"
+            :shipping-brutto="currentOrder.shippingPriceGross ?? currentOrder.shippingFeeAmountGross ?? 0"
+            :total-netto="currentOrder.totalItemPrice ?? currentOrder.subTotal ?? 0"
+            :total-brutto="currentOrder.totalItemPriceGross ?? currentOrder.subTotalGross ?? 0"
+            :total-sum-brutto="currentOrder.totalPriceGross ?? currentOrder.totalGross ?? 0"
+            :transport-individual-pricing="currentOrder.transportIndividualPricing ?? false"
+            :items="currentOrder.products ?? []"
+            @update-product-table-summary="handleProductUpdate"
+          />
         </div>
-        </FormKit>
-        </div>
-    </ContentContainer>
+
+        <aside class="order-form-aside">
+          <div class="order-summary-card">
+            <h3>Podsumowanie</h3>
+            <div class="order-summary-card__row">
+              <span>Pozycje</span>
+              <strong>{{ summaryProductTable.items?.length ?? 0 }}</strong>
+            </div>
+            <div class="order-summary-card__row">
+              <span>Towar brutto</span>
+              <strong>{{ formatOrderPrice(summaryProductTable.totalBrutto) }}</strong>
+            </div>
+            <div class="order-summary-card__row">
+              <span>Transport brutto</span>
+              <strong>{{ formatOrderPrice(summaryProductTable.shippingBrutto) }}</strong>
+            </div>
+            <div class="order-summary-card__row order-summary-card__row--total">
+              <span>Razem brutto</span>
+              <strong>{{ formatOrderPrice(summaryProductTable.totalSumBrutto) }}</strong>
+            </div>
+            <div class="order-summary-card__meta">
+              <span>Status: {{ orderStatusOptions.find((o) => o.value === currentOrder.orderStatus)?.label ?? '—' }}</span>
+              <span>Płatność: {{ predefinedPayment.find((o) => o.value === currentOrder.paymentProvider)?.label ?? '—' }}</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </FormKit>
+  </div>
 </template>
+
+<style scoped>
+.order-form-page {
+  min-height: calc(100vh - 72px);
+  padding: 16px 20px 32px;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(59, 130, 246, 0.08), transparent),
+    linear-gradient(180deg, #eff6ff 0%, #f8fafc 40%, #f1f5f9 100%);
+}
+
+.order-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+.order-form-header__eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.order-form-header__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.order-form-header__desc {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.order-form-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.order-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+
+.order-form-main {
+  min-width: 0;
+}
+
+.order-section {
+  margin-bottom: 16px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.order-section__head {
+  padding: 16px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc, #fff);
+}
+
+.order-section__head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.order-section__head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.order-section__body {
+  padding: 16px 18px 18px;
+}
+
+.order-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.order-grid-2,
+.order-invoice-grid,
+.order-address-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.order-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-invoice-grid {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.order-address-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-address-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.order-address-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.order-address-card__head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.order-address-card__switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.order-address-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+}
+
+.order-selected-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+}
+
+.order-user-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.order-user-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.order-form-aside {
+  position: sticky;
+  top: 16px;
+}
+
+.order-summary-card {
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 18px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+.order-summary-card h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.order-summary-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.order-summary-card__row strong {
+  color: #0f172a;
+}
+
+.order-summary-card__row--total {
+  border-bottom: none;
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  font-size: 15px;
+}
+
+.order-summary-card__row--total strong {
+  font-size: 20px;
+  color: #1d4ed8;
+}
+
+.order-summary-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+@media (max-width: 1200px) {
+  .order-form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .order-form-aside {
+    position: static;
+  }
+
+  .order-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .order-address-grid,
+  .order-grid-2,
+  .order-invoice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .order-form-header {
+    flex-direction: column;
+  }
+
+  .order-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 
 <style>
 .offer_input .formkit-wrapper {
-    min-width: 100% !important;
+  min-width: 100% !important;
 }
 
-.check_box_offer .formkit-inner {
-  height:auto !important;
+.offer_input .formkit-wrapper .formkit-inner {
+  height: 38px;
 }
 
 .offer_textarea .formkit-inner {
-  height:auto !important;
+  height: auto !important;
+  min-height: 110px;
 }
-.offer_input .formkit-wrapper .formkit-inner {
-    height:30px;
+
+.order-form-submit-wrap {
+  margin: 0 !important;
+}
+
+.order-form-submit {
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 10px 18px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+}
+
+.order-form-submit:hover {
+  opacity: 0.92;
 }
 </style>

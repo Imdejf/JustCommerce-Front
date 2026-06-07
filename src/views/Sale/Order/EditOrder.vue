@@ -84,6 +84,7 @@ onMounted(async () => {
       sku: item.sku ?? null,
       priceNetto: item.priceNetto,
       priceGross: item.priceGross,
+      startingPriceNetto: item.startingPriceNetto ?? item.priceNetto,
       tax: item.tax,
       producerPriceNetto: item.producerPriceNetto,
       totalPriceNetto: item.totalPriceNetto,

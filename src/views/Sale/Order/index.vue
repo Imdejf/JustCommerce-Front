@@ -3,5 +3,5 @@ import OrderTable from '/@/components/Page/Sale/Order/OrderTable.vue'
 </script>
 
 <template>
-    <OrderTable />
+  <OrderTable />
 </template>

@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { ref, watch, computed, onMounted } from 'vue'
+import { Delete, Plus, Search, Van, Box } from '@element-plus/icons-vue'
 import { OfferItemTable } from '/@/types/productTable/ProductTable.ts'
 import { Api } from '/@/services/api'
 import Cookies from 'universal-cookie'
+
 const cookies = new Cookies()
 
 const emit = defineEmits<{
@@ -15,7 +17,7 @@ const emit = defineEmits<{
     totalSumBrutto: string,
     transportIndividualPricing: boolean
   }): void
-}>();
+}>()
 
 const props = defineProps<{
   items: OfferItemTable[],
@@ -24,19 +26,19 @@ const props = defineProps<{
   totalNetto: string,
   totalBrutto: string,
   totalSumBrutto: string,
-  filterSearchProduct: any,
   transportIndividualPricing: boolean
 }>()
 
-const taxRate = 0.23;
-const shippingNetto = ref(props.shippingNetto);
-const shippingBrutto = ref(props.shippingBrutto);
-const totalNetto = ref(props.totalNetto);
-const totalBrutto = ref(props.totalBrutto);
-const totalSumBrutto = ref(props.totalSumBrutto);
-const transportIndividualPricing = ref(props.transportIndividualPricing);
+const taxRate = 0.23
+const shippingNetto = ref(props.shippingNetto)
+const shippingBrutto = ref(props.shippingBrutto)
+const totalNetto = ref(props.totalNetto)
+const totalBrutto = ref(props.totalBrutto)
+const totalSumBrutto = ref(props.totalSumBrutto)
+const transportIndividualPricing = ref(props.transportIndividualPricing)
 const activeRowIndex = ref<number | null>(null)
-const itemsTable = ref([])
+const itemsTable = ref<any[]>([])
+
 const productTableSummary = computed(() => ({
   items: itemsTable.value,
   shippingNetto: shippingNetto.value,
@@ -45,7 +47,7 @@ const productTableSummary = computed(() => ({
   totalBrutto: totalBrutto.value,
   totalSumBrutto: totalSumBrutto.value,
   transportIndividualPricing: transportIndividualPricing.value
-}));
+}))
 
 const searchProduct = ref('')
 
@@ -56,24 +58,51 @@ const filterSearchProduct = ref({
   SearchString: searchProduct.value
 })
 
-const handleInputFocus = (index) => {
-  activeRowIndex.value = index;
+const formatMoney = (value: number | string | null | undefined) => {
+  const amount = Number(value ?? 0)
+  return `${amount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
 }
 
-const handleSearchUpdate = (val: string) => {
-  props.filterSearchProduct.SearchString = val
+const shippingRuleSummary = (rule: any) => {
+  if (!rule) return 'Brak reguły transportu'
+  const parts: string[] = [rule.name || 'Reguła transportu']
+  if (rule.shipmentPrice) parts.push(`karton ${formatMoney(rule.shipmentPrice)}`)
+  if (rule.stackPallet && rule.shipmentPricePallet) parts.push(`paleta ${formatMoney(rule.shipmentPricePallet)}`)
+  return parts.join(' · ')
+}
+
+const lineDiscountPercent = (item: any) => {
+  const start = Number(item.startingPriceNetto)
+  const price = Number(item.priceNetto)
+  if (!start || start <= price) return null
+  return Math.round((1 - price / start) * 100)
+}
+
+const itemShippingEstimate = (item: any) => {
+  if (item.productId === null) {
+    const gross = Number(item.shippingPriceGross || 0)
+    return gross > 0 ? gross : null
+  }
+  if (!item.shippingRule) return null
+  return calculatePalletsAndCardboards(item)
+}
+
+const isCustomItem = (item: any) => item.productId === null
+
+const handleInputFocus = (index: number) => {
+  activeRowIndex.value = index
 }
 
 const updateTotalSums = () => {
-  totalNetto.value = itemsTable.value.reduce((sum, item) => sum + parseFloat(item.totalPriceNetto || 0), 0).toFixed(2);
-  totalBrutto.value = itemsTable.value.reduce((sum, item) => sum + parseFloat(item.totalPriceGross || 0), 0).toFixed(2);
-  totalSumBrutto.value = (parseFloat(totalBrutto.value) + parseFloat(shippingBrutto.value)).toFixed(2);
+  totalNetto.value = itemsTable.value.reduce((sum, item) => sum + parseFloat(item.totalPriceNetto || 0), 0).toFixed(2)
+  totalBrutto.value = itemsTable.value.reduce((sum, item) => sum + parseFloat(item.totalPriceGross || 0), 0).toFixed(2)
+  totalSumBrutto.value = (parseFloat(totalBrutto.value) + parseFloat(String(shippingBrutto.value || 0))).toFixed(2)
 }
 
 const removeProductHandle = (rowIndex: number) => {
-  itemsTable.value.splice(rowIndex, 1);
-};
-
+  itemsTable.value.splice(rowIndex, 1)
+  if (activeRowIndex.value === rowIndex) activeRowIndex.value = null
+}
 
 const addNewItem = () => {
   itemsTable.value.push({
@@ -88,8 +117,9 @@ const addNewItem = () => {
     shippingPriceGross: 0,
     totalPriceGross: 0,
     shippingRule: null
-  });
-};
+  })
+  activeRowIndex.value = itemsTable.value.length - 1
+}
 
 const addCustomItem = () => {
   itemsTable.value.push({
@@ -107,62 +137,64 @@ const addCustomItem = () => {
     shippingPriceGross: 0,
     noteForProducer: '',
     shippingRule: null
-  });
-  activeRowIndex.value = itemsTable.value.length - 1;
-};
+  })
+  activeRowIndex.value = itemsTable.value.length - 1
+}
 
-const addProductToListHandle = async (item, index) => {
+const addProductToListHandle = async (item: any, index: number) => {
   activeRowIndex.value = null
   const currentItem = itemsTable.value[index]
   filterSearchProduct.value.SearchString = ''
-  currentItem.productId = item.id;
-  currentItem.name = item.name;
-  currentItem.quantity = 1;
-  currentItem.priceNetto = item.priceNetto;
-  currentItem.totalPriceGross = 0;
-  currentItem.tax = 0;
-  currentItem.producerPriceNetto = item.producerPrice;
-  currentItem.totalPriceNetto = 0;
-  currentItem.totalPriceGross = 0;
-  currentItem.shippingRule = item.shippingRule;
+  searchProduct.value = ''
+  currentItem.productId = item.id
+  currentItem.name = item.name
+  currentItem.quantity = 1
+  currentItem.priceNetto = item.priceNetto
+  currentItem.startingPriceNetto = item.startingPriceNetto ?? item.priceNetto
+  currentItem.totalPriceGross = 0
+  currentItem.tax = item.taxPercent ?? taxRate * 100
+  currentItem.producerPriceNetto = item.producerPrice
+  currentItem.totalPriceNetto = 0
+  currentItem.totalPriceGross = 0
+  currentItem.shippingRule = item.shippingRule
   currentItem.shippingPriceGross = currentItem.shippingPriceGross ?? 0
+  currentItem.productImage = item.filePath
+  currentItem.identificationCode = item.identificationCode
+  updateItemValues(currentItem, 'priceNetto')
 }
 
 const calculateShipping = () => {
-  let totalShippingNetto = 0;
-  let totalShippingBrutto = 0;
+  let totalShippingNetto = 0
+  let totalShippingBrutto = 0
 
-  // 1) reguły wysyłki dla produktów sklepowych
   itemsTable.value.forEach((item) => {
-    if (!item.shippingRule) return;
-    const shippingCost = calculatePalletsAndCardboards(item);
-    const shippingAmountNetto = shippingCost / (1 + taxRate);
-    totalShippingNetto += shippingAmountNetto;
-    totalShippingBrutto += shippingCost;
-  });
+    if (!item.shippingRule) return
+    const shippingCost = calculatePalletsAndCardboards(item)
+    const shippingAmountNetto = shippingCost / (1 + taxRate)
+    totalShippingNetto += shippingAmountNetto
+    totalShippingBrutto += shippingCost
+  })
 
-  // 2) koszty wpisane ręcznie dla pozycji customowych
   itemsTable.value.forEach((item) => {
-    if (item.productId !== null) return; // nie custom
-    const customGross = parseFloat(item.shippingPriceGross || 0);
+    if (item.productId !== null) return
+    const customGross = parseFloat(item.shippingPriceGross || 0)
     if (!isNaN(customGross) && customGross > 0) {
-      totalShippingBrutto += customGross;
-      totalShippingNetto += customGross / (1 + taxRate);
+      totalShippingBrutto += customGross
+      totalShippingNetto += customGross / (1 + taxRate)
     }
-  });
+  })
 
-  shippingNetto.value = totalShippingNetto.toFixed(2);
-  shippingBrutto.value = totalShippingBrutto.toFixed(2);
-};
+  shippingNetto.value = totalShippingNetto.toFixed(2)
+  shippingBrutto.value = totalShippingBrutto.toFixed(2)
+}
 
-const calculatePalletsAndCardboards = (product) => {
+const calculatePalletsAndCardboards = (product: any) => {
   let shippingPrice = 0
   let quantitySum = product.quantity
   const rule = product.shippingRule
 
-  if (!rule) return 0; // Jeśli brak reguły, zwracamy 0
+  if (!rule) return 0
 
-  // Logika dla palet
   if (rule.stackPallet) {
     while (quantitySum >= rule.conditionMinForQuantityPallet) {
       if (quantitySum <= rule.conditionMaxForQuantityPallet) {
@@ -176,326 +208,720 @@ const calculatePalletsAndCardboards = (product) => {
     }
   }
 
-  // Logika dla kartonów
   if ((quantitySum > 0 && quantitySum < rule.conditionMinForQuantityPallet) || !rule.stackPallet) {
     const cardboardCount = Math.ceil(quantitySum / rule.conditionMaxQuantity)
     shippingPrice += cardboardCount * rule.shipmentPrice
   }
 
-  return shippingPrice;
+  return shippingPrice
 }
-
 
 const updateShippingValues = (changedField: string) => {
   if (changedField === 'netto') {
-    shippingBrutto.value = parseFloat((shippingNetto.value * (1 + taxRate)).toFixed(2));
+    shippingBrutto.value = parseFloat((Number(shippingNetto.value) * (1 + taxRate)).toFixed(2))
   } else if (changedField === 'brutto') {
-    shippingNetto.value = parseFloat((shippingBrutto.value / (1 + taxRate)).toFixed(2));
+    shippingNetto.value = parseFloat((Number(shippingBrutto.value) / (1 + taxRate)).toFixed(2))
   }
 }
 
-const brands = ref<{ value: string | null; label: string }[]>([]);
+const brands = ref<{ value: string | null; label: string }[]>([])
 
 const loadBrands = async () => {
   try {
-    const result = await Api.brands.listByStoreId();
+    const result = await Api.brands.listByStoreId()
     brands.value = [
       { value: null, label: 'Producent' },
       ...result.items.map((x: any) => ({
         value: x.id,
         label: x.name
       }))
-    ];
+    ]
   } catch (e) {
-    console.error(e);
+    console.error(e)
   }
-};
-
+}
 
 onMounted(() => {
-  emit('updateProductTableSummary', productTableSummary.value);
-  loadBrands();
-});
+  emit('updateProductTableSummary', productTableSummary.value)
+  loadBrands()
+})
 
+const productsList = ref<any[]>([])
 
-const productsList = ref([])
-
-
-watch(filterSearchProduct.value, async (newFilterSearchProduct, oldFilterSearchProduct) => {
+watch(filterSearchProduct, async (newFilterSearchProduct) => {
   if (newFilterSearchProduct.SearchString) {
     try {
       const payload = {
         body: JSON.stringify(newFilterSearchProduct)
       }
-
       const result = await Api.products.getByNameOrCode(payload)
       productsList.value = result.data.items
     } catch (error) {
       console.error(error)
     }
+  } else {
+    productsList.value = []
   }
+}, { deep: true })
+
+watch(searchProduct, (val) => {
+  filterSearchProduct.value.SearchString = val
 })
 
-watch([itemsTable, shippingBrutto], updateTotalSums, { deep: true });
+watch([itemsTable, shippingBrutto], updateTotalSums, { deep: true })
 
-const updateItemValues = (item: OfferItem, changedField: string) => {
+const updateItemValues = (item: any, changedField: string) => {
   if (changedField === 'priceNetto') {
-    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2);
-    item.totalPriceNetto = (item.quantity * item.priceNetto).toFixed(2);
-    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2);
+    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2)
+    item.totalPriceNetto = (item.quantity * item.priceNetto).toFixed(2)
+    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2)
   } else if (changedField === 'totalPriceNetto') {
-    item.priceNetto = (item.totalPriceNetto / item.quantity).toFixed(2);
-    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2);
-    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2);
+    item.priceNetto = (item.totalPriceNetto / item.quantity).toFixed(2)
+    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2)
+    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2)
   } else if (changedField === 'totalPriceGross') {
-    item.totalPriceNetto = (item.totalPriceGross / (1 + taxRate)).toFixed(2);
-    item.priceNetto = (item.totalPriceNetto / item.quantity).toFixed(2);
-    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2);
+    item.totalPriceNetto = (item.totalPriceGross / (1 + taxRate)).toFixed(2)
+    item.priceNetto = (item.totalPriceNetto / item.quantity).toFixed(2)
+    item.priceGross = (item.priceNetto * (1 + taxRate)).toFixed(2)
   } else if (changedField === 'quantity') {
-    item.totalPriceNetto = (item.quantity * item.priceNetto).toFixed(2);
-    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2);
+    item.totalPriceNetto = (item.quantity * item.priceNetto).toFixed(2)
+    item.totalPriceGross = (item.totalPriceNetto * (1 + taxRate)).toFixed(2)
   }
-};
+}
 
-const previousOfferItems = ref<OfferItemTable[]>(JSON.parse(JSON.stringify(itemsTable.value)));
+const previousOfferItems = ref<OfferItemTable[]>([])
+
 watch(
   () => props.items,
   (list) => {
     itemsTable.value = JSON.parse(JSON.stringify(list || []))
-    // jeśli używasz previousOfferItems do porównań – uzupełnij też je:
     previousOfferItems.value = JSON.parse(JSON.stringify(itemsTable.value))
-    // przelicz sumy i wyemituj podsumowanie
     updateTotalSums()
     emit('updateProductTableSummary', productTableSummary.value)
   },
   { immediate: true, deep: true }
 )
 
-
 watch(
   itemsTable,
-  (newItems, oldItems) => {
+  (newItems) => {
     newItems.forEach((newItem, index) => {
-      const oldItem = previousOfferItems.value[index];
-
-      if (!oldItem) return;
+      const oldItem = previousOfferItems.value[index]
+      if (!oldItem) return
 
       if (newItem.priceNetto !== oldItem.priceNetto) {
-        updateItemValues(newItem, 'priceNetto');
+        updateItemValues(newItem, 'priceNetto')
       } else if (newItem.totalPriceNetto !== oldItem.totalPriceNetto) {
-        updateItemValues(newItem, 'totalPriceNetto');
+        updateItemValues(newItem, 'totalPriceNetto')
       } else if (newItem.totalPriceGross !== oldItem.totalPriceGross) {
-        updateItemValues(newItem, 'totalPriceGross');
+        updateItemValues(newItem, 'totalPriceGross')
       } else if (newItem.quantity !== oldItem.quantity) {
-        updateItemValues(newItem, 'quantity');
+        updateItemValues(newItem, 'quantity')
       }
-    });
+    })
 
-    // Aktualizacja previousOfferItems po każdej zmianie
-    previousOfferItems.value = JSON.parse(JSON.stringify(newItems));
+    previousOfferItems.value = JSON.parse(JSON.stringify(newItems))
   },
   { deep: true }
-);
+)
 
 watch(
   [itemsTable, shippingNetto, shippingBrutto, totalNetto, totalBrutto, totalSumBrutto, transportIndividualPricing],
   () => {
-    emit('updateProductTableSummary', productTableSummary.value);
+    emit('updateProductTableSummary', productTableSummary.value)
   },
   { deep: true }
-);
+)
+
+const itemsWithShippingRules = computed(() =>
+  itemsTable.value.filter((item) => item.shippingRule || isCustomItem(item)).length
+)
 </script>
 
 <template>
-  <div class="relative px-0">
-    <h2 class="text-xl mt-4 font-bold bg-gray-100 border-b-[1px] border-[#d6dfe9] shadow-lg p-2">Dodane produkty</h2>
-    <div class="bg-white p-2">
-      <div class="grid grid-cols-11 gap-2 items-center font-semibold border-b pb-2 text-xs">
-        <span class="col-span-4">Nazwa</span>
-        <span class="col-span-1">Ilość</span>
-        <span class="col-span-1">Jedn.</span>
-        <span class="col-span-1">Cena netto</span>
-        <span class="col-span-1">Cena producenta</span>
-        <span class="col-span-1">VAT %</span>
-        <span class="col-span-1">Wartość netto</span>
-        <span class="col-span-1">Wartość brutto</span>
+  <section class="ptable">
+    <div class="ptable__head">
+      <div>
+        <h2 class="ptable__title">Produkty w zamówieniu</h2>
+        <p class="ptable__subtitle">Dodaj pozycje, sprawdź reguły transportu i podsumowanie kosztów</p>
       </div>
-      <div v-for="(item, index) in itemsTable" :key="index" class="grid grid-cols-11 gap-2 items-center py-2 border-b !items-start">
-        <span class="col-span-4">
-          <!-- CUSTOM: nazwa + wiersz pomocniczy -->
-          <div v-if="item.productId === null" class="space-y-2">
-            <FormKit
-              :classes="{ outer: 'offer_input' }"
-              type="text"
-              v-model="item.name"
-              placeholder="Nazwa pozycji (własna)"
-            />
+      <div class="ptable__head-actions">
+        <el-button type="primary" :icon="Plus" @click="addNewItem">Produkt ze sklepu</el-button>
+        <el-button :icon="Box" @click="addCustomItem">Pozycja własna</el-button>
+      </div>
+    </div>
 
-            <!-- wiersz pomocniczy pod nazwą -->
-            <div class="grid grid-cols-3 gap-2">
-              <!-- SKU -->
-              <FormKit
-                type="text"
-                v-model="item.sku"
-                placeholder="SKU"
-                :classes="{ outer: 'offer_input !mt-0' }"
-              />
+    <div v-if="!itemsTable.length" class="ptable__empty">
+      <div class="ptable__empty-icon">📦</div>
+      <h3>Brak produktów</h3>
+      <p>Dodaj produkt ze sklepu lub własną pozycję, aby zbudować zamówienie.</p>
+      <div class="ptable__empty-actions">
+        <el-button type="primary" :icon="Plus" @click="addNewItem">Dodaj produkt</el-button>
+        <el-button @click="addCustomItem">Dodaj pozycję własną</el-button>
+      </div>
+    </div>
 
-              <!-- PRODUCENT (szerzej: 2/3) -->
-              <div class="col-span-2">
-              <el-select v-model="item.brandId" filterable clearable placeholder="Wybierz producenta" class="w-full">
-                <el-option
-                  v-for="(b, idx) in brands"
-                  :key="b.value ?? `null-${idx}`"
-                  :label="b.label"
-                  :value="b.value"
+    <div v-else class="ptable__items">
+      <article
+        v-for="(item, index) in itemsTable"
+        :key="index"
+        class="ptable-item"
+        :class="{ 'ptable-item--custom': isCustomItem(item) }"
+      >
+        <div class="ptable-item__top">
+          <div class="ptable-item__identity">
+            <div class="ptable-item__thumb">
+              <img v-if="item.productImage" :src="item.productImage" alt="" />
+              <span v-else>{{ isCustomItem(item) ? '✦' : '📦' }}</span>
+            </div>
+            <div class="ptable-item__meta">
+              <div v-if="isCustomItem(item)" class="ptable-item__search">
+                <el-input v-model="item.name" placeholder="Nazwa pozycji własnej" />
+              </div>
+              <div v-else-if="!item.name" class="ptable-item__search">
+                <el-input
+                  v-model="searchProduct"
+                  placeholder="Szukaj po nazwie lub kodzie..."
+                  :prefix-icon="Search"
+                  @focus="handleInputFocus(index)"
                 />
-              </el-select>
+              </div>
+              <div v-else class="ptable-item__name">{{ item.name }}</div>
+
+              <div class="ptable-item__badges">
+                <span v-if="item.identificationCode" class="ptable-badge ptable-badge--sku">
+                  {{ item.identificationCode }}
+                </span>
+                <span
+                  class="ptable-badge"
+                  :class="item.shippingRule ? 'ptable-badge--rule' : 'ptable-badge--muted'"
+                >
+                  <el-icon><Van /></el-icon>
+                  {{ shippingRuleSummary(item.shippingRule) }}
+                </span>
+                <span v-if="itemShippingEstimate(item)" class="ptable-badge ptable-badge--ship">
+                  transport {{ formatMoney(itemShippingEstimate(item)) }}
+                </span>
+                <span v-if="lineDiscountPercent(item)" class="ptable-badge ptable-badge--discount">
+                  rabat {{ lineDiscountPercent(item) }}%
+                </span>
+                <span v-if="isCustomItem(item)" class="ptable-badge ptable-badge--custom">pozycja własna</span>
               </div>
             </div>
           </div>
 
-          <!-- Wyszukiwarka gdy produkt nie wybrany -->
-          <FormKit
-            v-else-if="!item.name"
-            :classes="{ outer: 'offer_input' }"
-            type="text"
-            v-model="filterSearchProduct.SearchString"
-            @focus="handleInputFocus(index)"
-            placeholder="Szukaj produktu..."
+          <el-button
+            type="danger"
+            text
+            circle
+            :icon="Delete"
+            @click="removeProductHandle(index)"
           />
+        </div>
 
-          <!-- Produkt wybrany (sklepowy) -->
-          <FormKit
-            v-else
-            :classes="{ outer: 'offer_input' }"
-            type="text"
-            v-model="item.name"
+        <div v-if="isCustomItem(item)" class="ptable-item__custom-row">
+          <el-input v-model="item.sku" placeholder="SKU" />
+          <el-select v-model="item.brandId" filterable clearable placeholder="Producent" class="w-full">
+            <el-option
+              v-for="(b, idx) in brands"
+              :key="b.value ?? `null-${idx}`"
+              :label="b.label"
+              :value="b.value"
+            />
+          </el-select>
+          <el-input-number
+            v-model="item.shippingPriceGross"
+            :min="0"
+            :step="0.01"
+            :precision="2"
+            controls-position="right"
+            placeholder="Transport brutto"
           />
-        </span>
-        <span class="col-span-1">
-          <FormKit v-model="item.quantity" type="number" />
-        </span>
-        <span class="col-span-1">
-          <FormKit type="text" disabled placeholder="szt." />
-        </span>
-        <span class="col-span-1">
-          <FormKit v-model="item.priceNetto" type="number" step="0.01" />
-        </span>
-        <span class="col-span-1">
-          <FormKit v-model="item.producerPriceNetto" type="number" step="0.01" />
-        </span>
-        <span class="col-span-1">
-          <FormKit type="text" disabled placeholder="23" />
-        </span>
-        <span class="col-span-1">
-          <FormKit v-model="item.totalPriceNetto" type="number" step="0.01" />
-        </span>
-        <span class="col-span-1">
-          <FormKit v-model="item.totalPriceGross" type="number" step="0.01" />
-        </span>
-        <div v-if="item.name" @click="removeProductHandle(index)" class="absolute cursor-pointer right-[-18px] mb-[12px]  bg-red-600 rounded-md h-7 w-7 flex items-center justify-center">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          class="text-white"
-        >
-          <path
-            fill="currentColor"
-            d="m12 13.4l-2.917 2.925q-.277.275-.704.275t-.704-.275q-.275-.275-.275-.7t.275-.7L10.6 12L7.675 9.108Q7.4 8.831 7.4 8.404t.275-.704q.275-.275.7-.275t.7.275L12 10.625L14.892 7.7q.277-.275.704-.275t.704.275q.3.3.3.713t-.3.687L13.375 12l2.925 2.917q.275.277.275.704t-.275.704q-.3.3-.712.3t-.688-.3z"
-          />
-        </svg>
-      </div>
+        </div>
+
+        <div class="ptable-item__grid">
+          <label class="ptable-field">
+            <span>Ilość</span>
+            <el-input-number v-model="item.quantity" :min="1" controls-position="right" />
+          </label>
+          <label class="ptable-field">
+            <span>Cena netto</span>
+            <el-input-number v-model="item.priceNetto" :min="0" :step="0.01" :precision="2" controls-position="right" />
+          </label>
+          <label class="ptable-field">
+            <span>Cena producenta</span>
+            <el-input-number v-model="item.producerPriceNetto" :min="0" :step="0.01" :precision="2" controls-position="right" />
+          </label>
+          <label class="ptable-field">
+            <span>VAT</span>
+            <el-input :model-value="`${item.tax || 23}%`" disabled />
+          </label>
+          <label class="ptable-field">
+            <span>Wartość netto</span>
+            <el-input-number v-model="item.totalPriceNetto" :min="0" :step="0.01" :precision="2" controls-position="right" />
+          </label>
+          <label class="ptable-field">
+            <span>Wartość brutto</span>
+            <el-input-number v-model="item.totalPriceGross" :min="0" :step="0.01" :precision="2" controls-position="right" />
+          </label>
+        </div>
+
         <div
-          class="h-[auto] col-span-11"
-          v-if="activeRowIndex === index && filterSearchProduct.SearchString.length > 0"
+          v-if="activeRowIndex === index && searchProduct.length > 0 && !item.name"
+          class="ptable-search-results"
         >
-          <ul class="bg-gray-200 w-full max-h-[300px] p-5 overflow-auto">
-            <li
-              v-for="product in productsList"
-              :key="product.id"
-              @click="addProductToListHandle(product, index)"
-              class="cursor-pointer hover:bg-gray-300 p-2"
-            >
-              <div class="flex">
-                <img :src="product.filePath" class="w-[35px] h-[35px]" />
-                <span class="my-auto text-[13px] ml-2">{{ product.name }}</span>
-              </div>
-            </li>
-          </ul>
+          <button
+            v-for="product in productsList"
+            :key="product.id"
+            type="button"
+            class="ptable-search-result"
+            @click="addProductToListHandle(product, index)"
+          >
+            <img v-if="product.filePath" :src="product.filePath" alt="" />
+            <div class="ptable-search-result__text">
+              <strong>{{ product.name }}</strong>
+              <span>{{ product.identificationCode || '—' }} · {{ formatMoney(product.priceNetto) }} netto</span>
+              <span v-if="product.shippingRule" class="ptable-search-result__rule">
+                {{ product.shippingRule.name }}
+              </span>
+            </div>
+          </button>
+          <div v-if="!productsList.length" class="ptable-search-results__empty">Brak wyników wyszukiwania</div>
+        </div>
+      </article>
+    </div>
+
+    <div class="ptable__footer">
+      <div class="ptable-shipping">
+        <div class="ptable-shipping__head">
+          <h3>Transport i wysyłka</h3>
+          <p>{{ itemsWithShippingRules }} poz. z regułą / transportem</p>
+        </div>
+        <div class="ptable-shipping__actions">
+          <el-checkbox v-model="transportIndividualPricing" label="Transport do indywidualnej wyceny" />
+          <el-button type="primary" :icon="Van" @click="calculateShipping">Policz transport</el-button>
+        </div>
+        <div class="ptable-shipping__inputs">
+          <label class="ptable-field">
+            <span>Dostawa netto</span>
+            <el-input-number
+              v-model="shippingNetto"
+              :min="0"
+              :step="0.01"
+              :precision="2"
+              controls-position="right"
+              @change="updateShippingValues('netto')"
+            />
+          </label>
+          <label class="ptable-field">
+            <span>Dostawa brutto</span>
+            <el-input-number
+              v-model="shippingBrutto"
+              :min="0"
+              :step="0.01"
+              :precision="2"
+              controls-position="right"
+              @change="updateShippingValues('brutto')"
+            />
+          </label>
         </div>
       </div>
-      <el-button @click="addNewItem" type="primary" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Dodaj pozycję</el-button>
-      <el-button @click="addCustomItem" type="success" class="mt-4 px-4">Dodaj pozycję własną</el-button>
-      <div class="flex gap-4 justify-end w-[1/1]">
-        <div class="mt-12 check_box_offer">
-          <FormKit
-            type="checkbox"
-            label="Tranport do indywidualnej wyceny"
-            help=""
-            v-model="transportIndividualPricing"
-            :value="false"
-          />
+
+      <div class="ptable-summary">
+        <div class="ptable-summary__row">
+          <span>Koszt towaru (netto)</span>
+          <strong>{{ formatMoney(totalNetto) }}</strong>
         </div>
-          <el-button class="mt-12" type="primary" round @click="calculateShipping">Policz transport</el-button>
-          <FormKit
-            label="Dostawa (netto)"
-            :classes="{ outer: '!mt-7 offer_input' }"
-            type="number"
-            step="0.01"
-            v-model="shippingNetto"
-            @blur="updateShippingValues('netto')"
-          />
-          <FormKit
-            label="Dostawa (brutto)"
-            :classes="{ outer: '!mt-7 offer_input' }"
-            type="number"
-            step="0.01"
-            v-model="shippingBrutto"
-            @blur="updateShippingValues('brutto')"
-          />
-      </div>
-      <div class="block gap-4 w-full text-[12.5px] border-t border-gray-300 mt-3 text-end">
-        <div class="mb-2 mt-4">
-          <div class="flex justify-end">
-            <div class="w-[400px] flex justify-between mb-2 pb-1">
-              <span class="font-bold text-left w-[50%]">Koszt towaru (netto):</span>
-              <span class="font-semibold">{{ totalNetto }}</span>
-              <span class="font-semibold w-1/3">PLN</span>
-            </div>
-          </div>
-          <div class="flex justify-end">
-            <div class="w-[400px] flex justify-between mb-2 border-b pb-3">
-              <span class="font-bold text-left w-[50%]">Koszt towaru (brutto):</span>
-              <span class="font-semibold">{{ totalBrutto }}</span>
-              <span class="font-semibold w-1/3">PLN</span>
-            </div>
-          </div>
+        <div class="ptable-summary__row">
+          <span>Koszt towaru (brutto)</span>
+          <strong>{{ formatMoney(totalBrutto) }}</strong>
         </div>
-        <div class="flex justify-end">
-          <div class="w-[400px] flex justify-between mb-2 pb-1">
-            <span class="font-bold text-left w-[50%]">Wysyłka (netto):</span>
-            <span class="font-semibold">{{ shippingNetto }}</span>
-            <span class="font-semibold w-1/3">PLN</span>
-          </div>
+        <div class="ptable-summary__row">
+          <span>Wysyłka (netto)</span>
+          <strong>{{ formatMoney(shippingNetto) }}</strong>
         </div>
-        <div class="flex justify-end">
-          <div class="w-[400px] flex justify-between mb-2 border-b pb-3">
-            <span class="font-bold text-left w-[50%]">Wysyłka (brutto):</span>
-            <span class="font-semibold">{{ shippingBrutto }}</span>
-            <span class="font-semibold w-1/3">PLN</span>
-          </div>
+        <div class="ptable-summary__row">
+          <span>Wysyłka (brutto)</span>
+          <strong>{{ formatMoney(shippingBrutto) }}</strong>
         </div>
-        <div class="flex justify-end">
-          <div class="w-[400px] flex justify-between mb-2 border-b pb-3">
-            <span class="font-bold text-left w-[50%]">Suma (brutto):</span>
-            <span class="font-semibold">{{ totalSumBrutto }}</span>
-            <span class="font-semibold w-1/3">PLN</span>
-          </div>
+        <div class="ptable-summary__row ptable-summary__row--total">
+          <span>Suma brutto</span>
+          <strong>{{ formatMoney(totalSumBrutto) }}</strong>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.ptable {
+  margin-top: 20px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.ptable__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.ptable__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ptable__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.ptable__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ptable__empty {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.ptable__empty-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.ptable__empty h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.ptable__empty p {
+  margin: 0 0 16px;
+  color: #64748b;
+}
+
+.ptable__empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ptable__items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.ptable-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.ptable-item--custom {
+  border-color: #fde68a;
+  background: linear-gradient(180deg, #fff 0%, #fffbeb 100%);
+}
+
+.ptable-item__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ptable-item__identity {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ptable-item__thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.ptable-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ptable-item__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.ptable-item__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.ptable-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ptable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ptable-badge--sku {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ptable-badge--rule {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.ptable-badge--ship {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.ptable-badge--discount {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.ptable-badge--custom {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ptable-badge--muted {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.ptable-item__custom-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ptable-item__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ptable-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ptable-field > span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.ptable-search-results {
+  margin-top: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.ptable-search-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ptable-search-result:hover {
+  background: #eef2ff;
+}
+
+.ptable-search-result img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.ptable-search-result__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ptable-search-result__text strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.ptable-search-result__text span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.ptable-search-result__rule {
+  color: #0e7490 !important;
+}
+
+.ptable-search-results__empty {
+  padding: 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.ptable__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.ptable-shipping,
+.ptable-summary {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+}
+
+.ptable-shipping__head h3,
+.ptable-summary__row--total span {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ptable-shipping__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ptable-shipping__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.ptable-shipping__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ptable-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ptable-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.ptable-summary__row strong {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.ptable-summary__row--total {
+  border-bottom: none;
+  padding: 10px 12px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  font-size: 15px;
+}
+
+.ptable-summary__row--total strong {
+  font-size: 20px;
+  color: #1d4ed8;
+}
+
+@media (max-width: 1100px) {
+  .ptable-item__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ptable__footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ptable__head {
+    flex-direction: column;
+  }
+
+  .ptable-item__custom-row,
+  .ptable-item__grid,
+  .ptable-shipping__inputs {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

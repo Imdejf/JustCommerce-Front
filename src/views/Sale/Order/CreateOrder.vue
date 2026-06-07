@@ -74,6 +74,7 @@ const currentOrder = ref<any>({
   },
 
   products: [],
+  transportIndividualPricing: false,
   orderNoteForClient: '',
   orderNoteForCustomer: '',
   orderNoteOnInvoice: '',

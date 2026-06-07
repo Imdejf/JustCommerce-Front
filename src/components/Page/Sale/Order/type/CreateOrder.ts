@@ -78,7 +78,8 @@ export enum OrderSourceType {
     Offer = 2,
     Phone = 3,
     Chat = 4,
-    Email = 5
+    Email = 5,
+    Allegro = 6
 }
 
 export enum PaymentStatus {

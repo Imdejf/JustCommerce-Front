@@ -54,8 +54,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <header></header>
-  <main class="text-[#e0e8f0] bg-[#e0e8f0] h-[100vh]">
+  <main class="text-[#e0e8f0] bg-[#e0e8f0] min-h-screen">
     <!-- Sidebar Container -->
       <!-- Transparent Background -->
     <div v-if="useOffer.currentOffer !== null" class="absolute inset-0 bg-gray-300 opacity-60 w-full z-50"></div>
@@ -94,7 +93,7 @@ onMounted(async () => {
         </div>
       </div>
     <component :is="$route.meta.layout || 'div'">
-      <router-view></router-view>
+      <router-view />
     </component>
   </main>
 </template>
