@@ -16,6 +16,7 @@ const props = defineProps({
 const invoicePurchasePaths = ref<string[]>([])
 const invoicePath = ref<string | null>(null)
 const proformaPath = ref<string | null>(null)
+const sendingPaymentLink = ref(false)
 
 const billingEditing = ref(false)
 const shippingEditing = ref(false)
@@ -190,6 +191,32 @@ const generateProforma = async () => {
   }
 }
 
+const canSendPaymentLink = () => {
+  if (!props.order) return false
+  if (props.order.isPaid || props.order.paymentStatus === 20) return false
+  if (props.order.paymentProvider === 2) return false
+  return true
+}
+
+const sendPaymentLinkEmail = async () => {
+  if (!props.order?.id) return
+  sendingPaymentLink.value = true
+  try {
+    const result = await Api.orders.sendPaymentLink(props.order.id)
+    const paymentUrl = result?.data ?? result
+    if (paymentUrl && typeof paymentUrl === 'string') {
+      toast.success('Wysłano e-mail z linkiem Przelewy24 i proformą')
+    } else {
+      toast.success('Wysłano e-mail z linkiem płatności i proformą')
+    }
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się wysłać linku płatności')
+  } finally {
+    sendingPaymentLink.value = false
+  }
+}
+
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
   if (!file) return
@@ -332,6 +359,13 @@ onMounted(initFormsFromOrder)
           class="bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold py-1 px-4 rounded"
         >
           Wyślij proformę
+        </button>
+        <button
+          @click="sendPaymentLinkEmail"
+          :disabled="!canSendPaymentLink() || sendingPaymentLink"
+          class="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-1 px-4 rounded"
+        >
+          {{ sendingPaymentLink ? 'Wysyłam...' : 'Wyślij link P24 + proforma' }}
         </button>
         <div v-if="proformaPath" class="flex items-center gap-2">
           <a :href="proformaPath" target="_blank" class="text-blue-600 underline text-sm">Zobacz proformę</a>

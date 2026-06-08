@@ -289,6 +289,21 @@ const uploadOrderAttachment = (payload) => {
   })
 }
 
+const sendPaymentLink = async (orderId) => {
+  const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}/send-payment-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  })
+
+  if (!response.ok) {
+    const msg = await response.text().catch(() => '')
+    throw new Error(msg || `HTTP error! Status: ${response.status}`)
+  }
+
+  return response.json()
+}
+
 const removeOrderAttachment = (payload) => {
   return fetch(`${APISettings.baseURL}administration/order/RemoveOrderAttachment`, {
     method: 'DELETE',
@@ -323,5 +338,6 @@ export const orders = {
   updateOrderBillingAndShipping,
   uploadOrderAttachment,
   removeOrderAttachment,
+  sendPaymentLink,
   ...CreateBaseApiService('administration/order')
 }
