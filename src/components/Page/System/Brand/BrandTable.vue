@@ -7,18 +7,23 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
+const loading = ref(false)
+
 const tableColumns = [
-  { prop: 'name', label: 'Name' },
-  { prop: 'isPublished', label: 'Aktywny' }
+  { prop: 'name', label: 'Producent' },
+  { prop: 'isPublished', label: 'Status', type: 'boolean' }
 ]
 
-const brands = ref([])
+const brands = ref<any>({ items: [] })
 
 onMounted(async () => {
+  loading.value = true
   try {
     brands.value = await Api.brands.filterList(cookies.get('dsStore'), '', 1, 999)
   } catch (error) {
     console.error(error)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -28,9 +33,17 @@ const handleAdd = () => {
 </script>
 
 <template>
-  <DataTable :dataTable="brands?.items" :columns="tableColumns" :link="'/system/brand/detail'">
+  <DataTable
+    :data-table="brands?.items"
+    :columns="tableColumns"
+    :link="'/system/brand/detail'"
+    title="Producenci"
+    subtitle="Lista marek i producentów przypisanych do produktów."
+    search-placeholder="Szukaj producenta..."
+    :loading="loading"
+  >
     <template #topbar>
-      <el-button @click="handleAdd" type="primary" round>Dodaj</el-button>
+      <el-button type="primary" @click="handleAdd">Dodaj producenta</el-button>
     </template>
   </DataTable>
 </template>

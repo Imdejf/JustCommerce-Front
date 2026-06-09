@@ -7,22 +7,26 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
+const loading = ref(false)
 
 const tableColumns = [
-  { prop: 'warehouseName', label: 'Nazwa magazynu' },
+  { prop: 'warehouseName', label: 'Magazyn' },
   { prop: 'city', label: 'Miasto' },
-  { prop: 'isPublished', label: 'Aktywny' }
+  { prop: 'isPublished', label: 'Status', type: 'boolean' }
 ]
 
 const warehouses = ref<any[]>([])
 
 onMounted(async () => {
+  loading.value = true
   try {
     const storeId = cookies.get('dsStore')
-    var result = await Api.brands.getAllWarehouseBrand(storeId)
+    const result = await Api.brands.getAllWarehouseBrand(storeId)
     warehouses.value = result?.data ?? []
   } catch (error) {
     console.error(error)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -33,14 +37,16 @@ const handleAdd = () => {
 
 <template>
   <DataTable
-    :dataTable="warehouses"
+    :data-table="warehouses"
     :columns="tableColumns"
     :link="'/system/warehousebrand/detail'"
+    title="Magazyny"
+    subtitle="Magazyny powiązane z producentami i dostępnością towaru."
+    search-placeholder="Szukaj magazynu lub miasta..."
+    :loading="loading"
   >
     <template #topbar>
-      <el-button @click="handleAdd" type="primary" round>
-        Dodaj magazyn
-      </el-button>
+      <el-button type="primary" @click="handleAdd">Dodaj magazyn</el-button>
     </template>
   </DataTable>
 </template>

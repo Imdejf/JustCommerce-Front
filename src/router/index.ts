@@ -390,6 +390,14 @@ const router = createRouter({
       },
       component: route => import(`../views/Sale/Order/EditOrder.vue`)
     },
+    {
+      path: '/sale/notifications',
+      name: 'CustomerNotifications',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Sale/Notifications/index.vue')
+    },
     //COURIER
     {
       path: '/courier/orders',
@@ -449,6 +457,14 @@ const router = createRouter({
         layout: PageLayout
       },
       component: () => import('../views/Tracking/User/index.vue')
+    },
+    {
+      path: '/tracking/pages',
+      name: 'TrackingPages',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Tracking/Pages/index.vue')
     },
     //OFFER
     {

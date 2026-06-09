@@ -143,7 +143,16 @@
           </el-button>
           <el-button :icon="Edit" :disabled="!selectedRow" @click="editSelectedRecord">Edytuj</el-button>
           <el-button :icon="View" :disabled="!selectedRow" @click="showOrderHandle">Podgląd</el-button>
-          <el-button :icon="Document" :disabled="!selectedRow" @click="invoiceGenerate">Faktura</el-button>
+          <el-button
+            :icon="Document"
+            :disabled="!selectedRow || !canGenerateInvoice(selectedRow)"
+            @click="invoiceGenerate"
+          >
+            Generuj fakturę
+          </el-button>
+          <el-button :icon="DocumentCopy" @click="bulkInvoiceModalOpen = true">
+            Generuj wszystkie faktury
+          </el-button>
           <el-button :icon="FolderAdd" :disabled="!selectedRow" @click="openExistingInvoiceModal">Dodaj fakturę</el-button>
         </div>
         <span class="list-toolbar__hint">Kliknij wiersz, aby zaznaczyć · dwuklik — podgląd</span>
@@ -324,6 +333,22 @@
                       <el-icon><View /></el-icon>
                     </button>
                   </el-tooltip>
+                  <el-tooltip :content="invoiceGenerateTooltip(row)" placement="top">
+                    <button
+                      type="button"
+                      class="quick-btn"
+                      :class="{ 'quick-btn--disabled': !canGenerateInvoice(row) }"
+                      :disabled="!canGenerateInvoice(row)"
+                      @click="invoiceGenerateForRow(row)"
+                    >
+                      <el-icon><Document /></el-icon>
+                    </button>
+                  </el-tooltip>
+                  <el-tooltip :content="shipmentTooltip(row)" placement="top">
+                    <button type="button" class="quick-btn quick-btn--package" @click="openShipmentModal(row)">
+                      <IconPackagePlus class="quick-btn__svg" />
+                    </button>
+                  </el-tooltip>
                 </div>
               </div>
 
@@ -362,6 +387,12 @@
                         <li><strong>Proforma</strong> {{ row.proformaNumber || '—' }}</li>
                       </ul>
                     </section>
+                  </div>
+
+                  <div class="detail-actions">
+                    <RouterLink :to="`/sale/notifications?orderId=${row.id}`" class="detail-actions__link">
+                      Powiadomienia klienta dla tego zamówienia
+                    </RouterLink>
                   </div>
 
                   <div v-if="row.orderNote" class="detail-note">
@@ -421,6 +452,18 @@
         />
       </div>
     </el-card>
+
+    <BulkInvoicePreviewModal
+      v-model:visible="bulkInvoiceModalOpen"
+      :store-id="filter.storeId ? String(filter.storeId) : null"
+      @completed="fetchTableData"
+    />
+
+    <OrderShipmentModal
+      v-model:visible="shipmentModalOpen"
+      :order="shipmentModalOrder"
+      @saved="fetchTableData"
+    />
   </div>
 </template>
 
@@ -437,10 +480,14 @@ import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
 import { useOrderStore } from '/@/stores/order'
 import { useInvoiceStore } from '/@/stores/invoice'
+import BulkInvoicePreviewModal from '/@/components/Form/Modal/BulkInvoicePreviewModal.vue'
+import OrderShipmentModal from '/@/components/Form/Modal/OrderShipmentModal.vue'
+import IconPackagePlus from '/@/components/Icons/IconPackagePlus.vue'
 import {
   ArrowDown,
   ArrowRight,
   Document,
+  DocumentCopy,
   Edit,
   Filter,
   FolderAdd,
@@ -539,6 +586,9 @@ const selectedRowId = ref<string | null>(null)
 const expandedOrderId = ref<string | null>(null)
 const invoiceStore = useInvoiceStore()
 const order = useOrderStore()
+const bulkInvoiceModalOpen = ref(false)
+const shipmentModalOpen = ref(false)
+const shipmentModalOrder = ref<any>(null)
 const loading = ref(false)
 const filtersOpen = ref(false)
 const isSyncingFromRoute = ref(false)
@@ -825,18 +875,69 @@ const editSelectedRecord = () => {
   }
 }
 
+const isOrderShipped = (row: any) => {
+  if (!row) return false
+  if (row.isShipped === true) return true
+  return row.orderStatus === OrderStatus.Shipped
+    || row.orderStatus === OrderStatus.Complete
+    || row.orderStatus === OrderStatus.Closed
+}
+
+const canGenerateInvoice = (row: any) => {
+  if (!row) return false
+  if (!isOrderShipped(row)) return false
+  if (row.invoiceType === 0 || row.invoiceType === 2) return false
+  if (row.sendInvoice && row.invoiceType !== 1) return false
+
+  if (row.payment === PaymentProvider.Term) return true
+  if (row.payment === PaymentProvider.CashOnDelivery) return row.isPaid === true
+  return row.isPaid === true
+}
+
+const invoiceGenerateTooltip = (row: any) => {
+  if (!row) return 'Generuj fakturę'
+  if (!isOrderShipped(row)) return 'Zamówienie musi być wysłane'
+  if (row.payment === PaymentProvider.CashOnDelivery && !row.isPaid) return 'Pobranie — wymagana opłata'
+  if (row.payment !== PaymentProvider.Term && !row.isPaid) return 'Zamówienie musi być opłacone'
+  if (!canGenerateInvoice(row)) return 'Faktura została już wystawiona'
+  return 'Generuj fakturę'
+}
+
+const invoiceGenerateForRow = async (row: any) => {
+  selectOrder(row)
+  await invoiceGenerate()
+}
+
+const shipmentTooltip = (row: any) =>
+  isAllegroOrder(row)
+    ? 'Dodaj numer przesyłki do Allegro'
+    : 'Dodaj numer przesyłki'
+
+const openShipmentModal = (row: any) => {
+  selectOrder(row)
+  shipmentModalOrder.value = row
+  shipmentModalOpen.value = true
+}
+
 const invoiceGenerate = async () => {
   if (!selectedRow.value) {
     toast.warning('Wybierz zamówienie')
     return
   }
 
-  if (!selectedRow.value.isPaid) {
-    toast.warning('Zamówienie musi być opłacone')
+  const reason = invoiceGenerateTooltip(selectedRow.value)
+  if (!canGenerateInvoice(selectedRow.value)) {
+    toast.warning(reason)
     return
   }
 
-  await Api.invoices.createInvoice(selectedRow.value.id)
+  try {
+    await Api.invoices.createInvoice(selectedRow.value.id)
+    toast.success('Faktura została wygenerowana')
+    await fetchTableData()
+  } catch (error: any) {
+    toast.error(error?.message || 'Nie udało się wygenerować faktury')
+  }
 }
 
 const formatPrice = (value: number | string | null | undefined) => {
@@ -1856,6 +1957,31 @@ onMounted(async () => {
   color: #1d4ed8;
 }
 
+.quick-btn--disabled,
+.quick-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.quick-btn--disabled:hover,
+.quick-btn:disabled:hover {
+  background: #fff;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.quick-btn--package:hover {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.quick-btn__svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
 .order-card__detail {
   padding: 0 14px 14px;
   border-top: 1px solid var(--el-border-color-extra-light);
@@ -1906,6 +2032,20 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-right: 6px;
+}
+
+.detail-actions {
+  margin: 0 0 12px;
+}
+
+.detail-actions__link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.detail-actions__link:hover {
+  text-decoration: underline;
 }
 
 .detail-note {

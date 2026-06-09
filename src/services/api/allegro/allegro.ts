@@ -218,6 +218,11 @@ const getProductImages = (productId: string) =>
 
 // ORDERS
 
+const getOrderByLocalOrderId = (localOrderId: string) =>
+  request(`${baseUrl}/orders/by-local-order/${localOrderId}`, {
+    method: 'GET'
+  })
+
 const getOrderShipments = (checkoutFormId: string) =>
   request(`${baseUrl}/orders/${checkoutFormId}/shipments`, {
     method: 'GET'
@@ -591,6 +596,7 @@ export const allegro = {
   getPublicationCommandTasks,
   syncOffersFromAllegro,
 
+  getOrderByLocalOrderId,
   getOrderShipments,
   addOrderShipment,
   updateOrderFulfillment,

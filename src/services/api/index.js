@@ -11,6 +11,7 @@ import { postBlogs } from './managerContent/postBlog'
 import { brands } from './product/brands'
 import { rules } from './system/rule'
 import { orders } from './sale/order'
+import { customerNotifications } from './sale/customerNotifications'
 import { shipping } from './sale/shipping'
 import { offers } from './sale/offer'
 import { users } from './user/user'
@@ -38,6 +39,7 @@ export const Api = {
   rules,
   brands,
   orders,
+  customerNotifications,
   shipping,
   users,
   invoices,

@@ -6,21 +6,24 @@ import DataTable from '/@/components/Form/DataTable/DataTable.vue'
 import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
-
 const router = useRouter()
+const loading = ref(false)
+
 const tableColumns = [
-  { prop: 'name', label: 'Name' },
-  { prop: 'slug', label: 'Slug' }
+  { prop: 'name', label: 'Tytuł' },
+  { prop: 'slug', label: 'Slug', type: 'slug' }
 ]
 
-const postBlogs = ref([])
+const postBlogs = ref<any>({ items: [] })
 
 onMounted(async () => {
+  loading.value = true
   try {
-    postBlogs.value = await Api.postBlogs.filterList(cookies.get('dsStore'), '', 1, 100)
-
+    postBlogs.value = await Api.postBlogs.filterList(cookies.get('dsStore'), '', 1, 999)
   } catch (error) {
     console.error(error)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -31,12 +34,16 @@ const handleAdd = () => {
 
 <template>
   <DataTable
-    :dataTable="postBlogs?.items"
+    :data-table="postBlogs?.items"
     :columns="tableColumns"
     :link="'/manager-content/post-blogs/detail'"
+    title="Posty blog"
+    subtitle="Lista artykułów i wpisów publikowanych w blogu."
+    search-placeholder="Szukaj po tytule lub slugu..."
+    :loading="loading"
   >
     <template #topbar>
-      <el-button @click="handleAdd" type="primary" round>Dodaj</el-button>
+      <el-button type="primary" @click="handleAdd">Dodaj post</el-button>
     </template>
   </DataTable>
 </template>

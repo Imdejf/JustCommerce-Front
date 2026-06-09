@@ -149,6 +149,73 @@ const saveBillingAndShipping = async () => {
   }
 }
 
+const PaymentProvider = {
+  Przelewy24: 0,
+  StandardTransfer: 1,
+  CashOnDelivery: 2,
+  PayPo: 3,
+  Blik: 4,
+  Term: 5,
+  Allegro: 6
+}
+
+const OrderStatus = {
+  Shipped: 30,
+  Complete: 40,
+  Closed: 70
+}
+
+const isOrderShipped = () => {
+  if (!props.order) return false
+  if (props.order.isShipped === true) return true
+  return props.order.orderStatus === OrderStatus.Shipped
+    || props.order.orderStatus === OrderStatus.Complete
+    || props.order.orderStatus === OrderStatus.Closed
+}
+
+const canGenerateInvoice = () => {
+  if (!props.order) return false
+  if (!isOrderShipped()) return false
+  if (props.order.invoiceType === 0 || props.order.invoiceType === 2) return false
+  if (props.order.sendInvoice && props.order.invoiceType !== 1) return false
+  if (props.order.paymentProvider === PaymentProvider.Term) return true
+  if (props.order.paymentProvider === PaymentProvider.CashOnDelivery) return props.order.isPaid === true
+  return props.order.isPaid === true
+}
+
+const generateInvoice = async () => {
+  if (!canGenerateInvoice()) {
+    if (!isOrderShipped()) {
+      toast.warning('Zamówienie musi być wysłane')
+      return
+    }
+    if (props.order.paymentProvider === PaymentProvider.CashOnDelivery && !props.order.isPaid) {
+      toast.warning('Zamówienie za pobraniem musi być opłacone')
+      return
+    }
+    if (props.order.paymentProvider !== PaymentProvider.Term && !props.order.isPaid) {
+      toast.warning('Zamówienie musi być opłacone')
+      return
+    }
+    toast.warning('Faktura została już wystawiona')
+    return
+  }
+
+  try {
+    await Api.invoices.createInvoice(props.order.id)
+    const refreshed = await Api.orders.get(props.order.id)
+    const orderData = refreshed.data ?? refreshed
+    props.order.invoicePath = orderData.invoicePath
+    props.order.sendInvoice = orderData.sendInvoice
+    props.order.invoiceType = orderData.invoiceType
+    props.order.invoiceNumber = orderData.invoiceNumber
+    invoicePath.value = props.order.invoicePath || null
+    toast.success('Faktura została wygenerowana')
+  } catch (error: any) {
+    toast.error(error?.message || 'Nie udało się wygenerować faktury')
+  }
+}
+
 const sendInvoice = async () => {
   await Api.invoices.sendInvoice(props.order.id)
 }
@@ -534,6 +601,13 @@ onMounted(initFormsFromOrder)
       <div class="flex gap-4 mt-5">
         <div class="w-1/2 border rounded shadow p-4 flex flex-col gap-4">
           <h2 class="text-lg font-semibold mb-2">Faktura sprzedażowa</h2>
+          <button
+            @click="generateInvoice()"
+            :disabled="!canGenerateInvoice()"
+            class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-1 px-4 rounded"
+          >
+            Generuj fakturę
+          </button>
           <button @click="sendInvoice()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-4 rounded">
             Wyślij fakturę
           </button>

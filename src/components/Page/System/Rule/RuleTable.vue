@@ -7,18 +7,23 @@ import { useRouter } from 'vue-router'
 
 const cookies = new Cookies()
 const router = useRouter()
+const loading = ref(false)
+
 const tableColumns = [
-  { prop: 'name', label: 'Name' },
-  { prop: 'active', label: 'Aktywny' }
+  { prop: 'name', label: 'Nazwa reguły' },
+  { prop: 'active', label: 'Status', type: 'boolean' }
 ]
 
-const rules = ref([])
+const rules = ref<any>({ items: [] })
 
 onMounted(async () => {
+  loading.value = true
   try {
     rules.value = await Api.rules.filterList(cookies.get('dsStore'), '', 1, 999)
   } catch (error) {
     console.error(error)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -28,9 +33,17 @@ const handleAdd = () => {
 </script>
 
 <template>
-  <DataTable :dataTable="rules?.items" :columns="tableColumns" :link="'/system/rule/detail'">
+  <DataTable
+    :data-table="rules?.items"
+    :columns="tableColumns"
+    :link="'/system/rule/detail'"
+    title="Reguły systemowe"
+    subtitle="Konfiguracja reguł biznesowych i automatyzacji w sklepie."
+    search-placeholder="Szukaj reguły..."
+    :loading="loading"
+  >
     <template #topbar>
-      <el-button @click="handleAdd" type="primary" round>Dodaj</el-button>
+      <el-button type="primary" @click="handleAdd">Dodaj regułę</el-button>
     </template>
   </DataTable>
 </template>

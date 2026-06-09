@@ -15,6 +15,10 @@ export const menuData: MenuItem[] = [
         route: "/sale/order"
       },
       {
+        name: "Powiadomienia klientów",
+        route: "/sale/notifications"
+      },
+      {
         name: "Wysyłki",
         route: "/sale/shipment"
       },
@@ -153,7 +157,7 @@ export const menuData: MenuItem[] = [
       },
       {
         name: "Strony",
-        route: "/tracking/user"
+        route: "/tracking/pages"
       }
     ]
   }
