@@ -18,7 +18,61 @@ export interface DescriptionTemplate {
   slots: DescriptionTemplateSlot[]
 }
 
+export const ALLEGRO_DESCRIPTION_TEMPLATE_ID = 'allegro-params-then-sales-5'
+
 export const DESCRIPTION_TEMPLATES: DescriptionTemplate[] = [
+  {
+    id: ALLEGRO_DESCRIPTION_TEMPLATE_ID,
+    name: 'Allegro: PARAMETRY PRODUKTU + 5 sekcji sprzedażowych',
+    description:
+      'Sekcja 1: lista parametrów z ✅. Następnie 5 sekcji opisowych jak od specjalisty sprzedaży B2B.',
+    slots: [
+      {
+        layout: 'text-only',
+        label: 'PARAMETRY PRODUKTU',
+        purpose: `Wygeneruj sekcję z nagłówkiem <h2><strong>PARAMETRY PRODUKTU</strong></h2>.
+Każdy parametr w osobnym akapicie <p>✅ Nazwa parametru: wartość</p>.
+Wyciągnij parametry ze specyfikacji, strony produktu i danych wejściowych.
+Minimum 8–12 parametrów jeśli dane pozwalają. Używaj polskich nazw parametrów.`,
+        headingHint: 'PARAMETRY PRODUKTU'
+      },
+      {
+        layout: 'text-only',
+        label: 'Wprowadzenie sprzedażowe',
+        purpose:
+          '2–3 akapity wprowadzające produkt. Pisz jak doświadczony handlowiec B2B – konkretnie, profesjonalnie, pod klienta indywidualnego i firmowego. Bez lania wody.',
+        headingHint: 'Dlaczego ten produkt?'
+      },
+      {
+        layout: 'text-only',
+        label: 'Zastosowanie i korzyści',
+        purpose:
+          'Opisz praktyczne zastosowania, scenariusze użycia i korzyści dla kupującego. Ton ekspercki, sprzedażowy, bez kopiowania 1:1 ze strony sklepu.',
+        headingHint: 'Zastosowanie w praktyce'
+      },
+      {
+        layout: 'text-only',
+        label: 'Konstrukcja i jakość',
+        purpose:
+          'Opisz materiały, wykonanie, trwałość i elementy konstrukcyjne. Podkreśl solidność i jakość widoczną w specyfikacji.',
+        headingHint: 'Konstrukcja i jakość wykonania'
+      },
+      {
+        layout: 'text-only',
+        label: 'Wygoda i ergonomia',
+        purpose:
+          'Opisz ergonomię, komfort użytkowania, mobilność i praktyczne detale codziennego użytkowania.',
+        headingHint: 'Wygoda użytkowania'
+      },
+      {
+        layout: 'text-only',
+        label: 'Zachęta do zakupu',
+        purpose:
+          'Krótka sekcja zamykająca – podsumuj najważniejsze atuty i zachęć do zakupu. Bez słowa „podsumowanie”. Naturalny, profesjonalny ton.',
+        headingHint: 'Wybierz sprawdzoną jakość'
+      }
+    ]
+  },
   {
     id: 'intro-alternating-spec-5',
     name: 'Wstęp + zdjęcia na przemian + specyfikacja ✅',

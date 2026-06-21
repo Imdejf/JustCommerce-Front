@@ -45,6 +45,21 @@ const getAccountStatus = () =>
     method: 'GET'
   })
 
+const getStatistics = (query: { from: string; to: string; sandbox?: boolean | null }) => {
+  const params = new URLSearchParams()
+
+  params.set('From', query.from)
+  params.set('To', query.to)
+
+  if (query.sandbox !== null && query.sandbox !== undefined) {
+    params.set('Sandbox', String(query.sandbox))
+  }
+
+  return request(`${baseUrl}/statistics?${params.toString()}`, {
+    method: 'GET'
+  })
+}
+
 const disconnectAccount = () =>
   request(`${baseUrl}/account`, {
     method: 'DELETE'
@@ -550,6 +565,7 @@ export const allegro = {
   refreshToken,
   getAccount,
   getAccountStatus,
+  getStatistics,
   disconnectAccount,
 
   getCategories,

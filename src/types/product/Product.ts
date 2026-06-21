@@ -43,6 +43,7 @@ export interface ProductDTO {
     options: ProductOptionDTO[];
     productOptionCombinations: ProductOptionCombinationDTO[];
     variations: ProductVariationDTO[];
+    categoryIds: string[];
     attributes: ProductAttributeDTO[]
   }
   

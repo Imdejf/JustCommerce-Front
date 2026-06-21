@@ -134,6 +134,71 @@
           </section>
         </div>
 
+        <div class="cosmos-dash__kpi mt-4">
+          <div class="cosmic-card cosmic-card--revenue">
+            <div class="cosmic-card__stars" />
+            <div class="cosmic-card__content">
+              <div class="cosmic-card__head">
+                <span class="cosmic-card__label">Allegro przychód</span>
+                <span class="cosmic-card__glyph">A</span>
+              </div>
+              <div class="cosmic-card__value cosmic-card__value--money">{{ money(allegroKpi.revenue) }}</div>
+              <div class="cosmic-card__foot">{{ allegroKpi.ordersCount }} zamówień · produkty {{ money(allegroKpi.productsRevenue) }}</div>
+              <v-chart class="cosmic-card__chart" :option="allegroRevenueSparkOption" autoresize />
+            </div>
+          </div>
+
+          <div class="cosmic-card cosmic-card--profit">
+            <div class="cosmic-card__stars" />
+            <div class="cosmic-card__content">
+              <div class="cosmic-card__head">
+                <span class="cosmic-card__label">Allegro zysk netto</span>
+                <span class="cosmic-card__glyph">✦</span>
+              </div>
+              <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(allegroKpi.netProfit) }}</div>
+              <div class="cosmic-card__foot">marża {{ percent(allegroKpi.marginPct) }} · koszt {{ moneyNet(allegroKpi.productCost) }}</div>
+              <v-chart class="cosmic-card__chart" :option="allegroProfitSparkOption" autoresize />
+            </div>
+          </div>
+
+          <div class="cosmic-card cosmic-card--orders">
+            <div class="cosmic-card__stars" />
+            <div class="cosmic-card__content">
+              <div class="cosmic-card__head">
+                <span class="cosmic-card__label">Allegro prowizje</span>
+                <span class="cosmic-card__glyph">%</span>
+              </div>
+              <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(allegroKpi.commission) }}</div>
+              <div class="cosmic-card__foot">wszystkie opłaty {{ moneyNet(allegroKpi.totalFees) }}</div>
+              <v-chart class="cosmic-card__chart" :option="allegroCommissionSparkOption" autoresize />
+            </div>
+          </div>
+
+          <div class="cosmic-card cosmic-card--ops">
+            <div class="cosmic-card__stars" />
+            <div class="cosmic-card__content">
+              <div class="cosmic-card__head">
+                <span class="cosmic-card__label">Allegro AOV</span>
+                <span class="cosmic-card__glyph">◈</span>
+              </div>
+              <div class="cosmic-card__value cosmic-card__value--money">{{ money(allegroKpi.averageOrderValue) }}</div>
+              <div class="cosmic-card__foot">średnia wartość zamówienia Allegro</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cosmos-dash__grid cosmos-dash__grid--main">
+          <section class="cosmos-panel">
+            <div class="cosmos-panel__head">
+              <div>
+                <h2>Allegro: przychód i zysk</h2>
+                <p>Osobny trend wyników Allegro</p>
+              </div>
+            </div>
+            <v-chart class="cosmos-panel__chart" :option="allegroRevenueProfitOption" autoresize />
+          </section>
+        </div>
+
         <div class="cosmos-dash__grid cosmos-dash__grid--bottom">
           <section class="cosmos-panel">
             <div class="cosmos-panel__head">
@@ -286,6 +351,29 @@ type OrderDashboardDTO = {
   recentOrders: OrderDashboardRecentOrderDTO[]
 }
 
+type AllegroStatisticsPeriodDTO = {
+  period: string
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  productCost: number
+  netProfit: number
+}
+
+type AllegroStatisticsDTO = {
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  totalFees: number
+  productCost: number
+  netProfit: number
+  marginPct: number
+  averageOrderValue: number
+  trend: AllegroStatisticsPeriodDTO[]
+}
+
 const loading = ref(false)
 const dateRange = ref<[string, string] | null>(null)
 
@@ -328,6 +416,26 @@ const paymentBreakdown = ref<{ name: string; value: number }[]>([])
 const sourceBreakdown = ref<{ name: string; value: number }[]>([])
 const topProducts = ref<{ name: string; qty: number; profit: number }[]>([])
 const recentOrders = ref<OrderDashboardRecentOrderDTO[]>([])
+const allegroKpi = ref({
+  ordersCount: 0,
+  revenue: 0,
+  productsRevenue: 0,
+  commission: 0,
+  totalFees: 0,
+  productCost: 0,
+  netProfit: 0,
+  marginPct: 0,
+  averageOrderValue: 0
+})
+const allegroPeriods = ref<{
+  label: string
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  productCost: number
+  netProfit: number
+}[]>([])
 
 const chartTheme = {
   axis: '#94a3b8',
@@ -432,7 +540,10 @@ async function loadDashboard() {
 
     if (storeId.value && isGuid(storeId.value)) query.storeId = storeId.value
 
-    const data = (await Api.orders.getOrderDashboard(query)) as OrderDashboardDTO
+    const [data, allegroData] = await Promise.all([
+      Api.orders.getOrderDashboard(query) as Promise<OrderDashboardDTO>,
+      Api.allegro.getStatistics({ from: dateRange.value[0], to: dateRange.value[1] }) as Promise<AllegroStatisticsDTO>
+    ])
 
     const ordersCount = Number(data.ordersCount ?? 0)
     const shippedCount = Number(data.shippedCount ?? 0)
@@ -494,6 +605,28 @@ async function loadDashboard() {
     }))
 
     recentOrders.value = data.recentOrders ?? []
+
+    allegroKpi.value = {
+      ordersCount: Number(allegroData.ordersCount ?? 0),
+      revenue: Number(allegroData.revenue ?? 0),
+      productsRevenue: Number(allegroData.productsRevenue ?? 0),
+      commission: Number(allegroData.commission ?? 0),
+      totalFees: Number(allegroData.totalFees ?? 0),
+      productCost: Number(allegroData.productCost ?? 0),
+      netProfit: Number(allegroData.netProfit ?? 0),
+      marginPct: Number(allegroData.marginPct ?? 0),
+      averageOrderValue: Number(allegroData.averageOrderValue ?? 0)
+    }
+
+    allegroPeriods.value = (allegroData.trend ?? []).map((p) => ({
+      label: periodLabel(p.period),
+      ordersCount: Number(p.ordersCount ?? 0),
+      revenue: Number(p.revenue ?? 0),
+      productsRevenue: Number(p.productsRevenue ?? 0),
+      commission: Number(p.commission ?? 0),
+      productCost: Number(p.productCost ?? 0),
+      netProfit: Number(p.netProfit ?? 0)
+    }))
   } catch (err) {
     console.error('OrderDashboard error:', err)
     kpi.value = {
@@ -514,6 +647,18 @@ async function loadDashboard() {
     sourceBreakdown.value = []
     topProducts.value = []
     recentOrders.value = []
+    allegroKpi.value = {
+      ordersCount: 0,
+      revenue: 0,
+      productsRevenue: 0,
+      commission: 0,
+      totalFees: 0,
+      productCost: 0,
+      netProfit: 0,
+      marginPct: 0,
+      averageOrderValue: 0
+    }
+    allegroPeriods.value = []
   } finally {
     loading.value = false
   }
@@ -543,6 +688,18 @@ const ordersSparkOption = computed(() =>
 
 const profitSparkOption = computed(() =>
   spark(periodsCurrent.value.map((p) => p.profit), '#6ee7b7')
+)
+
+const allegroRevenueSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.revenue), '#93c5fd')
+)
+
+const allegroProfitSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.netProfit), '#6ee7b7')
+)
+
+const allegroCommissionSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.commission), '#c4b5fd')
 )
 
 const opsDonutOption = computed(() => ({
@@ -623,6 +780,37 @@ const profitTrendOption = computed(() => {
     series: [
       { type: 'bar', name: 'Zysk netto', data: cur, barMaxWidth: 28, itemStyle: { color: chartTheme.profit, borderRadius: [6, 6, 0, 0] } },
       { type: 'line', name: 'Poprzedni okres', data: prev, smooth: true, lineStyle: { color: chartTheme.prev } }
+    ]
+  }
+})
+
+const allegroRevenueProfitOption = computed(() => {
+  const x = allegroPeriods.value.map((p) => p.label)
+
+  return {
+    ...baseTrendOption(x, (v) => money(v)),
+    series: [
+      {
+        type: 'line',
+        name: 'Przychód Allegro',
+        data: allegroPeriods.value.map((p) => p.revenue),
+        smooth: true,
+        areaStyle: { color: 'rgba(96, 165, 250, 0.12)' }
+      },
+      {
+        type: 'bar',
+        name: 'Zysk Allegro',
+        data: allegroPeriods.value.map((p) => p.netProfit),
+        barMaxWidth: 28,
+        itemStyle: { color: chartTheme.profit, borderRadius: [6, 6, 0, 0] }
+      },
+      {
+        type: 'line',
+        name: 'Prowizje Allegro',
+        data: allegroPeriods.value.map((p) => p.commission),
+        smooth: true,
+        lineStyle: { color: chartTheme.prev, type: 'dashed' }
+      }
     ]
   }
 })

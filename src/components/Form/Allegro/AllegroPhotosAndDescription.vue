@@ -178,7 +178,7 @@
           @click="chooseImageForRow(photo)"
         >
           <img
-            :src="photo.url"
+            :src="photo.allegroUrl || photo.url"
             class="w-full h-[120px] object-contain"
             alt=""
           >
@@ -392,14 +392,25 @@ const openImagePicker = (row: AllegroDescriptionRow) => {
 const chooseImageForRow = (photo: AllegroPhoto) => {
   if (!selectedImageRow.value) return
 
-  selectedImageRow.value.imageUrl = photo.allegroUrl || photo.url
-  selectedImageRow.value.imageFile = photo.file || null
-  selectedImageRow.value.active = true
+  const rowId = selectedImageRow.value.id
+
+  descriptionRowsModel.value = descriptionRowsModel.value.map(row =>
+    row.id === rowId
+      ? {
+          ...row,
+          imageUrl: photo.allegroUrl || photo.url,
+          imageFile: photo.file || null,
+          active: true,
+        }
+      : row
+  )
+
+  const selectedUrl = photo.allegroUrl || photo.url
 
   if (
-    selectedImageRow.value.imageUrl &&
-    !isValidAllegroImageUrl(selectedImageRow.value.imageUrl) &&
-    !selectedImageRow.value.imageFile
+    selectedUrl &&
+    !isValidAllegroImageUrl(selectedUrl) &&
+    !photo.file
   ) {
     alert('To zdjęcie zostanie przesłane do Allegro podczas publikacji oferty.')
   }

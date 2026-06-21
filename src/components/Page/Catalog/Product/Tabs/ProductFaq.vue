@@ -3,9 +3,9 @@ import type { ProductDTO, ProductFaqItemDTO } from '/@/types/product/Product'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
-import ProductCompetitorImportReviewModal, {
-  type CompetitorImportFaqItem
-} from '/@/components/Form/Modal/ProductCompetitorImportReviewModal.vue'
+import ProductFaqAiReviewModal, {
+  type ProductFaqAiReviewItem
+} from '/@/components/Form/Modal/ProductFaqAiReviewModal.vue'
 
 const props = defineProps({
   product: {
@@ -42,7 +42,7 @@ const aiFaqReviewVisible = ref(false)
 const aiFaqLoading = ref(false)
 const aiFaqApplyLoading = ref(false)
 const aiFaqCompetitorUrl = ref('')
-const aiFaqReviewItems = ref<CompetitorImportFaqItem[]>([])
+const aiFaqReviewItems = ref<ProductFaqAiReviewItem[]>([])
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
 
@@ -199,7 +199,7 @@ const saveFaq = async () => {
   }
 }
 
-const normalizeCompetitorFaqItems = (rawItems: any[]): CompetitorImportFaqItem[] => {
+const normalizeCompetitorFaqItems = (rawItems: any[]): ProductFaqAiReviewItem[] => {
   if (!Array.isArray(rawItems)) return []
 
   return rawItems
@@ -210,6 +210,23 @@ const normalizeCompetitorFaqItems = (rawItems: any[]): CompetitorImportFaqItem[]
       selected: true
     }))
     .filter((item) => item.question && item.answer)
+}
+
+const extractFaqResponseItems = (payload: any): any[] => {
+  const candidates = [
+    payload?.faqItems,
+    payload?.FaqItems,
+    payload?.data?.faqItems,
+    payload?.data?.FaqItems,
+    payload?.Data?.faqItems,
+    payload?.Data?.FaqItems,
+    payload?.data?.data?.faqItems,
+    payload?.data?.data?.FaqItems,
+    payload?.Data?.Data?.faqItems,
+    payload?.Data?.Data?.FaqItems
+  ]
+
+  return candidates.find(Array.isArray) ?? []
 }
 
 const generateFaqWithAi = async () => {
@@ -239,8 +256,7 @@ const generateFaqWithAi = async () => {
     if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
 
     const json = await res.json()
-    const data = json?.data ?? json
-    const faqItems = normalizeCompetitorFaqItems(data?.faqItems ?? data?.FaqItems)
+    const faqItems = normalizeCompetitorFaqItems(extractFaqResponseItems(json))
 
     if (!faqItems.length) {
       toast.error('AI nie zwróciło propozycji FAQ.')
@@ -259,8 +275,7 @@ const generateFaqWithAi = async () => {
 }
 
 const applySelectedAiFaq = async (payload: {
-  faqItems: CompetitorImportFaqItem[]
-  attributeItems: unknown[]
+  faqItems: ProductFaqAiReviewItem[]
 }) => {
   if (!productId.value) return
 
@@ -560,14 +575,11 @@ onMounted(() => {
       </template>
     </el-dialog>
 
-    <ProductCompetitorImportReviewModal
+    <ProductFaqAiReviewModal
       v-if="aiFaqReviewVisible"
       :loading="aiFaqApplyLoading"
       :product-name="(product as any)?.name"
-      :requires-product-save="false"
-      :show-attribute-section="false"
       :faq-items="aiFaqReviewItems"
-      :attribute-items="[]"
       @close="aiFaqReviewVisible = false"
       @apply="applySelectedAiFaq"
     />

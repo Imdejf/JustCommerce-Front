@@ -3,15 +3,23 @@ import { useToast } from 'vue-toastification'
 import { Api } from '/@/services/api'
 import { useLanguageStore } from '/@/stores/language'
 import type { ProductDTO, ProductAttributeDTO } from '/@/types/product/Product'
-import type { CompetitorImportAttributeItem } from '/@/components/Form/Modal/ProductCompetitorImportReviewModal.vue'
+import type { CategoryDTO } from '/@/types/category/Category'
+
+interface ProductAttributeAiReviewItem {
+  attributeId: string
+  attributeName: string
+  value: string
+  selected: boolean
+}
 
 const stripHtml = (value?: string) =>
   String(value ?? '')
+    .replace(/&nbsp;/gi, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
-const normalizeAttributeItems = (rawItems: any[]): CompetitorImportAttributeItem[] => {
+const normalizeAttributeItems = (rawItems: any[]): ProductAttributeAiReviewItem[] => {
   if (!Array.isArray(rawItems)) return []
 
   return rawItems
@@ -24,6 +32,202 @@ const normalizeAttributeItems = (rawItems: any[]): CompetitorImportAttributeItem
     .filter((item) => item.attributeId && item.attributeName && item.value)
 }
 
+const extractAttributeResponseItems = (payload: any): any[] => {
+  const candidates = [
+    payload?.attributes,
+    payload?.Attributes,
+    payload?.data?.attributes,
+    payload?.data?.Attributes,
+    payload?.Data?.attributes,
+    payload?.Data?.Attributes,
+    payload?.data?.data?.attributes,
+    payload?.data?.data?.Attributes,
+    payload?.Data?.Data?.attributes,
+    payload?.Data?.Data?.Attributes
+  ]
+
+  return candidates.find(Array.isArray) ?? []
+}
+
+const normalizeListResponse = (result: any): any[] => {
+  if (Array.isArray(result)) return result
+  if (Array.isArray(result?.items)) return result.items
+  if (Array.isArray(result?.Items)) return result.Items
+  if (Array.isArray(result?.data)) return result.data
+  if (Array.isArray(result?.Data)) return result.Data
+  if (Array.isArray(result?.data?.items)) return result.data.items
+  if (Array.isArray(result?.data?.Items)) return result.data.Items
+  if (Array.isArray(result?.Data?.Items)) return result.Data.Items
+  if (Array.isArray(result?.Data?.items)) return result.Data.items
+
+  return []
+}
+
+interface AvailableAttribute {
+  id: string
+  name: string
+  groupId: string
+}
+
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const parameterLabels = [
+  'Model',
+  'Kolor',
+  'Wymiary zewnętrzne',
+  'Wymiar pojemnika',
+  'Wymiary',
+  'Pojemność',
+  'Ściany',
+  'Waga',
+  'Dno',
+  'Materiał',
+  'Uchwyty na ręce',
+  'Uchwyty',
+  'Ładowność',
+  'Zakres Temp.',
+  'Zakres temperatury'
+]
+
+const extractParameterValue = (text: string, labels: string[]) => {
+  const allLabels = parameterLabels.map(escapeRegExp).join('|')
+
+  for (const label of labels) {
+    const regex = new RegExp(
+      `${escapeRegExp(label)}\\s*:\\s*(.*?)(?=\\s+(?:${allLabels})\\s*:|$)`,
+      'i'
+    )
+    const match = text.match(regex)
+    const value = match?.[1]?.replace(/[✅➡️]/g, '').trim()
+
+    if (value) {
+      return value
+    }
+  }
+
+  return ''
+}
+
+const findDimensionText = (text: string) => {
+  const explicitDimension =
+    extractParameterValue(text, ['Wymiary zewnętrzne', 'Wymiar pojemnika', 'Wymiary']) || text
+
+  const dimensionRegex =
+    /(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?\s*[x×]\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?\s*[x×]\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?/i
+  const match = explicitDimension.match(dimensionRegex) ?? text.match(dimensionRegex)
+
+  if (!match) {
+    return null
+  }
+
+  const values = [match[1], match[3], match[5]].map((value) => value.replace(',', '.'))
+  const unit = match[6] || match[4] || match[2] || 'mm'
+
+  return {
+    values,
+    unit,
+    raw: `${values.join('x')} ${unit}`
+  }
+}
+
+const valueWithUnit = (value: string, unit: string) => `${value} ${unit}`
+
+const createFallbackAttributeItems = (
+  availableAttributes: AvailableAttribute[],
+  ctx: {
+    productName: string
+    shortDescription: string
+    description: string
+    specification: string
+  }
+): ProductAttributeAiReviewItem[] => {
+  const text = [ctx.productName, ctx.shortDescription, ctx.description, ctx.specification]
+    .filter(Boolean)
+    .join(' ')
+  const dimensions = findDimensionText(text)
+
+  const valuesByKey = {
+    model: extractParameterValue(text, ['Model']) || ctx.productName,
+    kolor: extractParameterValue(text, ['Kolor']),
+    pojemnosc: extractParameterValue(text, ['Pojemność']),
+    sciany: extractParameterValue(text, ['Ściany']),
+    waga: extractParameterValue(text, ['Waga']),
+    dno: extractParameterValue(text, ['Dno']),
+    material: extractParameterValue(text, ['Materiał']),
+    uchwyty: extractParameterValue(text, ['Uchwyty na ręce', 'Uchwyty']),
+    ladownosc: extractParameterValue(text, ['Ładowność']),
+    temperatura: extractParameterValue(text, ['Zakres Temp.', 'Zakres temperatury'])
+  }
+
+  const resolveValue = (attributeName: string) => {
+    const name = normalizeText(attributeName)
+
+    if (dimensions) {
+      if (name.includes('wymiar')) return dimensions.raw
+      if (name.includes('dlugosc')) {
+        return valueWithUnit(dimensions.values[0], dimensions.unit)
+      }
+      if (name.includes('szerokosc')) {
+        return valueWithUnit(dimensions.values[1], dimensions.unit)
+      }
+      if (
+        name.includes('wysokosc') ||
+        name.includes('glebokosc')
+      ) {
+        return valueWithUnit(dimensions.values[2], dimensions.unit)
+      }
+    }
+
+    if (name.includes('model')) return valuesByKey.model
+    if (name.includes('kolor')) return valuesByKey.kolor
+    if (name.includes('pojemn')) return valuesByKey.pojemnosc
+    if (name.includes('scian') || name.includes('ścian')) return valuesByKey.sciany
+    if (name.includes('waga')) return valuesByKey.waga
+    if (name.includes('dno')) return valuesByKey.dno
+    if (name.includes('material')) return valuesByKey.material
+    if (name.includes('uchwyt')) return valuesByKey.uchwyty
+    if (name.includes('ladown')) return valuesByKey.ladownosc
+    if (name.includes('temperatur')) return valuesByKey.temperatura
+
+    return ''
+  }
+
+  return availableAttributes
+    .map((attribute) => ({
+      attributeId: attribute.id,
+      attributeName: attribute.name,
+      value: resolveValue(attribute.name).trim(),
+      selected: true
+    }))
+    .filter((item) => item.value)
+}
+
+const mergeAttributeItems = (
+  aiItems: ProductAttributeAiReviewItem[],
+  fallbackItems: ProductAttributeAiReviewItem[]
+) => {
+  const result = [...aiItems]
+  const existingAttributeIds = new Set(aiItems.map((item) => item.attributeId))
+
+  fallbackItems.forEach((item) => {
+    if (!existingAttributeIds.has(item.attributeId)) {
+      result.push(item)
+      existingAttributeIds.add(item.attributeId)
+    }
+  })
+
+  return result
+}
+
 export function useProductAttributesFromDescriptionAi(
   product: Ref<ProductDTO | null | undefined>,
   existingAttributes?: Ref<ProductAttributeDTO[]>
@@ -33,7 +237,8 @@ export function useProductAttributesFromDescriptionAi(
   const loading = ref(false)
   const applyLoading = ref(false)
   const reviewVisible = ref(false)
-  const reviewItems = ref<CompetitorImportAttributeItem[]>([])
+  const reviewItems = ref<ProductAttributeAiReviewItem[]>([])
+  const availableAttributeSource = ref('')
 
   const productId = computed(() => product.value?.id ?? '')
 
@@ -52,16 +257,58 @@ export function useProductAttributesFromDescriptionAi(
     return Boolean(ctx.shortDescription || ctx.description || ctx.specification)
   })
 
-  const loadStoreAttributes = async () => {
+  const loadCategoryAttributeGroupIds = async () => {
+    const categoryIds = product.value?.categoryIds ?? []
+    if (!categoryIds.length) return []
+
+    const result = await Api.categories.listByStoreId()
+    const categories = normalizeListResponse(result) as CategoryDTO[]
+    const groupIds = categories
+      .filter((category) => categoryIds.includes(category.id))
+      .flatMap((category) => category.attributeGroupIds ?? [])
+
+    return [...new Set(groupIds)]
+  }
+
+  const loadStoreAttributes = async (): Promise<AvailableAttribute[]> => {
     const result = await Api.productAttributes.listByStoreId()
-    const items = result?.items ?? []
+    const items = normalizeListResponse(result)
 
     return items
-      .filter((item: any) => item?.id && item?.name)
       .map((item: any) => ({
-        id: String(item.id),
-        name: String(item.name)
+        id: String(item?.id ?? item?.Id ?? '').trim(),
+        name: String(item?.name ?? item?.Name ?? '').trim(),
+        groupId: String(
+          item?.groupId ??
+          item?.GroupId ??
+          item?.attributeGroup?.id ??
+          item?.AttributeGroup?.Id ??
+          ''
+        ).trim()
       }))
+      .filter((item) => item.id && item.name)
+  }
+
+  const loadAttributesForAi = async () => {
+    const storeAttributes = await loadStoreAttributes()
+    const categoryAttributeGroupIds = await loadCategoryAttributeGroupIds()
+
+    if (!categoryAttributeGroupIds.length) {
+      availableAttributeSource.value = 'AI użyje wszystkich atrybutów sklepu, bo produkt nie ma kategorii z przypisanymi grupami atrybutów.'
+      return storeAttributes
+    }
+
+    const categoryAttributes = storeAttributes.filter((attribute) =>
+      categoryAttributeGroupIds.includes(attribute.groupId)
+    )
+
+    if (!categoryAttributes.length) {
+      availableAttributeSource.value = 'AI użyje wszystkich atrybutów sklepu, bo grupy kategorii nie mają jeszcze atrybutów.'
+      return storeAttributes
+    }
+
+    availableAttributeSource.value = `AI mapuje wartości tylko do atrybutów z grup przypisanych do kategorii produktu (${categoryAttributes.length}).`
+    return categoryAttributes
   }
 
   const generateFromDescription = async () => {
@@ -78,9 +325,9 @@ export function useProductAttributesFromDescriptionAi(
     loading.value = true
 
     try {
-      const availableAttributes = await loadStoreAttributes()
+      const availableAttributes = await loadAttributesForAi()
       if (!availableAttributes.length) {
-        toast.error('Brak zdefiniowanych atrybutów w sklepie. Dodaj je w katalogu atrybutów.')
+        toast.error('Nie znaleziono atrybutów sklepu do analizy AI. Sprawdź, czy produkt ma wybrany sklep i czy w katalogu są zdefiniowane atrybuty.')
         return
       }
 
@@ -92,7 +339,10 @@ export function useProductAttributesFromDescriptionAi(
             shortDescription: ctx.shortDescription,
             description: ctx.description,
             specification: ctx.specification,
-            availableAttributes
+            availableAttributes: availableAttributes.map((attribute) => ({
+              id: attribute.id,
+              name: attribute.name
+            }))
           }
         })
       })
@@ -100,11 +350,12 @@ export function useProductAttributesFromDescriptionAi(
       if (!res.ok) throw new Error('Błąd odpowiedzi serwera')
 
       const json = await res.json()
-      const data = json?.data ?? json
-      const attributeItems = normalizeAttributeItems(data?.attributes ?? data?.Attributes)
+      const aiAttributeItems = normalizeAttributeItems(extractAttributeResponseItems(json))
+      const fallbackAttributeItems = createFallbackAttributeItems(availableAttributes, ctx)
+      const attributeItems = mergeAttributeItems(aiAttributeItems, fallbackAttributeItems)
 
       if (!attributeItems.length) {
-        toast.error('AI nie znalazło w opisie danych do uzupełnienia atrybutów.')
+        toast.error('Nie znaleziono danych do uzupełnienia atrybutów. Sprawdź nazwy atrybutów w grupie i opis/specyfikację produktu.')
         return
       }
 
@@ -119,8 +370,8 @@ export function useProductAttributesFromDescriptionAi(
   }
 
   const applySelectedAttributes = async (payload: {
-    faqItems: unknown[]
-    attributeItems: CompetitorImportAttributeItem[]
+    faqItems?: unknown[]
+    attributeItems: ProductAttributeAiReviewItem[]
   }) => {
     if (!productId.value) return
 
@@ -192,6 +443,7 @@ export function useProductAttributesFromDescriptionAi(
     applyLoading,
     reviewVisible,
     reviewItems,
+    availableAttributeSource,
     productId,
     hasProductDescription,
     productTextContext,

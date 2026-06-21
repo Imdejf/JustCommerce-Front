@@ -622,15 +622,233 @@ const normalizeCompetitorAttributeItems = (items: any[]): CompetitorImportAttrib
     .filter((item) => item.attributeId && item.attributeName && item.value)
 }
 
+const extractCompetitorAttributeResponseItems = (payload: any): any[] => {
+  const candidates = [
+    payload?.attributes,
+    payload?.Attributes,
+    payload?.data?.attributes,
+    payload?.data?.Attributes,
+    payload?.Data?.attributes,
+    payload?.Data?.Attributes,
+    payload?.data?.data?.attributes,
+    payload?.data?.data?.Attributes,
+    payload?.Data?.Data?.attributes,
+    payload?.Data?.Data?.Attributes
+  ]
+
+  return candidates.find(Array.isArray) ?? []
+}
+
+const normalizeListResponse = (result: any): any[] => {
+  if (Array.isArray(result)) return result
+  if (Array.isArray(result?.items)) return result.items
+  if (Array.isArray(result?.Items)) return result.Items
+  if (Array.isArray(result?.data)) return result.data
+  if (Array.isArray(result?.Data)) return result.Data
+  if (Array.isArray(result?.data?.items)) return result.data.items
+  if (Array.isArray(result?.data?.Items)) return result.data.Items
+  if (Array.isArray(result?.Data?.items)) return result.Data.items
+  if (Array.isArray(result?.Data?.Items)) return result.Data.Items
+
+  return []
+}
+
+const normalizeAttributeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const stripProductHtml = (value?: string) =>
+  String(value ?? '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const escapeAttributeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const importParameterLabels = [
+  'Model',
+  'Kolor',
+  'Wymiary zewnętrzne',
+  'Wymiar pojemnika',
+  'Wymiary',
+  'Pojemność',
+  'Ściany',
+  'Waga',
+  'Dno',
+  'Materiał',
+  'Uchwyty na ręce',
+  'Uchwyty',
+  'Ładowność',
+  'Zakres Temp.',
+  'Zakres temperatury'
+]
+
+const extractImportParameterValue = (text: string, labels: string[]) => {
+  const allLabels = importParameterLabels.map(escapeAttributeRegex).join('|')
+
+  for (const label of labels) {
+    const regex = new RegExp(
+      `${escapeAttributeRegex(label)}\\s*:\\s*(.*?)(?=\\s+(?:${allLabels})\\s*:|$)`,
+      'i'
+    )
+    const match = text.match(regex)
+    const value = match?.[1]?.replace(/[✅➡️]/g, '').trim()
+
+    if (value) {
+      return value
+    }
+  }
+
+  return ''
+}
+
+const findImportDimensionText = (text: string) => {
+  const explicitDimension =
+    extractImportParameterValue(text, ['Wymiary zewnętrzne', 'Wymiar pojemnika', 'Wymiary']) ||
+    text
+  const dimensionRegex =
+    /(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?\s*[x×]\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?\s*[x×]\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m)?/i
+  const match = explicitDimension.match(dimensionRegex) ?? text.match(dimensionRegex)
+
+  if (!match) {
+    return null
+  }
+
+  const values = [match[1], match[3], match[5]].map((value) => value.replace(',', '.'))
+  const unit = match[6] || match[4] || match[2] || 'mm'
+
+  return {
+    values,
+    unit,
+    raw: `${values.join('x')} ${unit}`
+  }
+}
+
+const createFallbackCompetitorAttributeItems = (
+  availableAttributes: Array<{ id: string; name: string }>,
+  data: any
+): CompetitorImportAttributeItem[] => {
+  const productName = stripProductHtml(data?.productName ?? data?.ProductName ?? currentProduct.name)
+  const specification = stripProductHtml(
+    data?.specification ?? data?.Specification ?? currentProduct.specification
+  )
+  const description = stripProductHtml(data?.description ?? data?.Description ?? currentProduct.description)
+  const shortDescription = stripProductHtml(
+    data?.shortDescription ?? data?.ShortDescription ?? currentProduct.shortDescription
+  )
+  const text = [productName, shortDescription, description, specification].filter(Boolean).join(' ')
+  const dimensions = findImportDimensionText(text)
+
+  const valuesByKey = {
+    model: extractImportParameterValue(text, ['Model']) || productName,
+    kolor: extractImportParameterValue(text, ['Kolor']),
+    pojemnosc: extractImportParameterValue(text, ['Pojemność']),
+    sciany: extractImportParameterValue(text, ['Ściany']),
+    waga: extractImportParameterValue(text, ['Waga']),
+    dno: extractImportParameterValue(text, ['Dno']),
+    material: extractImportParameterValue(text, ['Materiał']),
+    uchwyty: extractImportParameterValue(text, ['Uchwyty na ręce', 'Uchwyty']),
+    ladownosc: extractImportParameterValue(text, ['Ładowność']),
+    temperatura: extractImportParameterValue(text, ['Zakres Temp.', 'Zakres temperatury'])
+  }
+
+  const resolveValue = (attributeName: string) => {
+    const name = normalizeAttributeText(attributeName)
+
+    if (dimensions) {
+      if (name.includes('wymiar')) return dimensions.raw
+      if (name.includes('dlugosc')) return `${dimensions.values[0]} ${dimensions.unit}`
+      if (name.includes('szerokosc')) return `${dimensions.values[1]} ${dimensions.unit}`
+      if (name.includes('wysokosc') || name.includes('glebokosc')) {
+        return `${dimensions.values[2]} ${dimensions.unit}`
+      }
+    }
+
+    if (name.includes('model')) return valuesByKey.model
+    if (name.includes('kolor')) return valuesByKey.kolor
+    if (name.includes('pojemn')) return valuesByKey.pojemnosc
+    if (name.includes('scian')) return valuesByKey.sciany
+    if (name.includes('waga')) return valuesByKey.waga
+    if (name.includes('dno')) return valuesByKey.dno
+    if (name.includes('material')) return valuesByKey.material
+    if (name.includes('uchwyt')) return valuesByKey.uchwyty
+    if (name.includes('ladown')) return valuesByKey.ladownosc
+    if (name.includes('temperatur')) return valuesByKey.temperatura
+
+    return ''
+  }
+
+  return availableAttributes
+    .map((attribute) => ({
+      attributeId: attribute.id,
+      attributeName: attribute.name,
+      value: resolveValue(attribute.name).trim(),
+      selected: true
+    }))
+    .filter((item) => item.attributeId && item.attributeName && item.value)
+}
+
+const mergeCompetitorAttributeItems = (
+  aiItems: CompetitorImportAttributeItem[],
+  fallbackItems: CompetitorImportAttributeItem[]
+) => {
+  const result = [...aiItems]
+  const existingIds = new Set(aiItems.map((item) => item.attributeId))
+
+  fallbackItems.forEach((item) => {
+    if (!existingIds.has(item.attributeId)) {
+      result.push(item)
+      existingIds.add(item.attributeId)
+    }
+  })
+
+  return result
+}
+
 const loadStoreAttributesForImport = async () => {
   try {
     const result = await Api.productAttributes.listByStoreId()
-    const items = result?.items ?? []
+    const items = normalizeListResponse(result)
 
-    return items.map((item: any) => ({
-      id: item.id ?? item.Id,
-      name: item.name ?? item.Name ?? ''
-    }))
+    const storeAttributes = items
+      .map((item: any) => ({
+        id: String(item?.id ?? item?.Id ?? '').trim(),
+        name: String(item?.name ?? item?.Name ?? '').trim(),
+        groupId: String(
+          item?.groupId ??
+          item?.GroupId ??
+          item?.attributeGroup?.id ??
+          item?.AttributeGroup?.Id ??
+          ''
+        ).trim()
+      }))
+      .filter((item) => item.id && item.name)
+
+    const categoryIds = Array.isArray(currentProduct.categoryIds) ? currentProduct.categoryIds : []
+    if (!categoryIds.length) {
+      return storeAttributes
+    }
+
+    const categoriesResult = await Api.categories.listByStoreId()
+    const categoryAttributeGroupIds = normalizeListResponse(categoriesResult)
+      .filter((category: any) => categoryIds.includes(String(category?.id ?? category?.Id ?? '')))
+      .flatMap((category: any) => category?.attributeGroupIds ?? category?.AttributeGroupIds ?? [])
+      .map((groupId: unknown) => String(groupId))
+
+    if (!categoryAttributeGroupIds.length) {
+      return storeAttributes
+    }
+
+    const categoryAttributes = storeAttributes.filter((attribute) =>
+      categoryAttributeGroupIds.includes(attribute.groupId)
+    )
+
+    return categoryAttributes.length ? categoryAttributes : storeAttributes
   } catch (err) {
     console.error(err)
     return []
@@ -803,6 +1021,12 @@ const handleImportCompetitorSeo = async (competitorUrl: string) => {
 
     const availableAttributes = await loadStoreAttributesForImport()
 
+    if (!availableAttributes.length) {
+      toast.error('Nie znaleziono atrybutów sklepu do analizy AI. Sprawdź, czy w katalogu są zdefiniowane atrybuty.', {
+        timeout: 3000
+      })
+    }
+
     const res = await Api.chatGpt.generateProductSeoFromCompetitor({
       body: JSON.stringify({
         productSeoFromCompetitorBriefDTO: {
@@ -827,15 +1051,28 @@ const handleImportCompetitorSeo = async (competitorUrl: string) => {
 
     applyCompetitorSeoToProduct(data)
 
-    competitorReviewFaq.value = normalizeCompetitorFaqItems(data?.faqItems ?? data?.FaqItems)
-    competitorReviewAttributes.value = normalizeCompetitorAttributeItems(
-      data?.attributes ?? data?.Attributes
+    const aiAttributeItems = normalizeCompetitorAttributeItems(
+      extractCompetitorAttributeResponseItems(json)
     )
+    const fallbackAttributeItems = createFallbackCompetitorAttributeItems(
+      availableAttributes,
+      data
+    )
+    const attributeItems = mergeCompetitorAttributeItems(aiAttributeItems, fallbackAttributeItems)
+
+    competitorReviewFaq.value = normalizeCompetitorFaqItems(data?.faqItems ?? data?.FaqItems)
+    competitorReviewAttributes.value = attributeItems
 
     competitorImportModalVisible.value = false
     competitorImportReviewVisible.value = true
 
-    toast.success('Zaimportowano dane SEO. Wybierz FAQ i atrybuty do dodania.', { timeout: 2500 })
+    if (!competitorReviewFaq.value.length && !competitorReviewAttributes.value.length) {
+      toast.info('Zaimportowano dane SEO, ale nie znaleziono FAQ ani atrybutów do dodania.', {
+        timeout: 3000
+      })
+    } else {
+      toast.success('Zaimportowano dane SEO. Wybierz FAQ i atrybuty do dodania.', { timeout: 2500 })
+    }
   } catch (err) {
     console.error(err)
     toast.error('Nie udało się zaimportować danych ze strony konkurencji.', { timeout: 2500 })

@@ -27,6 +27,13 @@ const props = defineProps<{
 
 const showFaq = computed(() => props.showFaqSection !== false)
 const showAttributes = computed(() => props.showAttributeSection !== false)
+const introText = computed(() => {
+  if (!showFaq.value && showAttributes.value) {
+    return 'AI wygenerowało propozycje atrybutów na podstawie opisu produktu.'
+  }
+
+  return 'AI wygenerowało dane na podstawie strony konkurencji'
+})
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -50,6 +57,7 @@ watch(
 
 const selectedFaqCount = computed(() => localFaq.value.filter((x) => x.selected).length)
 const selectedAttributeCount = computed(() => localAttributes.value.filter((x) => x.selected).length)
+const hasAnySuggestion = computed(() => localFaq.value.length > 0 || localAttributes.value.length > 0)
 
 const toggleAllFaq = (checked: boolean) => {
   localFaq.value.forEach((item) => {
@@ -79,10 +87,15 @@ const handleApply = () => {
     @close="emit('close')"
   >
     <p class="text-sm text-gray-600 mb-4">
-      AI wygenerowało dane na podstawie strony konkurencji
+      {{ introText }}
       <span v-if="productName" class="font-medium">({{ productName }})</span>.
-      Zaznacz punkty FAQ i atrybuty, które chcesz dodać do produktu.
-      Treści SEO zostały już uzupełnione w formularzu.
+      <span v-if="showFaq && showAttributes">
+        Zaznacz punkty FAQ i atrybuty, które chcesz dodać do produktu.
+        Treści SEO zostały już uzupełnione w formularzu.
+      </span>
+      <span v-else-if="showAttributes">
+        Zaznacz atrybuty, które chcesz dodać do produktu.
+      </span>
     </p>
 
     <p
@@ -91,6 +104,14 @@ const handleApply = () => {
     >
       Produkt nie jest jeszcze zapisany. Po kliknięciu „Zapisz wybrane” FAQ i atrybuty zostaną zapamiętane
       i będą gotowe do dodania po zapisaniu produktu i ponownym otwarciu edycji.
+    </p>
+
+    <p
+      v-if="!hasAnySuggestion"
+      class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-4"
+    >
+      AI nie zwróciło żadnych FAQ ani atrybutów do wyboru. Najczęściej oznacza to brak dostępnych
+      atrybutów sklepu w zapytaniu albo brak parametrów możliwych do jednoznacznego odczytania ze strony.
     </p>
 
     <div v-if="showFaq && localFaq.length > 0" class="mb-6">

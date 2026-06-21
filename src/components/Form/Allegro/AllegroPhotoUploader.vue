@@ -30,8 +30,9 @@
         class="relative w-[90px] h-[90px] border border-[#d1d5db] bg-[#f8fafc]"
       >
         <img
-          :src="photo.url"
+          :src="photo.allegroUrl || photo.url"
           class="w-full h-full object-cover"
+          alt=""
         >
 
         <span
@@ -68,6 +69,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { fileToBase64 } from './allegroOfferForm.ts'
 
 export type AllegroPhoto = {
   id: string
@@ -101,19 +103,25 @@ const openFilePicker = () => {
   fileInputRef.value?.click()
 }
 
-const addFiles = (files: File[]) => {
-  const imageFiles = files.filter(file => file.type.startsWith('image/'))
+const isImageFile = (file: File) =>
+  file.type.startsWith('image/') ||
+  /\.(jpe?g|png|gif|webp|bmp|avif|heic|heif|tiff?)$/i.test(file.name)
+
+const addFiles = async (files: File[]) => {
+  const imageFiles = files.filter(isImageFile)
 
   if (!imageFiles.length) return
 
   const freeSlots = props.maxPhotos - photosModel.value.length
   const filesToAdd = imageFiles.slice(0, freeSlots)
 
-  const newPhotos: AllegroPhoto[] = filesToAdd.map(file => ({
-    id: createId(),
-    file,
-    url: URL.createObjectURL(file),
-  }))
+  const newPhotos: AllegroPhoto[] = await Promise.all(
+    filesToAdd.map(async file => ({
+      id: createId(),
+      file,
+      url: await fileToBase64(file),
+    })),
+  )
 
   photosModel.value = [
     ...photosModel.value,
@@ -121,15 +129,15 @@ const addFiles = (files: File[]) => {
   ]
 }
 
-const handleFiles = (event: Event) => {
+const handleFiles = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  addFiles(Array.from(input.files || []))
+  await addFiles(Array.from(input.files || []))
   input.value = ''
 }
 
-const handleDrop = (event: DragEvent) => {
+const handleDrop = async (event: DragEvent) => {
   isDragging.value = false
-  addFiles(Array.from(event.dataTransfer?.files || []))
+  await addFiles(Array.from(event.dataTransfer?.files || []))
 }
 
 const removePhoto = (id: string) => {

@@ -380,6 +380,155 @@ export const buildFeePreviewBody = (form: {
   return body
 }
 
+const findDictionaryValue = (param: any, matcher: (label: string) => boolean) => {
+  const dictionaryValues = getParamValues(param)
+
+  return dictionaryValues.find((item: any) => {
+    const label = String(item.name || item.value || item.label || '').toLowerCase()
+    return matcher(label)
+  })
+}
+
+export const applyAllegroParameterDefaults = (
+  parameters: any[],
+  parameterValues: Record<string, any>,
+) => {
+  parameters.forEach((param: any) => {
+    const parameterId = String(param.id || '')
+    if (!parameterId) return
+
+    const currentValue = parameterValues[parameterId]
+    if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+      return
+    }
+
+    const name = String(param.name || '').toLowerCase()
+
+    if (name.includes('opakowan')) {
+      const originalPackaging = findDictionaryValue(
+        param,
+        label => label.includes('oryginaln') || label.includes('original'),
+      )
+
+      if (originalPackaging) {
+        parameterValues[parameterId] = originalPackaging.id || originalPackaging.value
+      }
+
+      return
+    }
+
+    if (
+      (name === 'stan' || name.includes('stan produktu') || name.includes('condition')) &&
+      !name.includes('opakowan')
+    ) {
+      const newCondition = findDictionaryValue(
+        param,
+        label => label.includes('nowy') || label === 'new',
+      )
+
+      if (newCondition) {
+        parameterValues[parameterId] = newCondition.id || newCondition.value
+      }
+    }
+  })
+}
+
+export const mapAllegroImagesFromSyncDto = (images: any[]): AllegroPhoto[] => {
+  if (!Array.isArray(images)) return []
+
+  return images
+    .map((item: any) => {
+      const allegroUrl = item.allegroUrl || item.AllegroUrl
+      const sourceUrl = item.sourceUrl || item.SourceUrl
+      const url = allegroUrl || sourceUrl
+
+      if (!url) return null
+
+      return {
+        id: createId(),
+        url,
+        allegroUrl: isValidAllegroImageUrl(allegroUrl) ? allegroUrl : undefined,
+      } as AllegroPhoto
+    })
+    .filter(Boolean) as AllegroPhoto[]
+}
+
+export const mapProductMediasToAllegroPhotos = (medias: any[]): AllegroPhoto[] => {
+  if (!Array.isArray(medias)) return []
+
+  return medias
+    .map((media: any) => {
+      const filePath = media.filePath || media.FilePath
+      if (!filePath) return null
+
+      const url = filePath.startsWith('http')
+        ? filePath
+        : `https://images.olmag.pl/${String(filePath).replace(/^\/+/, '')}`
+
+      return {
+        id: createId(),
+        url,
+      } as AllegroPhoto
+    })
+    .filter(Boolean) as AllegroPhoto[]
+}
+
+const mapProductLayoutToAllegroLayout = (
+  layout?: string | null,
+): AllegroDescriptionRow['layout'] => {
+  switch (layout) {
+    case 'image-left-text-right':
+      return 'IMAGE_TEXT_RIGHT'
+    case 'text-left-image-right':
+      return 'TEXT_IMAGE_RIGHT'
+    case 'image-only':
+      return 'IMAGE_ONLY'
+    default:
+      return 'TEXT_ONLY'
+  }
+}
+
+export const buildAllegroRowsFromVisionSections = (
+  sections: any[],
+  templateSlots: Array<{ layout?: string }> | null,
+  photos: AllegroPhoto[],
+): AllegroDescriptionRow[] =>
+  sections
+    .map((section: any, index: number) => {
+      const html = section?.description ?? section?.Description ?? ''
+
+      if (!hasDescriptionText(html)) return null
+
+      const slotLayout = templateSlots?.[index]?.layout
+      const layout = mapProductLayoutToAllegroLayout(slotLayout)
+      const row: AllegroDescriptionRow = {
+        id: createId(),
+        text: html,
+        active: true,
+        layout,
+        imageUrl: null,
+        imageFile: null,
+      }
+
+      if (layout !== 'TEXT_ONLY' && photos.length) {
+        const suggested =
+          section?.suggestedImageIndex ??
+          section?.SuggestedImageIndex ??
+          index
+
+        const photoIndex = Number.isInteger(suggested)
+          ? Math.min(Math.max(Number(suggested), 0), photos.length - 1)
+          : Math.min(index, photos.length - 1)
+
+        const photo = photos[photoIndex]
+        row.imageUrl = photo?.allegroUrl || photo?.url || null
+        row.imageFile = photo?.file || null
+      }
+
+      return row
+    })
+    .filter(Boolean) as AllegroDescriptionRow[]
+
 export const extractParametersFromLiveOffer = (data: any) => {
   const productSetItem = data?.productSet?.[0]
   const offerParams = Array.isArray(data?.parameters) ? data.parameters : []

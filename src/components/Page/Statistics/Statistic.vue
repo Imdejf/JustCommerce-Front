@@ -189,6 +189,71 @@
             </div>
           </div>
 
+          <div class="cosmos-stats__kpi mt-4">
+            <div class="cosmic-card cosmic-card--net">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Allegro przychód</span>
+                  <span class="cosmic-card__glyph">A</span>
+                </div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ money(allegroStats.revenue) }}</div>
+                <div class="cosmic-card__foot">{{ allegroStats.ordersCount }} zamówień · produkty {{ money(allegroStats.productsRevenue) }}</div>
+                <v-chart class="cosmic-card__chart" :option="allegroRevenueSparkOption" autoresize />
+              </div>
+            </div>
+
+            <div class="cosmic-card cosmic-card--profit">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Allegro zysk netto</span>
+                  <span class="cosmic-card__glyph">✦</span>
+                </div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(allegroStats.netProfit) }}</div>
+                <div class="cosmic-card__foot">marża {{ percent(allegroStats.marginPct) }} · koszt {{ moneyNet(allegroStats.productCost) }}</div>
+                <v-chart class="cosmic-card__chart" :option="allegroProfitSparkOption" autoresize />
+              </div>
+            </div>
+
+            <div class="cosmic-card cosmic-card--gross">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Allegro prowizje</span>
+                  <span class="cosmic-card__glyph">%</span>
+                </div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(allegroStats.commission) }}</div>
+                <div class="cosmic-card__foot">wszystkie opłaty {{ moneyNet(allegroStats.totalFees) }}</div>
+                <v-chart class="cosmic-card__chart" :option="allegroCommissionSparkOption" autoresize />
+              </div>
+            </div>
+
+            <div class="cosmic-card cosmic-card--aov">
+              <div class="cosmic-card__stars" />
+              <div class="cosmic-card__content">
+                <div class="cosmic-card__head">
+                  <span class="cosmic-card__label">Allegro AOV</span>
+                  <span class="cosmic-card__glyph">◈</span>
+                </div>
+                <div class="cosmic-card__value cosmic-card__value--money">{{ money(allegroStats.averageOrderValue) }}</div>
+                <div class="cosmic-card__foot">średnia wartość zamówienia Allegro</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cosmos-stats__grid cosmos-stats__grid--main">
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Allegro: przychód i zysk</h2>
+                  <p>Oddzielne statystyki Allegro w wybranym okresie</p>
+                </div>
+              </div>
+              <v-chart class="cosmos-panel__chart" :option="allegroRevenueProfitOption" autoresize />
+            </section>
+          </div>
+
           <div class="cosmos-stats__grid cosmos-stats__grid--main">
             <section class="cosmos-panel">
               <div class="cosmos-panel__head">
@@ -313,6 +378,29 @@ type OrderRaportDTO = {
   products: OrderRaportProductDTO[]
 }
 
+type AllegroStatisticsPeriodDTO = {
+  period: string
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  productCost: number
+  netProfit: number
+}
+
+type AllegroStatisticsDTO = {
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  totalFees: number
+  productCost: number
+  netProfit: number
+  marginPct: number
+  averageOrderValue: number
+  trend: AllegroStatisticsPeriodDTO[]
+}
+
 const loading = ref(false)
 const raport = ref<OrderRaportDTO | null>(null)
 const filtersOpen = ref(true)
@@ -334,6 +422,26 @@ const filters = ref({
 
 const stores = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszystkie' }])
 const products = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszystkie' }])
+const allegroStats = ref({
+  ordersCount: 0,
+  revenue: 0,
+  productsRevenue: 0,
+  commission: 0,
+  totalFees: 0,
+  productCost: 0,
+  netProfit: 0,
+  marginPct: 0,
+  averageOrderValue: 0
+})
+const allegroPeriods = ref<{
+  label: string
+  ordersCount: number
+  revenue: number
+  productsRevenue: number
+  commission: number
+  productCost: number
+  netProfit: number
+}[]>([])
 
 const deliveryMethodOptions = [
   { value: 0, label: 'Kurier' },
@@ -450,6 +558,18 @@ const profitProductsSparkOption = computed(() => {
   return spark(top.map((p) => p.profit), '#6ee7b7')
 })
 
+const allegroRevenueSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.revenue), '#93c5fd')
+)
+
+const allegroProfitSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.netProfit), '#6ee7b7')
+)
+
+const allegroCommissionSparkOption = computed(() =>
+  spark(allegroPeriods.value.map((p) => p.commission), '#c4b5fd')
+)
+
 const qtyDonutOption = computed(() => {
   const top = [...productsTable.value].sort((a, b) => b.quantity - a.quantity).slice(0, 3)
   const rest = productsTable.value.reduce((sum, p) => sum + p.quantity, 0) -
@@ -531,6 +651,48 @@ const revenueOption = computed(() => ({
   ]
 }))
 
+const allegroRevenueProfitOption = computed(() => ({
+  ...baseChart(allegroPeriods.value.map((p) => p.label), (v) => money(v)),
+  series: [
+    {
+      type: 'line',
+      name: 'Przychód Allegro',
+      data: allegroPeriods.value.map((p) => p.revenue),
+      smooth: true,
+      areaStyle: { color: 'rgba(96, 165, 250, 0.12)' }
+    },
+    {
+      type: 'bar',
+      name: 'Zysk Allegro',
+      data: allegroPeriods.value.map((p) => p.netProfit),
+      barMaxWidth: 28,
+      itemStyle: { color: chartTheme.profit, borderRadius: [6, 6, 0, 0] }
+    },
+    {
+      type: 'line',
+      name: 'Prowizje Allegro',
+      data: allegroPeriods.value.map((p) => p.commission),
+      smooth: true,
+      lineStyle: { color: chartTheme.alt, type: 'dashed' }
+    }
+  ]
+}))
+
+function clearAllegroStats() {
+  allegroStats.value = {
+    ordersCount: 0,
+    revenue: 0,
+    productsRevenue: 0,
+    commission: 0,
+    totalFees: 0,
+    productCost: 0,
+    netProfit: 0,
+    marginPct: 0,
+    averageOrderValue: 0
+  }
+  allegroPeriods.value = []
+}
+
 const topProductsQtyOption = computed(() => {
   const top = [...productsTable.value].sort((a, b) => b.quantity - a.quantity).slice(0, 10)
   return {
@@ -584,6 +746,7 @@ function resetFilters() {
     brandId: null
   }
   raport.value = null
+  clearAllegroStats()
 }
 
 async function fetchRaport() {
@@ -598,24 +761,48 @@ async function fetchRaport() {
 
     if (!dateRange.value) dateRange.value = [from, to]
 
-    const data = await Api.orders.getOrderRaport({
-      from,
-      to,
-      storeId: filters.value.storeId,
-      isPaid: filters.value.isPaid,
-      isShipped: filters.value.isShipped,
-      deliveryMethod: filters.value.deliveryMethod,
-      paymentProvider: filters.value.paymentProvider,
-      orderSourceType: filters.value.orderSourceType,
-      productId: filters.value.productId,
-      brandId: filters.value.brandId
-    })
+    const [data, allegroData] = await Promise.all([
+      Api.orders.getOrderRaport({
+        from,
+        to,
+        storeId: filters.value.storeId,
+        isPaid: filters.value.isPaid,
+        isShipped: filters.value.isShipped,
+        deliveryMethod: filters.value.deliveryMethod,
+        paymentProvider: filters.value.paymentProvider,
+        orderSourceType: filters.value.orderSourceType,
+        productId: filters.value.productId,
+        brandId: filters.value.brandId
+      }),
+      Api.allegro.getStatistics({ from, to }) as Promise<AllegroStatisticsDTO>
+    ])
 
     raport.value = data as OrderRaportDTO
+    allegroStats.value = {
+      ordersCount: Number(allegroData.ordersCount ?? 0),
+      revenue: Number(allegroData.revenue ?? 0),
+      productsRevenue: Number(allegroData.productsRevenue ?? 0),
+      commission: Number(allegroData.commission ?? 0),
+      totalFees: Number(allegroData.totalFees ?? 0),
+      productCost: Number(allegroData.productCost ?? 0),
+      netProfit: Number(allegroData.netProfit ?? 0),
+      marginPct: Number(allegroData.marginPct ?? 0),
+      averageOrderValue: Number(allegroData.averageOrderValue ?? 0)
+    }
+    allegroPeriods.value = (allegroData.trend ?? []).map((p) => ({
+      label: formatPeriodLabel(p.period),
+      ordersCount: Number(p.ordersCount ?? 0),
+      revenue: Number(p.revenue ?? 0),
+      productsRevenue: Number(p.productsRevenue ?? 0),
+      commission: Number(p.commission ?? 0),
+      productCost: Number(p.productCost ?? 0),
+      netProfit: Number(p.netProfit ?? 0)
+    }))
   } catch (e) {
     console.error(e)
     toast.error('Nie udało się pobrać raportu zamówień.')
     raport.value = null
+    clearAllegroStats()
   } finally {
     loading.value = false
   }

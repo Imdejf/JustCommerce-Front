@@ -1,3 +1,5 @@
+import type { AttributeGroupDTO } from '../attributeGroup/AttributeGroup'
+
 export interface CategoryDTO {
     id: string;
     slug: string;
@@ -9,6 +11,8 @@ export interface CategoryDTO {
     metaDescription: string;
     shortDescription: string;
     description: string;
+    allegroCategoryId: string | null;
+    allegroCategoryName: string | null;
     gmcCategory: string;
     displayOrder: number;
     isPublished: boolean;
@@ -23,6 +27,8 @@ export interface CategoryDTO {
     categoryLangs: CategoryLangDTO[];
     categoryBlogItems: CategoryBlogItemDTO[]; 
     categoryFaqItems: CategoryFaqItemDTO[];
+    attributeGroupIds: string[];
+    attributeGroups: AttributeGroupDTO[];
   }
   
   export interface CategoryLangDTO {

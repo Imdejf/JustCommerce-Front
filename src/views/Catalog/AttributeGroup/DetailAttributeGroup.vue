@@ -6,6 +6,7 @@ import { Api } from '/@/services/api'
 import type { AttributeGroupDTO } from '/@/types/attributeGroup/AttributeGroup.ts'
 import ContentContainer from '/@/layouts/ContentContainer.vue'
 import AttributeGroupNavbar from '/@/components/Page/Catalog/AttributeGroup/AttributeGroupDetailNavbar.vue'
+import AttributeGroupAttributes from '/@/components/Page/Catalog/AttributeGroup/AttributeGroupAttributes.vue'
 
 const route = useRoute()
 const attributeGroup = ref<AttributeGroupDTO | null>(null)
@@ -35,6 +36,7 @@ onMounted(async () => {
           :disabled="true"
         />
       </InfoBox>
+      <AttributeGroupAttributes :attributeGroup="attributeGroup" />
     </div>
   </ContentContainer>
 </template>

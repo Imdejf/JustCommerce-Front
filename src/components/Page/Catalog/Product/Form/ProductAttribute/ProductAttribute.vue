@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { ProductDTO, ProductAttributeDTO } from '/@/types/product/Product'
+import type { CategoryDTO } from '/@/types/category/Category'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useStoreStore } from '/@/stores/store'
 import { Api } from '/@/services/api'
@@ -22,6 +23,21 @@ interface ProductAttributeValue {
 interface ProductAttributeValueLang {
   languageId: string
   value: string
+}
+
+interface AttributeOption {
+  id: string
+  name: string
+}
+
+interface AttributeGroupOption {
+  id: string
+  name: string
+}
+
+interface AvailableAttributeGroup {
+  group: AttributeGroupOption
+  items: AttributeOption[]
 }
 
 const props = defineProps({
@@ -86,17 +102,34 @@ const resolvedProduct = computed<ProductDTO | null>(() => {
 })
 
 const productId = computed(() => resolvedProduct.value?.id ?? '')
+const productCategoryIds = computed(() => resolvedProduct.value?.categoryIds ?? [])
 
 const currentToEdit = ref<ProductAttributeDTO | null>(null)
 const currentAttribute = ref<ProductAttributeDTO[]>([])
-const attributeTemplateList = ref([])
-const availableAttributeList = ref([])
+const attributeTemplateList = ref<AttributeGroupOption[]>([])
+const availableAttributeList = ref<AvailableAttributeGroup[]>([])
+const categoriesList = ref<CategoryDTO[]>([])
 const addedAttributeList = ref<Array<ProductAttributeDTO>>(
   resolvedProduct.value?.attributes ? [...resolvedProduct.value.attributes] : []
 )
-const currentTemplate = ref(null)
+const currentTemplate = ref<string | null>(null)
+const currentCategoryTemplate = ref<string | null>(null)
 const removeModalVisible = ref(false)
 const attributeToRemove = ref<ProductAttributeDTO | null>(null)
+
+const categoryAttributeGroupIds = computed(() => {
+  const groupIds = categoriesList.value
+    .filter((category) => productCategoryIds.value.includes(category.id))
+    .flatMap((category) => category.attributeGroupIds ?? [])
+
+  return [...new Set(groupIds)]
+})
+
+const categoryAttributeTemplateList = computed(() => {
+  return attributeTemplateList.value.filter((attributeGroup) =>
+    categoryAttributeGroupIds.value.includes(attributeGroup.id)
+  )
+})
 
 const getAllProductTemplate = async () => {
   const result = await Api.attributeGroups.listByStoreId()
@@ -108,33 +141,70 @@ const getAllProductTemplate = async () => {
   })
 }
 
-const addGroupAttributes = (groupId: string) => {
-  // Znajdź grupę o podanym groupId
-  const selectedGroup = availableAttributeList.value.find(
-    (group) => group.group.id === currentTemplate.value
-  )
-  if (selectedGroup) {
-    // Pobierz wszystkie items z wybranej grupy
-    const itemsInGroup = selectedGroup.items
+const createPendingAttribute = (
+  item: AttributeOption,
+  group: AttributeGroupOption
+): ProductAttributeDTO => ({
+  id: item.id,
+  attributeValueId: '',
+  name: item.name,
+  value: '',
+  groupName: group.name,
+  groupId: group.id,
+  productAttributeLangs: language.languages.map((lang) => {
+    return {
+      productAttributeValueId: '',
+      languageId: lang.id,
+      value: ''
+    }
+  })
+})
 
-    itemsInGroup.forEach((item) => {
-      const newAttribute: ProductAttributeDTO = {
-        id: item.id,
-        name: item.name,
-        value: '',
-        productAttributeLangs: language.languages.map((lang) => {
-          return {
-            languageId: lang.id,
-            value: ''
-          }
-        })
-      }
-      currentAttribute.value.push(newAttribute)
+const addAttributesFromGroupIds = (groupIds: string[]) => {
+  const existingAttributeIds = new Set([
+    ...addedAttributeList.value.map((attribute) => attribute.id),
+    ...currentAttribute.value.map((attribute) => attribute.id)
+  ])
+
+  availableAttributeList.value
+    .filter((group) => groupIds.includes(group.group.id))
+    .forEach((group) => {
+      group.items.forEach((item) => {
+        if (existingAttributeIds.has(item.id)) {
+          return
+        }
+
+        currentAttribute.value.push(createPendingAttribute(item, group.group))
+        existingAttributeIds.add(item.id)
+      })
     })
-    // Tutaj możesz wykorzystać znalezione elementy z grupy w dalszej części kodu
-  } else {
-    console.log('Nie znaleziono grupy o podanym groupId.')
+}
+
+const addGroupAttributes = () => {
+  if (!currentTemplate.value) {
+    toast.error('Wybierz grupę atrybutów.')
+    return
   }
+
+  addAttributesFromGroupIds([currentTemplate.value])
+}
+
+const addAllCategoryGroupAttributes = () => {
+  if (!categoryAttributeGroupIds.value.length) {
+    toast.error('Produkt nie ma grup atrybutów przypisanych do kategorii.')
+    return
+  }
+
+  addAttributesFromGroupIds(categoryAttributeGroupIds.value)
+}
+
+const addCategoryGroupAttributes = () => {
+  if (!currentCategoryTemplate.value) {
+    toast.error('Wybierz grupę atrybutów z kategorii.')
+    return
+  }
+
+  addAttributesFromGroupIds([currentCategoryTemplate.value])
 }
 
 const getAllAvailableAttributes = async () => {
@@ -169,33 +239,53 @@ const getAllAvailableAttributes = async () => {
     })
   })
 }
-const handleSelectTemplate = (id: string) => {}
 
-const selectAttribute = ref(null)
+const getAllCategories = async () => {
+  const result = await Api.categories.listByStoreId()
+  categoriesList.value = result.items
+}
+
+const selectAttribute = ref<string | null>(null)
 const handleAddProductAttribute = () => {
-  const attribute = findItemsById(selectAttribute.value)
-  const newAttribute: ProductAttributeDTO = {
-    id: attribute.id,
-    name: attribute.name,
-    value: '',
-    productAttributeLangs: language.languages.map((lang) => {
-      return {
-        languageId: lang.id,
-        value: ''
-      }
-    })
+  if (!selectAttribute.value) {
+    toast.error('Wybierz atrybut.')
+    return
   }
-  currentAttribute.value.push(newAttribute)
+
+  const attribute = findItemsById(selectAttribute.value)
+
+  if (!attribute) {
+    toast.error('Nie znaleziono wybranego atrybutu.')
+    return
+  }
+
+  const alreadySelected = [...addedAttributeList.value, ...currentAttribute.value].some(
+    (item) => item.id === attribute.id
+  )
+
+  if (alreadySelected) {
+    toast.error('Ten atrybut jest już dodany.')
+    return
+  }
+
+  currentAttribute.value.push(createPendingAttribute(attribute, {
+    id: attribute.groupId,
+    name: attribute.groupName
+  }))
 }
 
 function findItemsById(idToFind: string) {
   for (const item of availableAttributeList.value) {
     const foundItem = item.items.find((item) => item.id === idToFind)
     if (foundItem) {
-      return foundItem
+      return {
+        ...foundItem,
+        groupId: item.group.id,
+        groupName: item.group.name
+      }
     }
   }
-  return undefined // Nie znaleziono pasującego elementu
+  return undefined
 }
 
 const handleRemoveAddedAttribute = (attribute: ProductAttributeDTO) => {
@@ -366,6 +456,7 @@ watch(
 onMounted(async () => {
   await getAllProductTemplate()
   await getAllAvailableAttributes()
+  await getAllCategories()
 })
 </script>
 
@@ -375,6 +466,26 @@ onMounted(async () => {
       ><DropDown label="Opcje" v-model="currentTemplate" :options="attributeTemplateList" />
       <div class="mt-7">
         <el-button @click="addGroupAttributes" color="#ea580c" round>Zastosuj</el-button>
+      </div>
+    </FormSection>
+    <FormSection :title="'Atrybuty z kategorii'">
+      <div v-if="categoryAttributeTemplateList.length">
+        <div class="mb-3 text-sm text-gray-600">
+          Grupy przypisane do kategorii produktu:
+          {{ categoryAttributeTemplateList.map((group) => group.name).join(', ') }}
+        </div>
+        <DropDown label="Grupa z kategorii" v-model="currentCategoryTemplate" :options="categoryAttributeTemplateList" />
+        <div class="mt-7 flex gap-3">
+          <el-button @click="addCategoryGroupAttributes" color="#ea580c" round>
+            Zastosuj grupę
+          </el-button>
+          <el-button @click="addAllCategoryGroupAttributes" color="#ea580c" round>
+            Zastosuj wszystkie grupy z kategorii
+          </el-button>
+        </div>
+      </div>
+      <div v-else class="text-sm text-gray-500">
+        Brak grup atrybutów przypisanych do wybranych kategorii.
       </div>
     </FormSection>
     <FormSection :title="'Dostępne atrybuty'">

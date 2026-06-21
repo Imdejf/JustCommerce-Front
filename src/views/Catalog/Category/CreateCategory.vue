@@ -18,6 +18,8 @@ const category = computed(() => {
     metaDescription: '',
     shortDescription: '',
     description: '',
+    allegroCategoryId: null,
+    allegroCategoryName: null,
     displayOrder: 0,
     isPublished: false,
     includeInMenu: false,
@@ -42,6 +44,8 @@ const category = computed(() => {
     },
     storeId: '',
     childCategories: [],
+    attributeGroupIds: [],
+    attributeGroups: [],
     categoryLangs: language.languages.map((lang: LanguageDTO) => ({
       name: '',
       description: '',

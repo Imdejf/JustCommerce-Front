@@ -64,6 +64,7 @@ const handleSave = async () => {
   }
 
   await Api.products.updateCategory(payload)
+  props.product.categoryIds = [...selectedCategories.value]
   toast.success('Zapisano kategorie', {
     timeout: 2000
   })
