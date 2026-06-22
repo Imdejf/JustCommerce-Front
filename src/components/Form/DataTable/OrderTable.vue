@@ -126,6 +126,13 @@
                 <el-option label="Nie" :value="false" />
               </el-select>
             </el-col>
+            <el-col :xs="24" :sm="12" :md="6" :lg="4">
+              <label class="filter-label">Faktura na termin</label>
+              <el-select v-model="filter.termInvoice" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Tak" :value="true" />
+                <el-option label="Nie" :value="false" />
+              </el-select>
+            </el-col>
             <el-col :xs="24" :sm="24" :md="12" :lg="8" class="flex items-end gap-2">
               <el-button type="primary" @click="applyFilters">Zastosuj filtry</el-button>
               <el-button @click="clearFilters">Wyczyść</el-button>
@@ -609,6 +616,7 @@ type OrderFilters = {
   orderStatus: number | null
   isPaid: boolean | null
   sendInvoice: boolean | null
+  termInvoice: boolean | null
   pageNumber: number
   pageSize: number
 }
@@ -794,6 +802,7 @@ const createDefaultFilters = (): OrderFilters => ({
   orderStatus: null,
   isPaid: null,
   sendInvoice: null,
+  termInvoice: null,
   pageNumber: 1,
   pageSize: 12
 })
@@ -814,6 +823,7 @@ const buildFiltersFromQuery = (): OrderFilters => {
     orderStatus: parseQueryNumber(route.query, 'orderStatus', null),
     isPaid: parseQueryBoolean(route.query, 'isPaid', null),
     sendInvoice: parseQueryBoolean(route.query, 'sendInvoice', null),
+    termInvoice: parseQueryBoolean(route.query, 'termInvoice', null),
     pageNumber: parseQueryPage(route.query, 1),
     pageSize: parseQueryNumber(route.query, 'pageSize', 12) || 12
   }
@@ -833,6 +843,7 @@ const buildQueryFromFilters = (filters: OrderFilters) => {
   setQueryNumber(query, 'orderStatus', filters.orderStatus)
   setQueryBoolean(query, 'isPaid', filters.isPaid)
   setQueryBoolean(query, 'sendInvoice', filters.sendInvoice)
+  setQueryBoolean(query, 'termInvoice', filters.termInvoice)
   setQueryNumber(query, 'page', filters.pageNumber)
   setQueryNumber(query, 'pageSize', filters.pageSize)
 
@@ -855,6 +866,7 @@ const activeFiltersCount = computed(() => {
   if (filter.value.orderStatus !== null) count++
   if (filter.value.isPaid !== null) count++
   if (filter.value.sendInvoice !== null) count++
+  if (filter.value.termInvoice !== null) count++
 
   return count
 })
@@ -875,6 +887,7 @@ const buildPredicateObject = () => {
   if (filter.value.orderStatus !== null) predicate.OrderStatus = filter.value.orderStatus
   if (filter.value.isPaid !== null) predicate.IsPaid = filter.value.isPaid
   if (filter.value.sendInvoice !== null) predicate.SendInvoice = filter.value.sendInvoice
+  if (filter.value.termInvoice !== null) predicate.TermInvoice = filter.value.termInvoice
 
   if (filter.value.dateFrom || filter.value.dateTo) {
     predicate.CreatedOn = {}
