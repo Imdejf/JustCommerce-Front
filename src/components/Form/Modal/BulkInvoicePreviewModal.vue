@@ -36,6 +36,7 @@ type PreviewData = {
 const props = defineProps<{
   visible: boolean
   storeId: string | null
+  orderIds?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -110,12 +111,28 @@ const loadPreview = async () => {
 
   try {
     const data = await Api.invoices.getBulkInvoicePreview(props.storeId)
-    preview.value = data
-    selectedOrderIds.value = (data.orders ?? []).map((order: PreviewOrder) => order.orderId)
+    const requestedOrderIds = props.orderIds ?? []
+    const requestedOrderIdSet = new Set(requestedOrderIds)
+    const orders = requestedOrderIds.length
+      ? (data.orders ?? []).filter((order: PreviewOrder) => requestedOrderIdSet.has(order.orderId))
+      : (data.orders ?? [])
+
+    if (requestedOrderIds.length && orders.length < requestedOrderIds.length) {
+      toast.warning('Część zaznaczonych zamówień nie kwalifikuje się do wystawienia faktury.')
+    }
+
+    preview.value = {
+      ...data,
+      totalCount: orders.length,
+      totalOrderAmount: orders.reduce((sum: number, order: PreviewOrder) => sum + Number(order.orderTotal ?? 0), 0),
+      totalInvoiceAmount: orders.reduce((sum: number, order: PreviewOrder) => sum + Number(order.invoiceTotalGross ?? 0), 0),
+      orders
+    }
+    selectedOrderIds.value = orders.map((order: PreviewOrder) => order.orderId)
 
     await nextTick()
     tableRef.value?.clearSelection?.()
-    for (const order of data.orders ?? []) {
+    for (const order of orders) {
       tableRef.value?.toggleRowSelection?.(order, true)
     }
   } catch (error: any) {

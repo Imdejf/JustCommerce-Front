@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
 import { Filter, ArrowDown, Refresh, Box, Van, CircleCheck } from '@element-plus/icons-vue'
@@ -27,12 +28,19 @@ enum PaymentProvider {
 
 const toast = useToast()
 const cookies = new Cookies()
+const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const filtersOpen = ref(false)
 const dataTable = ref<any>({ items: [], pageNumber: 1, totalCount: 0 })
 const brands = ref<{ value: string | null; label: string }[]>([])
-const producer = ref<string | null>(null)
+const routeProducer = typeof route.query.producerId === 'string'
+  ? route.query.producerId
+  : typeof route.query.brandId === 'string'
+    ? route.query.brandId
+    : null
+const producer = ref<string | null>(routeProducer)
 const expandedOrderId = ref<string | null>(null)
 const selectedOrderIds = ref<Set<string>>(new Set())
 const selectedOrderItems = ref<Record<string, Set<string>>>({})
@@ -46,7 +54,7 @@ const filter = ref({
       PredicateObject: {
         NumberOrder: null as string | null,
         ShipmentData: null as string | null,
-        BrandId: null as string | null,
+        BrandId: routeProducer as string | null,
         IsCOD: null as boolean | null
       }
     }
@@ -110,8 +118,27 @@ const activeFiltersCount = computed(() => {
 
 const selectedOrdersCount = computed(() => selectedOrderIds.value.size)
 
+const readyToMarkShippedRows = computed(() =>
+  items.value.filter((row: any) =>
+    checkIfAllOrdered(row) &&
+    checkIfAllCourierOrdered(row) &&
+    !checkIfAllProductShipped(row)
+  )
+)
+
 const money = (v?: number) =>
   new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(v ?? 0)
+
+const currentDateTimeValue = () => {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
 
 function checkIfAllOrdered(row: any) {
   return row.orderProcessedItems?.every((item: any) => item.itemOrderedFromManufacturer) ?? false
@@ -179,6 +206,19 @@ const fetchTableData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const syncProducerToUrl = () => {
+  const query = { ...route.query }
+
+  if (producer.value) {
+    query.producerId = producer.value
+  } else {
+    delete query.producerId
+  }
+
+  delete query.brandId
+  router.replace({ query })
 }
 
 const applyFilters = async () => {
@@ -277,39 +317,115 @@ const orderAllPendingItems = async (orderRow: any) => {
   await sendSelectedItemsToManufacturer(orderRow)
 }
 
-const updateDateOrderedFromManufacturer = async (row: any) => {
+const updateDateOrderedFromManufacturer = async (row: any, showToast = true) => {
   row.itemOrderedFromManufacturer = !!row.itemOrderedFromManufacturerDate
   try {
     await Api.shipping.changeManufacturerOrderedDate({
       body: JSON.stringify({ orderItemId: row.orderItemId, itemOrderedFromManufacturerDate: row.itemOrderedFromManufacturerDate })
     })
-    toast.success('Zaktualizowano datę u producenta')
+    if (showToast) toast.success('Zaktualizowano datę u producenta')
   } catch {
     toast.error('Błąd aktualizacji daty')
+    throw new Error('Manufacturer status update failed')
   }
 }
 
-const updateDateOrderedCourier = async (row: any) => {
+const setManufacturerStatus = async (row: any, enabled: boolean, showToast = false) => {
+  row.itemOrderedFromManufacturerDate = enabled ? currentDateTimeValue() : null
+  await updateDateOrderedFromManufacturer(row, showToast)
+}
+
+const updateDateOrderedCourier = async (row: any, showToast = true) => {
   row.orderedCourier = !!row.orderedCourierDate
   try {
     await Api.shipping.changeOrderedCourier({
       body: JSON.stringify({ orderItemId: row.orderItemId, orderedCourierDate: row.orderedCourierDate })
     })
-    toast.success('Zaktualizowano datę kuriera')
+    if (showToast) toast.success('Zaktualizowano datę kuriera')
   } catch {
     toast.error('Błąd aktualizacji daty')
+    throw new Error('Courier status update failed')
   }
 }
 
-const updateDateShipped = async (row: any) => {
+const setCourierStatus = async (row: any, enabled: boolean, showToast = false) => {
+  row.orderedCourierDate = enabled ? currentDateTimeValue() : null
+  await updateDateOrderedCourier(row, showToast)
+}
+
+const updateDateShipped = async (row: any, showToast = true) => {
   row.itemShiped = !!row.itemShipedDate
   try {
     await Api.shipping.changeShippingOrderState({
       body: JSON.stringify({ orderItemId: row.orderItemId, itemShipedDate: row.itemShipedDate })
     })
-    toast.success('Zaktualizowano datę wysyłki')
+    if (showToast) toast.success('Zaktualizowano datę wysyłki')
   } catch {
     toast.error('Błąd aktualizacji daty')
+    throw new Error('Shipped status update failed')
+  }
+}
+
+const setShippedStatus = async (row: any, enabled: boolean, showToast = false) => {
+  row.itemShipedDate = enabled ? currentDateTimeValue() : null
+  await updateDateShipped(row, showToast)
+}
+
+const toggleOrderWorkflowStatus = async (
+  orderRow: any,
+  status: 'manufacturer' | 'courier' | 'shipped'
+) => {
+  const orderItems = orderRow.orderProcessedItems ?? []
+  if (!orderItems.length) {
+    return
+  }
+
+  const enabled = status === 'manufacturer'
+    ? !checkIfAllOrdered(orderRow)
+    : status === 'courier'
+      ? !checkIfAllCourierOrdered(orderRow)
+      : !checkIfAllProductShipped(orderRow)
+
+  try {
+    if (status === 'manufacturer') {
+      await Promise.all(orderItems.map((item: any) => setManufacturerStatus(item, enabled)))
+    } else if (status === 'courier') {
+      await Promise.all(orderItems.map((item: any) => setCourierStatus(item, enabled)))
+    } else {
+      await Promise.all(orderItems.map((item: any) => setShippedStatus(item, enabled)))
+    }
+
+    toast.success(enabled ? 'Zaznaczono status dla zamówienia' : 'Wyczyszczono status dla zamówienia')
+    await fetchTableData()
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zmienić statusu zamówienia')
+    await fetchTableData()
+  }
+}
+
+const markReadyOrdersAsShipped = async () => {
+  const readyRows = readyToMarkShippedRows.value
+
+  if (!readyRows.length) {
+    toast.info('Brak zamówień gotowych do oznaczenia jako wysłane')
+    return
+  }
+
+  selectedOrderIds.value = new Set(readyRows.map((row: any) => row.orderId))
+
+  try {
+    const orderItems = readyRows.flatMap((row: any) =>
+      (row.orderProcessedItems ?? []).filter((item: any) => !item.itemShiped)
+    )
+
+    await Promise.all(orderItems.map((item: any) => setShippedStatus(item, true)))
+    toast.success(`Oznaczono jako wysłane: ${readyRows.length} zamówień`)
+    await fetchTableData()
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się oznaczyć zamówień jako wysłane')
+    await fetchTableData()
   }
 }
 
@@ -344,6 +460,7 @@ const allBrands = async () => {
 
 watch(producer, (val) => {
   filter.value.SmartTableParam.Search.PredicateObject.BrandId = val || null
+  syncProducerToUrl()
   applyFilters()
 })
 
@@ -371,6 +488,9 @@ onMounted(async () => {
         </el-button>
         <el-button type="primary" :disabled="!selectedOrdersCount" @click="generateSelectedOrdersToManufacturerHandle">
           Zamów zaznaczone ({{ selectedOrdersCount }})
+        </el-button>
+        <el-button type="success" :disabled="!readyToMarkShippedRows.length" @click="markReadyOrdersAsShipped">
+          Oznacz gotowe jako wysłane ({{ readyToMarkShippedRows.length }})
         </el-button>
       </div>
     </header>
@@ -440,6 +560,7 @@ onMounted(async () => {
             <el-col :xs="24" :sm="24" :md="4" class="flex items-end gap-2">
               <el-button type="primary" @click="applyFilters">Zastosuj</el-button>
               <el-button @click="clearFilters">Wyczyść</el-button>
+              <el-button :icon="Refresh" :loading="loading" @click="fetchTableData">Odśwież</el-button>
             </el-col>
           </el-row>
         </div>
@@ -516,9 +637,30 @@ onMounted(async () => {
                   </div>
 
                   <div class="ship-card__col ship-card__col--flags">
-                    <span class="flag" :class="checkIfAllOrdered(row) ? 'flag--yes' : 'flag--no'">Producent</span>
-                    <span class="flag" :class="checkIfAllCourierOrdered(row) ? 'flag--yes' : 'flag--no'">Kurier</span>
-                    <span class="flag" :class="checkIfAllProductShipped(row) ? 'flag--yes' : 'flag--no'">Wysłane</span>
+                    <button
+                      type="button"
+                      class="flag flag--clickable"
+                      :class="checkIfAllOrdered(row) ? 'flag--yes' : 'flag--no'"
+                      @click.stop="toggleOrderWorkflowStatus(row, 'manufacturer')"
+                    >
+                      Producent
+                    </button>
+                    <button
+                      type="button"
+                      class="flag flag--clickable"
+                      :class="checkIfAllCourierOrdered(row) ? 'flag--yes' : 'flag--no'"
+                      @click.stop="toggleOrderWorkflowStatus(row, 'courier')"
+                    >
+                      Kurier
+                    </button>
+                    <button
+                      type="button"
+                      class="flag flag--clickable"
+                      :class="checkIfAllProductShipped(row) ? 'flag--yes' : 'flag--no'"
+                      @click.stop="toggleOrderWorkflowStatus(row, 'shipped')"
+                    >
+                      Wysłane
+                    </button>
                   </div>
 
                   <div class="ship-card__col ship-card__col--courier">
@@ -576,9 +718,33 @@ onMounted(async () => {
                       </div>
                       <span>{{ item.quantity }}</span>
                       <span class="product-row__code">{{ item.productCode }}</span>
-                      <el-date-picker v-model="item.itemOrderedFromManufacturerDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD HH:mm:ss" size="small" @change="updateDateOrderedFromManufacturer(item)" />
-                      <el-date-picker v-model="item.orderedCourierDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD HH:mm:ss" size="small" @change="updateDateOrderedCourier(item)" />
-                      <el-date-picker v-model="item.itemShipedDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD HH:mm:ss" size="small" @change="updateDateShipped(item)" />
+                      <button
+                        type="button"
+                        class="status-toggle"
+                        :class="{ 'status-toggle--active': item.itemOrderedFromManufacturer }"
+                        :title="item.itemOrderedFromManufacturerDate || 'Kliknij, aby zmienić status'"
+                        @click="setManufacturerStatus(item, !item.itemOrderedFromManufacturer, true)"
+                      >
+                        Producent
+                      </button>
+                      <button
+                        type="button"
+                        class="status-toggle"
+                        :class="{ 'status-toggle--active': item.orderedCourier }"
+                        :title="item.orderedCourierDate || 'Kliknij, aby zmienić status'"
+                        @click="setCourierStatus(item, !item.orderedCourier, true)"
+                      >
+                        Kurier
+                      </button>
+                      <button
+                        type="button"
+                        class="status-toggle"
+                        :class="{ 'status-toggle--active': item.itemShiped }"
+                        :title="item.itemShipedDate || 'Kliknij, aby zmienić status'"
+                        @click="setShippedStatus(item, !item.itemShiped, true)"
+                      >
+                        Wysłane
+                      </button>
                       <el-checkbox v-model="item.ownLabel" @change="updateOwnLabel(item)" />
                     </div>
                   </div>
@@ -664,6 +830,8 @@ onMounted(async () => {
 .workflow-steps .done { color: #15803d; }
 
 .flag { display: inline-flex; margin: 2px 4px 2px 0; padding: 3px 7px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+.flag--clickable { border: 0; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.flag--clickable:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12); }
 .flag--yes { background: #ecfdf5; color: #047857; }
 .flag--no { background: #fef2f2; color: #b91c1c; }
 
@@ -690,6 +858,30 @@ onMounted(async () => {
 .product-row__name { font-weight: 700; color: #1e293b; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-row__note { display: block; font-size: 10px; color: #b45309; }
 .product-row__code { font-size: 11px; color: #64748b; }
+.status-toggle {
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.status-toggle:hover {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+.status-toggle--active {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+.status-toggle--active:hover {
+  border-color: #86efac;
+  background: #dcfce7;
+}
 
 .shipping-empty { text-align: center; padding: 48px 20px; color: #64748b; }
 .shipping-empty__icon { font-size: 40px; }

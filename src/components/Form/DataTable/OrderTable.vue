@@ -150,7 +150,15 @@
           >
             Generuj fakturę
           </el-button>
-          <el-button :icon="DocumentCopy" @click="bulkInvoiceModalOpen = true">
+          <el-button
+            type="success"
+            :icon="DocumentCopy"
+            :disabled="!selectedBulkInvoiceOrderIds.length"
+            @click="openBulkInvoiceForSelected"
+          >
+            Wystaw faktury zaznaczone ({{ selectedBulkInvoiceOrderIds.length }})
+          </el-button>
+          <el-button :icon="DocumentCopy" @click="openBulkInvoiceForAll">
             Generuj wszystkie faktury
           </el-button>
           <el-button :icon="FolderAdd" :disabled="!selectedRow" @click="openExistingInvoiceModal">Dodaj fakturę</el-button>
@@ -160,6 +168,14 @@
 
       <div class="list-body">
         <div class="list-head">
+          <span class="list-head__select">
+            <el-checkbox
+              :model-value="allVisibleInvoiceOrdersSelected"
+              :indeterminate="someVisibleInvoiceOrdersSelected && !allVisibleInvoiceOrdersSelected"
+              :disabled="!visibleInvoiceSelectableRows.length"
+              @change="toggleAllVisibleInvoiceOrders"
+            />
+          </span>
           <span>Zamówienie</span>
           <span>Klient / wysyłka</span>
           <span>Kwota</span>
@@ -206,6 +222,15 @@
               <div class="order-card__stripe" :title="producerStatusLabel(row)" />
 
               <div class="order-card__main">
+                <div class="order-card__select" @click.stop>
+                  <el-tooltip :content="canGenerateInvoice(row) ? 'Zaznacz do faktury zbiorczej' : invoiceGenerateTooltip(row)" placement="top">
+                    <el-checkbox
+                      :model-value="isBulkInvoiceOrderSelected(row.id)"
+                      :disabled="!canGenerateInvoice(row)"
+                      @change="(checked: boolean) => toggleBulkInvoiceOrder(row, checked)"
+                    />
+                  </el-tooltip>
+                </div>
                 <div class="order-card__col order-card__col--order">
                   <button
                     class="order-card__expand"
@@ -420,12 +445,35 @@
                         </div>
                         <span class="product-row__qty">×{{ item.quantity }}</span>
                         <span class="product-row__price">{{ formatPrice(item.productPrice) }}</span>
-                        <span
-                          class="product-row__status"
-                          :class="item.itemOrderedFromManufacturer ? 'product-row__status--ok' : 'product-row__status--wait'"
-                        >
-                          {{ item.itemOrderedFromManufacturer ? 'U producenta' : 'Do zamówienia' }}
-                        </span>
+                        <div class="product-row__workflow" @click.stop>
+                          <button
+                            type="button"
+                            class="product-row__status"
+                            :class="item.itemOrderedFromManufacturer ? 'product-row__status--ok' : 'product-row__status--wait'"
+                            :title="item.itemOrderedFromManufacturerDate || 'Kliknij, aby zmienić status'"
+                            @click="toggleOrderItemProducerStatus(item)"
+                          >
+                            Producent
+                          </button>
+                          <button
+                            type="button"
+                            class="product-row__status"
+                            :class="item.orderedCourier ? 'product-row__status--ok' : 'product-row__status--wait'"
+                            :title="item.orderedCourierDate || 'Kliknij, aby zmienić status'"
+                            @click="toggleOrderItemCourierStatus(item)"
+                          >
+                            Kurier
+                          </button>
+                          <button
+                            type="button"
+                            class="product-row__status"
+                            :class="item.itemShiped ? 'product-row__status--ok' : 'product-row__status--wait'"
+                            :title="item.itemShipedDate || 'Kliknij, aby zmienić status'"
+                            @click="toggleOrderItemShippedStatus(item)"
+                          >
+                            Wysłane
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -456,7 +504,8 @@
     <BulkInvoicePreviewModal
       v-model:visible="bulkInvoiceModalOpen"
       :store-id="filter.storeId ? String(filter.storeId) : null"
-      @completed="fetchTableData"
+      :order-ids="bulkInvoiceSelectedOnly ? selectedBulkInvoiceOrderIds : []"
+      @completed="handleBulkInvoiceCompleted"
     />
 
     <OrderShipmentModal
@@ -587,6 +636,8 @@ const expandedOrderId = ref<string | null>(null)
 const invoiceStore = useInvoiceStore()
 const order = useOrderStore()
 const bulkInvoiceModalOpen = ref(false)
+const bulkInvoiceSelectedOnly = ref(false)
+const selectedBulkInvoiceOrderIds = ref<string[]>([])
 const shipmentModalOpen = ref(false)
 const shipmentModalOrder = ref<any>(null)
 const loading = ref(false)
@@ -611,6 +662,22 @@ const pageStats = computed(() => {
     totalValue: items.reduce((sum: number, item: any) => sum + Number(item.orderTotal ?? 0), 0)
   }
 })
+
+const visibleInvoiceSelectableRows = computed(() =>
+  (dataTable.value.items ?? []).filter((row: any) => canGenerateInvoice(row))
+)
+
+const selectedVisibleInvoiceOrderIds = computed(() => {
+  const visibleIds = new Set(visibleInvoiceSelectableRows.value.map((row: any) => row.id))
+  return selectedBulkInvoiceOrderIds.value.filter((id) => visibleIds.has(id))
+})
+
+const allVisibleInvoiceOrdersSelected = computed(() =>
+  visibleInvoiceSelectableRows.value.length > 0 &&
+  selectedVisibleInvoiceOrderIds.value.length === visibleInvoiceSelectableRows.value.length
+)
+
+const someVisibleInvoiceOrdersSelected = computed(() => selectedVisibleInvoiceOrderIds.value.length > 0)
 
 const sortedPageItems = computed(() => {
   return [...(dataTable.value.items ?? [])].sort(
@@ -877,14 +944,19 @@ const editSelectedRecord = () => {
 
 const isOrderShipped = (row: any) => {
   if (!row) return false
-  if (row.isShipped === true) return true
-  return row.orderStatus === OrderStatus.Shipped
-    || row.orderStatus === OrderStatus.Complete
-    || row.orderStatus === OrderStatus.Closed
+  const orderItems = row.orderItems ?? []
+  return orderItems.length > 0 && orderItems.every((item: any) => item.itemShiped === true)
+}
+
+const isOrderOrderedFromManufacturer = (row: any) => {
+  if (!row) return false
+  const orderItems = row.orderItems ?? []
+  return orderItems.length > 0 && orderItems.every((item: any) => item.itemOrderedFromManufacturer === true)
 }
 
 const canGenerateInvoice = (row: any) => {
   if (!row) return false
+  if (!isOrderOrderedFromManufacturer(row)) return false
   if (!isOrderShipped(row)) return false
   if (row.invoiceType === 0 || row.invoiceType === 2) return false
   if (row.sendInvoice && row.invoiceType !== 1) return false
@@ -894,8 +966,61 @@ const canGenerateInvoice = (row: any) => {
   return row.isPaid === true
 }
 
+const isBulkInvoiceOrderSelected = (orderId: string) =>
+  selectedBulkInvoiceOrderIds.value.includes(orderId)
+
+const toggleBulkInvoiceOrder = (row: any, checked: boolean) => {
+  if (!canGenerateInvoice(row)) {
+    return
+  }
+
+  if (checked) {
+    if (!selectedBulkInvoiceOrderIds.value.includes(row.id)) {
+      selectedBulkInvoiceOrderIds.value = [...selectedBulkInvoiceOrderIds.value, row.id]
+    }
+    return
+  }
+
+  selectedBulkInvoiceOrderIds.value = selectedBulkInvoiceOrderIds.value.filter((id) => id !== row.id)
+}
+
+const toggleAllVisibleInvoiceOrders = (checked: boolean) => {
+  const visibleIds = visibleInvoiceSelectableRows.value.map((row: any) => row.id)
+
+  if (checked) {
+    const next = new Set(selectedBulkInvoiceOrderIds.value)
+    visibleIds.forEach((id: string) => next.add(id))
+    selectedBulkInvoiceOrderIds.value = [...next]
+    return
+  }
+
+  const visibleIdSet = new Set(visibleIds)
+  selectedBulkInvoiceOrderIds.value = selectedBulkInvoiceOrderIds.value.filter((id) => !visibleIdSet.has(id))
+}
+
+const openBulkInvoiceForSelected = () => {
+  if (!selectedBulkInvoiceOrderIds.value.length) {
+    toast.warning('Zaznacz zamówienia do wystawienia faktury')
+    return
+  }
+
+  bulkInvoiceSelectedOnly.value = true
+  bulkInvoiceModalOpen.value = true
+}
+
+const openBulkInvoiceForAll = () => {
+  bulkInvoiceSelectedOnly.value = false
+  bulkInvoiceModalOpen.value = true
+}
+
+const handleBulkInvoiceCompleted = async () => {
+  selectedBulkInvoiceOrderIds.value = []
+  await fetchTableData()
+}
+
 const invoiceGenerateTooltip = (row: any) => {
   if (!row) return 'Generuj fakturę'
+  if (!isOrderOrderedFromManufacturer(row)) return 'Zamówienie musi być zamówione u producenta'
   if (!isOrderShipped(row)) return 'Zamówienie musi być wysłane'
   if (row.payment === PaymentProvider.CashOnDelivery && !row.isPaid) return 'Pobranie — wymagana opłata'
   if (row.payment !== PaymentProvider.Term && !row.isPaid) return 'Zamówienie musi być opłacone'
@@ -937,6 +1062,79 @@ const invoiceGenerate = async () => {
     await fetchTableData()
   } catch (error: any) {
     toast.error(error?.message || 'Nie udało się wygenerować faktury')
+  }
+}
+
+const currentDateTimeValue = () => {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+const resolveOrderItemId = (item: any) => item.orderItemId ?? item.id
+
+const toggleOrderItemProducerStatus = async (item: any) => {
+  const orderItemId = resolveOrderItemId(item)
+  if (!orderItemId) return
+
+  const nextDate = item.itemOrderedFromManufacturer ? null : currentDateTimeValue()
+  item.itemOrderedFromManufacturerDate = nextDate
+  item.itemOrderedFromManufacturer = !!nextDate
+
+  try {
+    await Api.shipping.changeManufacturerOrderedDate({
+      body: JSON.stringify({ orderItemId, itemOrderedFromManufacturerDate: nextDate })
+    })
+    toast.success(nextDate ? 'Oznaczono zamówienie u producenta' : 'Usunięto zamówienie u producenta')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zmienić statusu producenta')
+    await fetchTableData()
+  }
+}
+
+const toggleOrderItemCourierStatus = async (item: any) => {
+  const orderItemId = resolveOrderItemId(item)
+  if (!orderItemId) return
+
+  const nextDate = item.orderedCourier ? null : currentDateTimeValue()
+  item.orderedCourierDate = nextDate
+  item.orderedCourier = !!nextDate
+
+  try {
+    await Api.shipping.changeOrderedCourier({
+      body: JSON.stringify({ orderItemId, orderedCourierDate: nextDate })
+    })
+    toast.success(nextDate ? 'Oznaczono zamówienie kuriera' : 'Usunięto zamówienie kuriera')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zmienić statusu kuriera')
+    await fetchTableData()
+  }
+}
+
+const toggleOrderItemShippedStatus = async (item: any) => {
+  const orderItemId = resolveOrderItemId(item)
+  if (!orderItemId) return
+
+  const nextDate = item.itemShiped ? null : currentDateTimeValue()
+  item.itemShipedDate = nextDate
+  item.itemShiped = !!nextDate
+
+  try {
+    await Api.shipping.changeShippingOrderState({
+      body: JSON.stringify({ orderItemId, itemShipedDate: nextDate })
+    })
+    toast.success(nextDate ? 'Oznaczono wysłanie pozycji' : 'Usunięto wysłanie pozycji')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się zmienić statusu wysyłki')
+    await fetchTableData()
   }
 }
 
@@ -1471,6 +1669,7 @@ onMounted(async () => {
 .order-card__main {
   display: grid;
   grid-template-columns:
+    28px
     minmax(108px, 0.9fr)
     minmax(0, 2.4fr)
     minmax(78px, 0.72fr)
@@ -1490,6 +1689,13 @@ onMounted(async () => {
   color: #94a3b8;
   border-bottom: 1px solid var(--el-border-color-extra-light);
   flex-shrink: 0;
+}
+
+.list-head__select,
+.order-card__select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .list-scroll-wrap {
@@ -2089,7 +2295,7 @@ onMounted(async () => {
 
 .product-row {
   display: grid;
-  grid-template-columns: 48px 1fr 60px 100px 130px;
+  grid-template-columns: 48px 1fr 60px 100px minmax(240px, auto);
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -2144,11 +2350,26 @@ onMounted(async () => {
 }
 
 .product-row__status {
+  border: 0;
   font-size: 11px;
   font-weight: 700;
   text-align: center;
   padding: 4px 8px;
   border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.product-row__status:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.product-row__workflow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 .product-row__status--ok {
@@ -2222,6 +2443,7 @@ onMounted(async () => {
   .list-head,
   .order-card__main {
     grid-template-columns:
+      28px
       minmax(96px, 0.85fr)
       minmax(0, 2fr)
       minmax(72px, 0.65fr)

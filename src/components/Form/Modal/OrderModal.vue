@@ -17,6 +17,7 @@ const invoicePurchasePaths = ref<string[]>([])
 const invoicePath = ref<string | null>(null)
 const proformaPath = ref<string | null>(null)
 const sendingPaymentLink = ref(false)
+const sendingReviewRequest = ref(false)
 
 const billingEditing = ref(false)
 const shippingEditing = ref(false)
@@ -284,6 +285,20 @@ const sendPaymentLinkEmail = async () => {
   }
 }
 
+const sendReviewRequestEmail = async () => {
+  if (!props.order?.id) return
+  sendingReviewRequest.value = true
+  try {
+    await Api.orders.sendReviewRequest(props.order.id)
+    toast.success('Wysłano e-mail z prośbą o opinię Google')
+  } catch (e) {
+    console.error(e)
+    toast.error('Nie udało się wysłać prośby o opinię')
+  } finally {
+    sendingReviewRequest.value = false
+  }
+}
+
 const handlePurchaseInvoiceUpload = async (uploadInfo: any) => {
   const file = uploadInfo.raw || uploadInfo.file?.raw
   if (!file) return
@@ -433,6 +448,13 @@ onMounted(initFormsFromOrder)
           class="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-1 px-4 rounded"
         >
           {{ sendingPaymentLink ? 'Wysyłam...' : 'Wyślij link P24 + proforma' }}
+        </button>
+        <button
+          @click="sendReviewRequestEmail"
+          :disabled="sendingReviewRequest"
+          class="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-60 text-gray-900 font-semibold py-1 px-4 rounded"
+        >
+          {{ sendingReviewRequest ? 'Wysyłam...' : 'Wyślij prośbę o opinię Google' }}
         </button>
         <div v-if="proformaPath" class="flex items-center gap-2">
           <a :href="proformaPath" target="_blank" class="text-blue-600 underline text-sm">Zobacz proformę</a>
