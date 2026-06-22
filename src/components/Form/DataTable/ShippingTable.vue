@@ -331,8 +331,16 @@ const updateDateOrderedFromManufacturer = async (row: any, showToast = true) => 
 }
 
 const setManufacturerStatus = async (row: any, enabled: boolean, showToast = false) => {
+  const previousDate = row.itemOrderedFromManufacturerDate
+  const previousStatus = row.itemOrderedFromManufacturer
   row.itemOrderedFromManufacturerDate = enabled ? currentDateTimeValue() : null
-  await updateDateOrderedFromManufacturer(row, showToast)
+  try {
+    await updateDateOrderedFromManufacturer(row, showToast)
+  } catch (error) {
+    row.itemOrderedFromManufacturerDate = previousDate
+    row.itemOrderedFromManufacturer = previousStatus
+    throw error
+  }
 }
 
 const updateDateOrderedCourier = async (row: any, showToast = true) => {
@@ -349,8 +357,16 @@ const updateDateOrderedCourier = async (row: any, showToast = true) => {
 }
 
 const setCourierStatus = async (row: any, enabled: boolean, showToast = false) => {
+  const previousDate = row.orderedCourierDate
+  const previousStatus = row.orderedCourier
   row.orderedCourierDate = enabled ? currentDateTimeValue() : null
-  await updateDateOrderedCourier(row, showToast)
+  try {
+    await updateDateOrderedCourier(row, showToast)
+  } catch (error) {
+    row.orderedCourierDate = previousDate
+    row.orderedCourier = previousStatus
+    throw error
+  }
 }
 
 const updateDateShipped = async (row: any, showToast = true) => {
@@ -367,8 +383,16 @@ const updateDateShipped = async (row: any, showToast = true) => {
 }
 
 const setShippedStatus = async (row: any, enabled: boolean, showToast = false) => {
+  const previousDate = row.itemShipedDate
+  const previousStatus = row.itemShiped
   row.itemShipedDate = enabled ? currentDateTimeValue() : null
-  await updateDateShipped(row, showToast)
+  try {
+    await updateDateShipped(row, showToast)
+  } catch (error) {
+    row.itemShipedDate = previousDate
+    row.itemShiped = previousStatus
+    throw error
+  }
 }
 
 const toggleOrderWorkflowStatus = async (
@@ -396,11 +420,9 @@ const toggleOrderWorkflowStatus = async (
     }
 
     toast.success(enabled ? 'Zaznaczono status dla zamówienia' : 'Wyczyszczono status dla zamówienia')
-    await fetchTableData()
   } catch (error) {
     console.error(error)
     toast.error('Nie udało się zmienić statusu zamówienia')
-    await fetchTableData()
   }
 }
 
@@ -421,11 +443,10 @@ const markReadyOrdersAsShipped = async () => {
 
     await Promise.all(orderItems.map((item: any) => setShippedStatus(item, true)))
     toast.success(`Oznaczono jako wysłane: ${readyRows.length} zamówień`)
-    await fetchTableData()
+    selectedOrderIds.value = new Set()
   } catch (error) {
     console.error(error)
     toast.error('Nie udało się oznaczyć zamówień jako wysłane')
-    await fetchTableData()
   }
 }
 
