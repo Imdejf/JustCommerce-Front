@@ -7,6 +7,12 @@
         <p class="cosmos-stats__subtitle">Podsumowanie sprzedaży, przychodu i produktów w wybranym okresie</p>
       </div>
       <div class="cosmos-stats__actions">
+        <el-button :icon="Download" :loading="exportingMarketingPdf" :disabled="loading || !raport" @click="downloadMarketingPdfReport">
+          PDF marketing
+        </el-button>
+        <el-button :icon="Download" :loading="exportingPdf" :disabled="loading || !raport" @click="downloadPdfReport">
+          Pobierz PDF
+        </el-button>
         <el-button type="primary" :loading="loading" @click="fetchRaport">Generuj raport</el-button>
         <el-button @click="resetFilters">Wyczyść</el-button>
       </div>
@@ -250,7 +256,7 @@
                   <p>Oddzielne statystyki Allegro w wybranym okresie</p>
                 </div>
               </div>
-              <v-chart class="cosmos-panel__chart" :option="allegroRevenueProfitOption" autoresize />
+              <v-chart ref="allegroRevenueProfitChartRef" class="cosmos-panel__chart" :option="allegroRevenueProfitOption" autoresize />
             </section>
           </div>
 
@@ -262,7 +268,7 @@
                   <p>Dzień lub miesiąc w zależności od zakresu</p>
                 </div>
               </div>
-              <v-chart class="cosmos-panel__chart" :option="ordersCountOption" autoresize />
+              <v-chart ref="ordersCountChartRef" class="cosmos-panel__chart" :option="ordersCountOption" autoresize />
             </section>
 
             <section class="cosmos-panel">
@@ -272,7 +278,23 @@
                   <p>Z transportem vs bez transportu</p>
                 </div>
               </div>
-              <v-chart class="cosmos-panel__chart" :option="revenueOption" autoresize />
+              <v-chart ref="revenueChartRef" class="cosmos-panel__chart" :option="revenueOption" autoresize />
+            </section>
+          </div>
+
+          <div class="cosmos-stats__grid cosmos-stats__grid--main">
+            <section class="cosmos-panel">
+              <div class="cosmos-panel__head">
+                <div>
+                  <h2>Sklep vs panel admina</h2>
+                  <p>Zamówienia złożone w sklepie oraz wpisane w panelu admina</p>
+                </div>
+              </div>
+              <v-chart ref="sourceComparisonChartRef" class="cosmos-panel__chart" :option="sourceComparisonOption" autoresize />
+              <div class="source-compare">
+                <span>Sklep: <strong>{{ sourceComparison.shop }}</strong></span>
+                <span>W panelu admina: <strong>{{ sourceComparison.manual }}</strong></span>
+              </div>
             </section>
           </div>
 
@@ -284,7 +306,7 @@
                   <p>10 najczęściej sprzedawanych pozycji</p>
                 </div>
               </div>
-              <v-chart class="cosmos-panel__chart" :option="topProductsQtyOption" autoresize />
+              <v-chart ref="topProductsQtyChartRef" class="cosmos-panel__chart" :option="topProductsQtyOption" autoresize />
             </section>
 
             <section class="cosmos-panel">
@@ -294,7 +316,7 @@
                   <p>10 pozycji z najwyższym zyskiem</p>
                 </div>
               </div>
-              <v-chart class="cosmos-panel__chart" :option="topProductsProfitOption" autoresize />
+              <v-chart ref="topProductsProfitChartRef" class="cosmos-panel__chart" :option="topProductsProfitOption" autoresize />
             </section>
           </div>
 
@@ -339,17 +361,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { Api } from '/@/services/api'
+import { APISettings } from '/@/services/api/config'
 import * as echarts from 'echarts/core'
 import { useToast } from 'vue-toastification'
-import { ArrowDown, Filter } from '@element-plus/icons-vue'
+import { ArrowDown, Download, Filter } from '@element-plus/icons-vue'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { jsPDF } from 'jspdf'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, CanvasRenderer])
+
+type RgbColor = [number, number, number]
+
+const apiBaseUrl = String(APISettings.baseURL ?? '')
+const olmagLogoUrl = `${apiBaseUrl}${apiBaseUrl.endsWith('/') ? '' : '/'}Resources/olmag_logo.svg`
+const olmagGreen: RgbColor = [0, 110, 62]
+const olmagDarkGreen: RgbColor = [0, 74, 42]
+const olmagLightGreen: RgbColor = [232, 246, 235]
+const olmagAccent: RgbColor = [112, 174, 55]
+const modernInk: RgbColor = [11, 31, 25]
+const modernPanel: RgbColor = [255, 255, 255]
+const modernLine: RgbColor = [156, 203, 174]
+const modernText: RgbColor = [15, 23, 42]
+const mutedText: RgbColor = [100, 116, 139]
+let cachedOlmagLogoDataUrl: string | null | undefined
 
 type OrderRaportPeriodDTO = {
   period: string
@@ -369,6 +408,23 @@ type OrderRaportProductDTO = {
   profit: number
 }
 
+type OrderRaportSourceBreakdownDTO = {
+  key: number
+  name: string
+  count: number
+  revenue: number
+}
+
+type OrderRaportProductSourceQuantityDTO = {
+  productId?: string | null
+  name: string
+  sku?: string | null
+  brandName?: string | null
+  sourceKey: number
+  sourceName: string
+  quantity: number
+}
+
 type OrderRaportDTO = {
   revenueWithoutShipping: number
   revenueWithShipping: number
@@ -376,6 +432,8 @@ type OrderRaportDTO = {
   averageOrderValue: number
   ordersByPeriod: OrderRaportPeriodDTO[]
   products: OrderRaportProductDTO[]
+  sourceBreakdown: OrderRaportSourceBreakdownDTO[]
+  productSourceQuantities: OrderRaportProductSourceQuantityDTO[]
 }
 
 type AllegroStatisticsPeriodDTO = {
@@ -402,10 +460,18 @@ type AllegroStatisticsDTO = {
 }
 
 const loading = ref(false)
+const exportingPdf = ref(false)
+const exportingMarketingPdf = ref(false)
 const raport = ref<OrderRaportDTO | null>(null)
 const filtersOpen = ref(true)
 const dateRange = ref<[string, string] | null>(null)
 const toast = useToast()
+const ordersCountChartRef = ref<any>(null)
+const revenueChartRef = ref<any>(null)
+const sourceComparisonChartRef = ref<any>(null)
+const topProductsQtyChartRef = ref<any>(null)
+const topProductsProfitChartRef = ref<any>(null)
+const allegroRevenueProfitChartRef = ref<any>(null)
 
 const brands = ref<{ value: string | null; label: string }[]>([{ value: null, label: 'Wszyscy' }])
 
@@ -468,6 +534,11 @@ const orderSourceOptions = [
   { value: 6, label: 'Allegro' }
 ]
 
+const orderSourceLabelByKey = orderSourceOptions.reduce<Record<number, string>>((acc, item) => {
+  acc[item.value] = item.label
+  return acc
+}, {})
+
 const chartTheme = {
   axis: '#94a3b8',
   split: 'rgba(148, 163, 184, 0.15)',
@@ -494,6 +565,69 @@ const rangeLabel = computed(() => `${dateRange.value?.[0] ?? '—'} → ${dateRa
 
 const periods = computed(() => raport.value?.ordersByPeriod ?? [])
 const productsTable = computed(() => raport.value?.products ?? [])
+const marketingProductRows = computed(() => {
+  const grouped = new Map<string, {
+    name: string
+    sku?: string | null
+    brandName?: string | null
+    shopQuantity: number
+    emailQuantity: number
+  }>()
+
+  for (const item of raport.value?.productSourceQuantities ?? []) {
+    if (![0, 5].includes(Number(item.sourceKey))) continue
+    const key = item.productId || `${item.name}|${item.sku || ''}`
+    const current = grouped.get(key) ?? {
+      name: item.name,
+      sku: item.sku,
+      brandName: item.brandName,
+      shopQuantity: 0,
+      emailQuantity: 0
+    }
+
+    if (Number(item.sourceKey) === 0) current.shopQuantity += Number(item.quantity ?? 0)
+    if (Number(item.sourceKey) === 5) current.emailQuantity += Number(item.quantity ?? 0)
+    grouped.set(key, current)
+  }
+
+  return Array.from(grouped.values())
+    .map((item) => {
+      const total = item.shopQuantity + item.emailQuantity
+      return {
+        ...item,
+        total,
+        shopPct: total > 0 ? (item.shopQuantity / total) * 100 : 0,
+        emailPct: total > 0 ? (item.emailQuantity / total) * 100 : 0
+      }
+    })
+    .filter((item) => item.total > 0)
+    .sort((a, b) => b.total - a.total)
+})
+const marketingTotals = computed(() => {
+  const shopQuantity = marketingProductRows.value.reduce((sum, item) => sum + item.shopQuantity, 0)
+  const emailQuantity = marketingProductRows.value.reduce((sum, item) => sum + item.emailQuantity, 0)
+  const total = shopQuantity + emailQuantity
+
+  return {
+    shopQuantity,
+    emailQuantity,
+    total,
+    shopPct: total > 0 ? (shopQuantity / total) * 100 : 0,
+    emailPct: total > 0 ? (emailQuantity / total) * 100 : 0
+  }
+})
+const sourceComparison = computed(() => {
+  const breakdown = raport.value?.sourceBreakdown ?? []
+  const countByKeys = (keys: number[]) =>
+    breakdown
+      .filter((item) => keys.includes(Number(item.key)))
+      .reduce((sum, item) => sum + Number(item.count ?? 0), 0)
+
+  return {
+    shop: countByKeys([0]),
+    manual: countByKeys([1, 2, 3, 4, 5])
+  }
+})
 
 const summary = computed(() => {
   const items = productsTable.value
@@ -510,6 +644,123 @@ function money(v?: number | null) {
 
 function moneyNet(v?: number | null) {
   return `${Number(v ?? 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł netto`
+}
+
+function moneyPdf(v?: number | null) {
+  return Number(v ?? 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zl'
+}
+
+function pdfSafe(value?: string | null) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function getOlmagLogoDataUrl() {
+  if (cachedOlmagLogoDataUrl !== undefined) {
+    return cachedOlmagLogoDataUrl
+  }
+
+  cachedOlmagLogoDataUrl = await new Promise<string | null>((resolve) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = 520
+        canvas.height = 160
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(null)
+          return
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/png'))
+      } catch (error) {
+        console.warn('Nie udało się przygotować logo Olmag do PDF.', error)
+        resolve(null)
+      }
+    }
+    image.onerror = () => resolve(null)
+    image.src = olmagLogoUrl
+  })
+
+  return cachedOlmagLogoDataUrl
+}
+
+function applyRgb(doc: jsPDF, method: 'setFillColor' | 'setDrawColor' | 'setTextColor', color: RgbColor) {
+  doc[method](color[0], color[1], color[2])
+}
+
+function drawOlmagLogo(doc: jsPDF, logoDataUrl: string | null, x: number, y: number, width: number, height: number) {
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, 'PNG', x, y, width, height)
+      return
+    } catch (error) {
+      console.warn('Nie udało się dodać logo Olmag do PDF.', error)
+    }
+  }
+
+  applyRgb(doc, 'setTextColor', olmagGreen)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(18)
+  doc.text('OLMAG', x, y + height - 1)
+}
+
+function drawModernPageBackground(doc: jsPDF) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  doc.setFillColor(247, 250, 247)
+  doc.rect(0, 0, pageWidth, pageHeight, 'F')
+  applyRgb(doc, 'setFillColor', modernInk)
+  doc.rect(0, 0, pageWidth, 56, 'F')
+  applyRgb(doc, 'setFillColor', olmagGreen)
+  doc.rect(0, 0, 6, 56, 'F')
+  doc.setFillColor(10, 63, 45)
+  doc.roundedRect(pageWidth - 84, 8, 72, 34, 8, 8, 'F')
+  doc.setFillColor(232, 246, 235)
+  doc.circle(pageWidth - 18, 52, 26, 'F')
+  applyRgb(doc, 'setFillColor', olmagAccent)
+  doc.roundedRect(14, pageHeight - 12, 44, 1.2, 0.6, 0.6, 'F')
+}
+
+function drawReportHeader(doc: jsPDF, logoDataUrl: string | null, title: string, subtitle: string) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const logoBoxX = pageWidth - 82
+  const logoBoxWidth = 68
+  const textMaxWidth = logoBoxX - 20
+
+  drawModernPageBackground(doc)
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(logoBoxX, 12, logoBoxWidth, 22, 5, 5, 'F')
+  drawOlmagLogo(doc, logoDataUrl, logoBoxX + 6, 16, logoBoxWidth - 12, 13)
+
+  doc.setTextColor(178, 224, 194)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.text('OLMAG / ANALYTICS', 14, 14)
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(21)
+  const titleLines = doc.splitTextToSize(pdfSafe(title), textMaxWidth).slice(0, 2)
+  doc.text(titleLines, 14, 25)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(203, 235, 213)
+  const subtitleY = 32 + Math.max(0, titleLines.length - 1) * 6
+  addWrappedText(doc, pdfSafe(subtitle), 14, subtitleY, textMaxWidth, 4.5)
+
+  applyRgb(doc, 'setFillColor', olmagAccent)
+  doc.roundedRect(14, 47, 72, 1.8, 0.9, 0.9, 'F')
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(89, 47, 26, 1.8, 0.9, 0.9, 'F')
 }
 
 function percent(v: number) {
@@ -649,6 +900,21 @@ const revenueOption = computed(() => ({
       lineStyle: { type: 'dashed' }
     }
   ]
+}))
+
+const sourceComparisonOption = computed(() => ({
+  ...baseChart(['Sklep', 'Panel admina']),
+  dataZoom: [],
+  grid: { left: 48, right: 20, top: 28, bottom: 42 },
+  series: [{
+    type: 'bar',
+    name: 'Zamówienia',
+    data: [
+      { value: sourceComparison.value.shop, itemStyle: { color: chartTheme.cur, borderRadius: [8, 8, 0, 0] } },
+      { value: sourceComparison.value.manual, itemStyle: { color: '#f97316', borderRadius: [8, 8, 0, 0] } }
+    ],
+    barMaxWidth: 48
+  }]
 }))
 
 const allegroRevenueProfitOption = computed(() => ({
@@ -805,6 +1071,494 @@ async function fetchRaport() {
     clearAllegroStats()
   } finally {
     loading.value = false
+  }
+}
+
+function getChartDataUrl(chartRef: any) {
+  const chart = chartRef?.value
+  if (!chart) return null
+
+  const chartInstance = chart.getEchartsInstance?.() || chart.chart || chart
+  if (typeof chartInstance.getDataURL !== 'function') return null
+
+  return chartInstance.getDataURL({
+    type: 'png',
+    pixelRatio: 2,
+    backgroundColor: '#ffffff'
+  })
+}
+
+function addWrappedText(doc: jsPDF, text: string, x: number, y: number, maxWidth: number, lineHeight = 5) {
+  const lines = doc.splitTextToSize(text, maxWidth)
+  doc.text(lines, x, y)
+  return y + lines.length * lineHeight
+}
+
+function addChartImage(doc: jsPDF, title: string, dataUrl: string | null, x: number, y: number, width: number, height: number) {
+  doc.setFillColor(232, 239, 234)
+  doc.roundedRect(x + 1.5, y - 5.5, width, height + 16, 5, 5, 'F')
+  applyRgb(doc, 'setFillColor', modernPanel)
+  doc.roundedRect(x, y - 7, width, height + 16, 5, 5, 'F')
+  applyRgb(doc, 'setDrawColor', modernLine)
+  doc.setLineWidth(0.25)
+  doc.roundedRect(x, y - 7, width, height + 16, 5, 5, 'S')
+  applyRgb(doc, 'setFillColor', olmagGreen)
+  doc.roundedRect(x + 5, y - 2.4, 12, 1.2, 0.6, 0.6, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  applyRgb(doc, 'setTextColor', modernText)
+  doc.text(title, x + 21, y)
+
+  if (!dataUrl) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    applyRgb(doc, 'setTextColor', mutedText)
+    doc.text('Brak danych wykresu.', x + 5, y + 12)
+    return y + height + 20
+  }
+
+  doc.addImage(dataUrl, 'PNG', x + 5, y + 6, width - 10, height - 2)
+  return y + height + 20
+}
+
+function drawMetricBox(doc: jsPDF, label: string, value: string, x: number, y: number, width: number) {
+  doc.setFillColor(232, 239, 234)
+  doc.roundedRect(x + 1, y + 1, width, 24, 4, 4, 'F')
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(x, y, width, 24, 4, 4, 'F')
+  applyRgb(doc, 'setDrawColor', modernLine)
+  doc.setLineWidth(0.25)
+  doc.roundedRect(x, y, width, 24, 4, 4, 'S')
+  applyRgb(doc, 'setFillColor', olmagGreen)
+  doc.roundedRect(x, y, 2.1, 24, 1, 1, 'F')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  applyRgb(doc, 'setTextColor', mutedText)
+  doc.text(pdfSafe(label).toUpperCase(), x + 4, y + 7)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  applyRgb(doc, 'setTextColor', modernText)
+  doc.text(pdfSafe(value), x + 4, y + 17)
+  applyRgb(doc, 'setFillColor', olmagLightGreen)
+  doc.roundedRect(x + 4, y + 20, width - 8, 0.8, 0.4, 0.4, 'F')
+}
+
+function addSimpleTable(
+  doc: jsPDF,
+  title: string,
+  headers: string[],
+  rows: string[][],
+  x: number,
+  y: number,
+  columnWidths: number[]
+) {
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  applyRgb(doc, 'setTextColor', modernText)
+  doc.text(title, x, y)
+  y += 7
+
+  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0)
+  applyRgb(doc, 'setFillColor', modernInk)
+  doc.roundedRect(x, y - 7, tableWidth, 8, 2, 2, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(8)
+  let cursorX = x
+  headers.forEach((header, index) => {
+    doc.text(header, cursorX + 2, y)
+    cursorX += columnWidths[index]
+  })
+  y += 6
+
+  doc.setFont('helvetica', 'normal')
+  rows.forEach((row, rowIndex) => {
+    doc.setFillColor(rowIndex % 2 === 0 ? 255 : 241, rowIndex % 2 === 0 ? 255 : 247, rowIndex % 2 === 0 ? 255 : 243)
+    doc.roundedRect(x, y - 4.5, tableWidth, 6, 1.2, 1.2, 'F')
+    applyRgb(doc, 'setTextColor', modernText)
+    cursorX = x
+    row.forEach((cell, index) => {
+      const value = doc.splitTextToSize(cell, columnWidths[index] - 4)[0] || ''
+      doc.text(value, cursorX + 2, y)
+      cursorX += columnWidths[index]
+    })
+    y += 6
+  })
+
+  return y + 4
+}
+
+function createPieChartDataUrl(
+  title: string,
+  slices: Array<{ label: string; value: number; color: string }>
+) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1400
+  canvas.height = 640
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  const total = slices.reduce((sum, slice) => sum + Number(slice.value ?? 0), 0)
+  const centerX = 320
+  const centerY = 350
+  const radius = 175
+  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+  gradient.addColorStop(0, '#f8fbf8')
+  gradient.addColorStop(0.55, '#eef7ef')
+  gradient.addColorStop(1, '#ffffff')
+
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  ctx.fillStyle = '#0b1f19'
+  ctx.font = '700 40px Arial'
+  ctx.fillText(pdfSafe(title), 48, 66)
+  ctx.fillStyle = '#64748b'
+  ctx.font = '400 22px Arial'
+  ctx.fillText('Raport ilosciowy bez danych finansowych', 48, 102)
+
+  ctx.fillStyle = '#006e3e'
+  ctx.beginPath()
+  ctx.roundRect(48, 122, 112, 10, 5)
+  ctx.fill()
+  ctx.fillStyle = '#70ae37'
+  ctx.beginPath()
+  ctx.roundRect(170, 122, 52, 10, 5)
+  ctx.fill()
+
+  let startAngle = -Math.PI / 2
+  for (const slice of slices) {
+    const angle = total > 0 ? (slice.value / total) * Math.PI * 2 : 0
+    ctx.beginPath()
+    ctx.moveTo(centerX, centerY)
+    ctx.arc(centerX, centerY, radius, startAngle, startAngle + angle)
+    ctx.closePath()
+    ctx.fillStyle = slice.color
+    ctx.fill()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 5
+    ctx.stroke()
+    startAngle += angle
+  }
+
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, 86, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+  ctx.strokeStyle = '#d8eadc'
+  ctx.lineWidth = 4
+  ctx.stroke()
+  ctx.fillStyle = '#0b1f19'
+  ctx.font = '700 34px Arial'
+  ctx.textAlign = 'center'
+  ctx.fillText(`${total} szt.`, centerX, centerY + 8)
+  ctx.fillStyle = '#64748b'
+  ctx.font = '400 18px Arial'
+  ctx.fillText('razem', centerX, centerY + 38)
+  ctx.textAlign = 'left'
+
+  let legendY = 170
+  slices.forEach((slice) => {
+    const pctValue = total > 0 ? (slice.value / total) * 100 : 0
+    ctx.fillStyle = slice.color
+    ctx.beginPath()
+    ctx.roundRect(650, legendY - 21, 28, 28, 8)
+    ctx.fill()
+    ctx.fillStyle = '#0b1f19'
+    ctx.font = '700 26px Arial'
+    ctx.fillText(`${pdfSafe(slice.label)} (${percent(pctValue)})`, 690, legendY + 2)
+    ctx.fillStyle = '#64748b'
+    ctx.font = '400 18px Arial'
+    ctx.fillText(`${slice.value} sztuk`, 690, legendY + 28)
+    legendY += 58
+  })
+
+  return canvas.toDataURL('image/png')
+}
+
+function drawMarketingPageBackground(doc: jsPDF) {
+  drawModernPageBackground(doc)
+}
+
+function drawMarketingHeader(doc: jsPDF, logoDataUrl: string | null, title: string, subtitle: string) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const logoBoxX = pageWidth - 82
+  const logoBoxWidth = 68
+  const textMaxWidth = logoBoxX - 20
+
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(logoBoxX, 12, logoBoxWidth, 22, 5, 5, 'F')
+  drawOlmagLogo(doc, logoDataUrl, logoBoxX + 6, 16, logoBoxWidth - 12, 13)
+  doc.setTextColor(178, 224, 194)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.text('OLMAG / MARKETING', 14, 14)
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(20)
+  const titleLines = doc.splitTextToSize(pdfSafe(title), textMaxWidth).slice(0, 2)
+  doc.text(titleLines, 14, 22)
+  doc.setTextColor(203, 235, 213)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  const subtitleY = 29 + Math.max(0, titleLines.length - 1) * 6
+  doc.text(doc.splitTextToSize(pdfSafe(subtitle), textMaxWidth), 14, subtitleY)
+  applyRgb(doc, 'setFillColor', olmagAccent)
+  doc.roundedRect(14, 39, 58, 1.6, 0.8, 0.8, 'F')
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(75, 39, 24, 1.6, 0.8, 0.8, 'F')
+}
+
+function drawMarketingMetricCard(doc: jsPDF, label: string, value: string, x: number, y: number, width: number, color: [number, number, number]) {
+  doc.setFillColor(232, 239, 234)
+  doc.roundedRect(x + 1, y + 1, width, 25, 4, 4, 'F')
+  applyRgb(doc, 'setFillColor', modernPanel)
+  doc.roundedRect(x, y, width, 25, 4, 4, 'F')
+  doc.setDrawColor(color[0], color[1], color[2])
+  doc.setLineWidth(0.3)
+  doc.roundedRect(x, y, width, 25, 4, 4, 'S')
+  doc.setFillColor(color[0], color[1], color[2])
+  doc.roundedRect(x, y, 2.1, 25, 1, 1, 'F')
+  applyRgb(doc, 'setTextColor', mutedText)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.text(pdfSafe(label).toUpperCase(), x + 4, y + 7)
+  applyRgb(doc, 'setTextColor', modernText)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.text(pdfSafe(value), x + 4, y + 17)
+  doc.setFillColor(color[0], color[1], color[2])
+  doc.roundedRect(x + 4, y + 21, width - 8, 0.8, 0.4, 0.4, 'F')
+}
+
+function addMarketingTable(
+  doc: jsPDF,
+  title: string,
+  headers: string[],
+  rows: string[][],
+  x: number,
+  y: number,
+  columnWidths: number[]
+) {
+  applyRgb(doc, 'setTextColor', modernText)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.text(pdfSafe(title), x, y)
+  y += 8
+
+  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0)
+  applyRgb(doc, 'setFillColor', modernInk)
+  doc.roundedRect(x, y - 6, tableWidth, 9, 2, 2, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(8)
+  let cursorX = x
+  headers.forEach((header, index) => {
+    doc.text(pdfSafe(header), cursorX + 2, y)
+    cursorX += columnWidths[index]
+  })
+  y += 7
+
+  doc.setFont('helvetica', 'normal')
+  rows.forEach((row, rowIndex) => {
+    doc.setFillColor(rowIndex % 2 === 0 ? 255 : 241, rowIndex % 2 === 0 ? 255 : 247, rowIndex % 2 === 0 ? 255 : 243)
+    doc.roundedRect(x, y - 5, tableWidth, 7, 1.2, 1.2, 'F')
+    applyRgb(doc, 'setTextColor', modernText)
+    cursorX = x
+    row.forEach((cell, index) => {
+      const value = doc.splitTextToSize(pdfSafe(cell), columnWidths[index] - 4)[0] || ''
+      doc.text(value, cursorX + 2, y)
+      cursorX += columnWidths[index]
+    })
+    y += 7
+  })
+
+  return y
+}
+
+async function downloadPdfReport() {
+  if (!raport.value) {
+    toast.warning('Najpierw wygeneruj raport.')
+    return
+  }
+
+  exportingPdf.value = true
+  try {
+    await nextTick()
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 12
+    const contentWidth = pageWidth - margin * 2
+    const logoDataUrl = await getOlmagLogoDataUrl()
+    const sourceRows = (raport.value.sourceBreakdown ?? []).map((item) => [
+      orderSourceLabelByKey[Number(item.key)] ?? item.name,
+      String(item.count ?? 0),
+      moneyPdf(item.revenue)
+    ])
+    const productRows = [...productsTable.value]
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 15)
+      .map((item) => [
+        item.name,
+        String(item.quantity ?? 0),
+        moneyPdf(item.revenueGross),
+        moneyPdf(item.profit)
+      ])
+
+    drawReportHeader(
+      doc,
+      logoDataUrl,
+      'Raport zamowien',
+      `Okres: ${rangeLabel.value}. Sprzedane produkty, liczba zamowien oraz porownanie zrodel: koszyk sklepu vs zamowienia z panelu admina.`
+    )
+
+    drawMetricBox(doc, 'Zamowienia', String(summary.value.ordersTotal), margin, 48, 42)
+    drawMetricBox(doc, 'Przychod brutto', moneyPdf(raport.value.revenueWithShipping), margin + 48, 48, 46)
+    drawMetricBox(doc, 'Zysk netto', moneyPdf(raport.value.profit), margin + 100, 48, 42)
+    drawMetricBox(doc, 'Sklep / panel', `${sourceComparison.value.shop} / ${sourceComparison.value.manual}`, margin + 148, 48, 38)
+
+    let y = 78
+    y = addChartImage(doc, 'Liczba zamowien w czasie', getChartDataUrl(ordersCountChartRef), margin, y, contentWidth, 54)
+    y = addChartImage(doc, 'Sklep vs panel admina', getChartDataUrl(sourceComparisonChartRef), margin, y, contentWidth, 54)
+
+    doc.addPage()
+    drawReportHeader(doc, logoDataUrl, 'Raport zamowien', 'Najczesciej sprzedane produkty w wybranym okresie.')
+    y = 54
+    y = addChartImage(doc, 'Top produkty - ilosc', getChartDataUrl(topProductsQtyChartRef), margin, y, contentWidth, 62)
+    y = addChartImage(doc, 'Top produkty - zysk netto', getChartDataUrl(topProductsProfitChartRef), margin, y, contentWidth, 62)
+
+    doc.addPage()
+    drawReportHeader(doc, logoDataUrl, 'Raport zamowien', 'Przychod oraz wynik Allegro w czasie.')
+    y = 54
+    y = addChartImage(doc, 'Przychod brutto', getChartDataUrl(revenueChartRef), margin, y, contentWidth, 58)
+    y = addChartImage(doc, 'Allegro: przychod i zysk', getChartDataUrl(allegroRevenueProfitChartRef), margin, y, contentWidth, 58)
+
+    doc.addPage()
+    drawReportHeader(doc, logoDataUrl, 'Raport zamowien', 'Tabele zrodel zamowien i najlepiej sprzedajacych sie produktow.')
+    y = 54
+    y = addSimpleTable(doc, 'Zrodla zamowien', ['Zrodlo', 'Ilosc', 'Przychod'], sourceRows, margin, y, [80, 35, 55])
+    addSimpleTable(doc, 'Najczesciej sprzedane produkty', ['Produkt', 'Ilosc', 'Przychod', 'Zysk'], productRows, margin, y, [92, 22, 38, 38])
+
+    const fileRange = `${dateRange.value?.[0] ?? 'od'}_${dateRange.value?.[1] ?? 'do'}`
+    doc.save(`raport-zamowien-${fileRange}.pdf`)
+    toast.success('Pobrano raport PDF.')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się wygenerować PDF.')
+  } finally {
+    exportingPdf.value = false
+  }
+}
+
+function drawMarketingShare(doc: jsPDF, x: number, y: number, width: number) {
+  const dataUrl = createPieChartDataUrl('Sklep vs e-mail', [
+    { label: `Sklep ${marketingTotals.value.shopQuantity} szt.`, value: marketingTotals.value.shopQuantity, color: '#006e3e' },
+    { label: `E-mail ${marketingTotals.value.emailQuantity} szt.`, value: marketingTotals.value.emailQuantity, color: '#f59e0b' }
+  ])
+
+  doc.addImage(dataUrl, 'PNG', x, y, width, 74)
+  return y + 80
+}
+
+function drawMarketingOrdersShare(doc: jsPDF, x: number, y: number, width: number) {
+  const dataUrl = createPieChartDataUrl('Zamowienia: sklep vs panel admina', [
+    { label: `Sklep ${sourceComparison.value.shop}`, value: sourceComparison.value.shop, color: '#006e3e' },
+    { label: `Panel admina ${sourceComparison.value.manual}`, value: sourceComparison.value.manual, color: '#f59e0b' }
+  ])
+
+  doc.addImage(dataUrl, 'PNG', x, y, width, 74)
+  return y + 80
+}
+
+function drawMarketingTopProductsPie(doc: jsPDF, x: number, y: number, width: number) {
+  const top = marketingProductRows.value.slice(0, 7)
+  const rest = marketingProductRows.value.slice(7).reduce((sum, item) => sum + item.total, 0)
+  const colors = ['#006e3e', '#70ae37', '#a3c94a', '#f59e0b', '#14b8a6', '#84cc16', '#15803d', '#94a3b8']
+  const slices = [
+    ...top.map((item, index) => ({
+      label: `${pdfSafe(item.name).slice(0, 34)} ${item.total} szt.`,
+      value: item.total,
+      color: colors[index]
+    })),
+    ...(rest > 0 ? [{ label: `Pozostale ${rest} szt.`, value: rest, color: colors[7] }] : [])
+  ]
+
+  doc.addImage(createPieChartDataUrl('Udzial produktow w sprzedanych sztukach', slices), 'PNG', x, y, width, 92)
+  return y + 98
+}
+
+async function downloadMarketingPdfReport() {
+  if (!raport.value) {
+    toast.warning('Najpierw wygeneruj raport.')
+    return
+  }
+
+  if (!marketingProductRows.value.length) {
+    toast.warning('Brak sprzedanych sztuk dla źródeł Sklep i E-mail w wybranym okresie.')
+    return
+  }
+
+  exportingMarketingPdf.value = true
+  try {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 12
+    const contentWidth = pageWidth - margin * 2
+    const totals = marketingTotals.value
+    const logoDataUrl = await getOlmagLogoDataUrl()
+
+    drawMarketingPageBackground(doc)
+    drawMarketingHeader(
+      doc,
+      logoDataUrl,
+      'Raport marketingowy sprzedazy produktow',
+      `Okres ${dateRange.value?.[0] ?? ''} - ${dateRange.value?.[1] ?? ''} | tylko ilosci, bez danych finansowych`
+    )
+
+    drawMarketingMetricCard(doc, 'Sztuki razem', String(totals.total), margin, 44, 42, olmagGreen)
+    drawMarketingMetricCard(doc, 'Sklep/koszyk', `${totals.shopQuantity} szt.`, margin + 48, 44, 42, olmagAccent)
+    drawMarketingMetricCard(doc, 'E-mail', `${totals.emailQuantity} szt.`, margin + 96, 44, 42, [245, 158, 11])
+    drawMarketingMetricCard(doc, 'Produkty', String(marketingProductRows.value.length), margin + 144, 44, 42, [20, 184, 166])
+    drawMarketingMetricCard(doc, 'Zam. sklep', String(sourceComparison.value.shop), margin, 72, 42, olmagGreen)
+    drawMarketingMetricCard(doc, 'Zam. panel admina', String(sourceComparison.value.manual), margin + 48, 72, 42, [245, 158, 11])
+
+    let y = 104
+    y = drawMarketingOrdersShare(doc, margin, y, contentWidth)
+    drawMarketingShare(doc, margin, y, contentWidth)
+
+    doc.addPage()
+    drawMarketingPageBackground(doc)
+    drawMarketingHeader(doc, logoDataUrl, 'Top produkty', 'Udzial produktow w sprzedanych sztukach')
+    drawMarketingTopProductsPie(doc, margin, 46, contentWidth)
+
+    doc.addPage()
+    drawMarketingPageBackground(doc)
+    drawMarketingHeader(doc, logoDataUrl, 'Tabela produktow', 'Sprzedane sztuki wedlug zrodla')
+    const rows = marketingProductRows.value.slice(0, 30).map((item) => [
+      pdfSafe(item.name),
+      String(item.shopQuantity),
+      String(item.emailQuantity),
+      String(item.total),
+      `${percent(item.shopPct)} / ${percent(item.emailPct)}`
+    ])
+
+    addMarketingTable(
+      doc,
+      'Produkty - sprzedane sztuki wedlug zrodla',
+      ['Produkt', 'Sklep', 'E-mail', 'Razem', '% sklep / e-mail'],
+      rows,
+      margin,
+      48,
+      [76, 24, 24, 24, 40]
+    )
+
+    const fileRange = `${dateRange.value?.[0] ?? 'od'}_${dateRange.value?.[1] ?? 'do'}`
+    doc.save(`raport-marketing-${fileRange}.pdf`)
+    toast.success('Pobrano raport marketingowy PDF.')
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się wygenerować PDF marketingowego.')
+  } finally {
+    exportingMarketingPdf.value = false
   }
 }
 
@@ -1103,6 +1857,20 @@ onMounted(async () => {
 .cosmos-panel__chart {
   width: 100%;
   height: 300px;
+}
+
+.source-compare {
+  display: flex;
+  gap: 14px;
+  margin-top: -8px;
+  padding: 0 16px 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.source-compare strong {
+  color: #0f172a;
+  font-weight: 900;
 }
 
 .cosmos-panel--table {

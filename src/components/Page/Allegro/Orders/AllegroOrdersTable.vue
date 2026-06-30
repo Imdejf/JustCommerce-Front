@@ -64,8 +64,10 @@ const importDialogVisible = ref(false)
 const importing = ref(false)
 const syncingBilling = ref(false)
 const creatingLocalOrders = ref(false)
+const uploadingSelectedInvoices = ref(false)
 const isSyncingFromRoute = ref(false)
 const selectedOrderIds = ref<Set<string>>(new Set())
+const selectedInvoiceOrderIds = ref<Set<string>>(new Set())
 
 const importOptions = ref({
   importAll: true,
@@ -198,12 +200,16 @@ const syncFiltersToUrl = (filters: OrderFilters) => {
 const rowKey = (row: any) => row.checkoutFormId || row.id
 
 const canSelectForLocal = (row: any) => !row.localOrderId
+const canSelectForInvoice = (row: any) => !!row.localOrderId && !!(row.checkoutFormId || row.id)
 
 const selectableOnPage = computed(() => items.value.filter(canSelectForLocal))
+const invoiceSelectableOnPage = computed(() => items.value.filter(canSelectForInvoice))
 
 const selectedCreatableCount = computed(() => selectedOrderIds.value.size)
+const selectedInvoiceCount = computed(() => selectedInvoiceOrderIds.value.size)
 
 const isOrderChecked = (row: any) => selectedOrderIds.value.has(rowKey(row))
+const isInvoiceOrderChecked = (row: any) => selectedInvoiceOrderIds.value.has(rowKey(row))
 
 const toggleOrderSelection = (row: any, checked: boolean) => {
   if (!canSelectForLocal(row)) return
@@ -214,16 +220,38 @@ const toggleOrderSelection = (row: any, checked: boolean) => {
   selectedOrderIds.value = next
 }
 
+const toggleInvoiceOrderSelection = (row: any, checked: boolean) => {
+  if (!canSelectForInvoice(row)) return
+  const id = rowKey(row)
+  const next = new Set(selectedInvoiceOrderIds.value)
+  if (checked) next.add(id)
+  else next.delete(id)
+  selectedInvoiceOrderIds.value = next
+}
+
 const isAllPageSelected = computed(() => {
   const selectable = selectableOnPage.value
   if (!selectable.length) return false
   return selectable.every((row: any) => selectedOrderIds.value.has(rowKey(row)))
 })
 
+const isAllInvoicePageSelected = computed(() => {
+  const selectable = invoiceSelectableOnPage.value
+  if (!selectable.length) return false
+  return selectable.every((row: any) => selectedInvoiceOrderIds.value.has(rowKey(row)))
+})
+
 const isPageIndeterminate = computed(() => {
   const selectable = selectableOnPage.value
   if (!selectable.length) return false
   const checked = selectable.filter((row: any) => selectedOrderIds.value.has(rowKey(row))).length
+  return checked > 0 && checked < selectable.length
+})
+
+const isInvoicePageIndeterminate = computed(() => {
+  const selectable = invoiceSelectableOnPage.value
+  if (!selectable.length) return false
+  const checked = selectable.filter((row: any) => selectedInvoiceOrderIds.value.has(rowKey(row))).length
   return checked > 0 && checked < selectable.length
 })
 
@@ -237,8 +265,22 @@ const toggleSelectAllOnPage = (checked: boolean) => {
   selectedOrderIds.value = next
 }
 
+const toggleSelectAllInvoicesOnPage = (checked: boolean) => {
+  const next = new Set(selectedInvoiceOrderIds.value)
+  if (checked) {
+    invoiceSelectableOnPage.value.forEach((row: any) => next.add(rowKey(row)))
+  } else {
+    invoiceSelectableOnPage.value.forEach((row: any) => next.delete(rowKey(row)))
+  }
+  selectedInvoiceOrderIds.value = next
+}
+
 const clearSelection = () => {
   selectedOrderIds.value = new Set()
+}
+
+const clearInvoiceSelection = () => {
+  selectedInvoiceOrderIds.value = new Set()
 }
 
 const handleRowClick = (row: any) => {
@@ -429,9 +471,51 @@ const createLocalOrders = async () => {
   }
 }
 
+const uploadSelectedInvoicesFromLocalOrders = async () => {
+  const ids = Array.from(selectedInvoiceOrderIds.value)
+  if (!ids.length) {
+    toast.warning('Zaznacz zamówienia Allegro powiązane z lokalnymi')
+    return
+  }
+
+  const selectedRows = items.value.filter((row: any) => ids.includes(rowKey(row)) && canSelectForInvoice(row))
+  if (!selectedRows.length) {
+    toast.warning('Brak zaznaczonych zamówień z lokalnym powiązaniem')
+    return
+  }
+
+  uploadingSelectedInvoices.value = true
+  let uploaded = 0
+  let failed = 0
+
+  try {
+    for (const row of selectedRows) {
+      try {
+        await Api.allegro.uploadOrderInvoiceFromLocalOrder(row.checkoutFormId || row.id)
+        uploaded++
+      } catch (error) {
+        console.error(error)
+        failed++
+      }
+    }
+
+    if (uploaded > 0) {
+      toast.success(`Wysłano faktury do Allegro: ${uploaded}`)
+    }
+    if (failed > 0) {
+      toast.error(`Nie udało się wysłać faktur: ${failed}`)
+    }
+
+    clearInvoiceSelection()
+  } finally {
+    uploadingSelectedInvoices.value = false
+  }
+}
+
 const handlePageChange = async (page: number) => {
   filter.value.page = page
   clearSelection()
+  clearInvoiceSelection()
   syncFiltersToUrl(filter.value)
   await fetchTableData()
 }
@@ -502,6 +586,14 @@ onMounted(async () => {
           @click="createLocalOrders"
         >
           Utwórz lokalne{{ selectedCreatableCount ? ` (${selectedCreatableCount})` : '' }}
+        </el-button>
+        <el-button
+          type="success"
+          :loading="uploadingSelectedInvoices"
+          :disabled="selectedInvoiceCount === 0"
+          @click="uploadSelectedInvoicesFromLocalOrders"
+        >
+          Wyślij faktury{{ selectedInvoiceCount ? ` (${selectedInvoiceCount})` : '' }}
         </el-button>
         <el-button :icon="Coin" :loading="syncingBilling" @click="syncBillingForVisibleOrders">
           Synchronizuj prowizje
@@ -635,6 +727,10 @@ onMounted(async () => {
         <span>Zaznaczono <strong>{{ selectedCreatableCount }}</strong> zamówień do utworzenia lokalnego</span>
         <el-button size="small" text @click="clearSelection">Wyczyść zaznaczenie</el-button>
       </div>
+      <div v-if="selectedInvoiceCount > 0" class="selection-bar selection-bar--success">
+        <span>Zaznaczono <strong>{{ selectedInvoiceCount }}</strong> powiązanych zamówień do wysłania faktury</span>
+        <el-button size="small" text @click="clearInvoiceSelection">Wyczyść zaznaczenie</el-button>
+      </div>
 
       <div class="list-head">
         <span class="list-head__check">
@@ -650,7 +746,16 @@ onMounted(async () => {
         <span>Kupujący / dostawa</span>
         <span>Kwota / zysk</span>
         <span>Statusy</span>
-        <span>Lokalne</span>
+        <span class="list-head__local">
+          <el-checkbox
+            :model-value="isAllInvoicePageSelected"
+            :indeterminate="isInvoicePageIndeterminate"
+            :disabled="!invoiceSelectableOnPage.length"
+            @change="(v: any) => toggleSelectAllInvoicesOnPage(!!v)"
+            @click.stop
+          />
+          Lokalne / faktura
+        </span>
       </div>
 
       <div class="list-scroll-wrap">
@@ -730,6 +835,13 @@ onMounted(async () => {
                   </div>
 
                   <div class="order-card__col order-card__col--local">
+                    <el-checkbox
+                      :model-value="isInvoiceOrderChecked(row)"
+                      :disabled="!canSelectForInvoice(row)"
+                      title="Zaznacz do wysłania faktury z lokalnego zamówienia"
+                      @change="(v: any) => toggleInvoiceOrderSelection(row, !!v)"
+                      @click.stop
+                    />
                     <span class="local-chip" :class="row.localOrderId ? 'local-chip--yes' : 'local-chip--no'">
                       {{ row.localOrderId ? 'Tak' : 'Nie' }}
                     </span>
@@ -994,9 +1106,15 @@ onMounted(async () => {
   color: #9a3412;
 }
 
+.selection-bar--success {
+  border-bottom-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
 .list-head {
   display: grid;
-  grid-template-columns: 72px 1.2fr 1.3fr 1fr 1.1fr 70px;
+  grid-template-columns: 72px 1.2fr 1.3fr 1fr 1.1fr 130px;
   gap: 10px;
   padding: 10px 14px;
   font-size: 10px;
@@ -1004,6 +1122,12 @@ onMounted(async () => {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #94a3b8;
+}
+
+.list-head__local {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .list-scroll-wrap {
@@ -1051,7 +1175,7 @@ onMounted(async () => {
 
 .order-card__main {
   display: grid;
-  grid-template-columns: 72px 1.2fr 1.3fr 1fr 1.1fr 70px;
+  grid-template-columns: 72px 1.2fr 1.3fr 1fr 1.1fr 130px;
   gap: 10px;
   padding: 12px 14px;
   align-items: center;
@@ -1061,6 +1185,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.order-card__col--local {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .list-head__check {

@@ -13,6 +13,8 @@ export type ProductPhotoAiRequest = {
   mimeType?: string
   base64LogoImage?: string
   logoMimeType?: string
+  base64ReferenceImage?: string
+  referenceMimeType?: string
   userInstruction?: string
   quality?: string
   size?: string
@@ -133,6 +135,8 @@ export const fetchProductPhotoVariants = async (
       mimeType: request.mimeType || 'image/png',
       base64LogoImage: request.base64LogoImage || null,
       logoMimeType: request.logoMimeType || null,
+      base64ReferenceImage: request.base64ReferenceImage || null,
+      referenceMimeType: request.referenceMimeType || null,
       userInstruction: request.userInstruction || '',
       quality: request.quality || 'high',
       size: request.size || '1024x1024',

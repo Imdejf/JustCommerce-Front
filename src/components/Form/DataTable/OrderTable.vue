@@ -309,7 +309,7 @@
                 </div>
 
                 <div class="order-card__col order-card__col--payment" @click.stop>
-                  <span class="order-card__payment-method">{{ translatePaymentProvider(row.payment) || '—' }}</span>
+                  <span class="order-card__payment-method">{{ paymentMethodLabel(row) || '—' }}</span>
                   <div class="order-card__payment-flags">
                     <el-dropdown trigger="click" @command="(paid: boolean) => changePaidStatus(row, paid)">
                       <button
@@ -414,7 +414,7 @@
                     <section class="detail-panel">
                       <h4><el-icon><Wallet /></el-icon> Płatność</h4>
                       <ul>
-                        <li><strong>Metoda</strong> {{ translatePaymentProvider(row.payment) || '—' }}</li>
+                        <li><strong>Metoda</strong> {{ paymentMethodLabel(row) || '—' }}</li>
                         <li><strong>Faktura</strong> {{ row.invoiceNumber || '—' }}</li>
                         <li><strong>Proforma</strong> {{ row.proformaNumber || '—' }}</li>
                       </ul>
@@ -1423,6 +1423,34 @@ function translatePaymentProvider(value: number): string | null {
     default:
       return null
   }
+}
+
+function translatePaymentTerm(value: number | null | undefined): string | null {
+  switch (value) {
+    case 0:
+      return '7 dni'
+    case 1:
+      return '14 dni'
+    case 2:
+      return '21 dni'
+    case 3:
+      return '30 dni'
+    case 4:
+      return '60 dni'
+    case 5:
+      return '90 dni'
+    default:
+      return null
+  }
+}
+
+function paymentMethodLabel(row: any): string | null {
+  if (row?.payment !== PaymentProvider.Term) {
+    return translatePaymentProvider(row?.payment)
+  }
+
+  const paymentTerm = translatePaymentTerm(row?.paymentTerm)
+  return paymentTerm ? `Termin ${paymentTerm}` : 'Termin'
 }
 
 const listQuery = computed(() => JSON.stringify(route.query))

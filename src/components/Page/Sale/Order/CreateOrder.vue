@@ -71,6 +71,7 @@ enum PaymentProvider {
   Przelewy24 = 0,
   StandardTransfer = 1,
   CashOnDelivery = 2,
+  Term = 5,
 }
 
 const router = useRouter()
@@ -173,7 +174,8 @@ function translatePaymentProvider(key) {
   const translations = {
     Przelewy24: 'Przelewy24',
     StandardTransfer: 'Przelew Standardowy',
-    CashOnDelivery: 'Płatność za pobraniem'
+    CashOnDelivery: 'Płatność za pobraniem',
+    Term: 'Termin płatności'
   }
   return translations[key] || key
 }
@@ -272,6 +274,7 @@ const predefinedPayment = ref([
 { label: "Przelew standradowy", value: 1 },
 { label: "Przelewy24", value: 0 },
 { label: "Płantość za pobraniem (+10zł)", value: 2 },
+{ label: "Termin płatności", value: 5 },
 ]);
 
 const predefinedShipemnt = ref([
@@ -301,9 +304,11 @@ if (itemsFromTable.length === 0) {
   toast.error('Dodaj co najmniej jedną pozycję do zamówienia.', { timeout: 2000 });
   return;
 }
-  if(currentOrder.value.paymentTerm != 99){
-    currentOrder.value.paymentProvider = 5
-  }
+
+  const paymentProvider = Number(currentOrder.value.paymentProvider)
+  const paymentTerm = paymentProvider === PaymentProvider.Term
+    ? (currentOrder.value.paymentTerm ?? PaymentTerm.None)
+    : PaymentTerm.None
 
   // Sprawdzenie poprawności kodu pocztowego
   const zipCodeRegex = /^\d{2}-\d{3}$/;
@@ -355,8 +360,8 @@ if (itemsFromTable.length === 0) {
     OrderStatus: currentOrder.value.orderStatus,
     OrderSourceType: currentOrder.value.orderSourceType,
     PaymentStatus: 10,
-    PaymentProvider: currentOrder.value.paymentProvider,
-    PaymentTerm: currentOrder.value.paymentTerm || null,
+    PaymentProvider: paymentProvider,
+    PaymentTerm: paymentTerm,
     OrderNoteForClient: currentOrder.value.orderNoteForClient ?? '',
     OrderNoteForCustomer: currentOrder.value.orderNoteForCustomer ?? '',
     OrderNoteOnInvoice: currentOrder.value.orderNoteOnInvoice ?? '',
@@ -454,6 +459,16 @@ watch(
       isNipProcessing.value = false
     }
   }
+)
+
+watch(
+  () => currentOrder.value.paymentProvider,
+  (paymentProvider) => {
+    if (Number(paymentProvider) !== PaymentProvider.Term) {
+      currentOrder.value.paymentTerm = PaymentTerm.None
+    }
+  },
+  { immediate: true }
 )
 
 </script>
@@ -564,6 +579,7 @@ watch(
                 type="select"
                 :options="paymentPaymentTerm"
                 v-model="currentOrder.paymentTerm"
+                :disabled="Number(currentOrder.paymentProvider) !== PaymentProvider.Term"
               />
               <FormKit
                 type="textarea"

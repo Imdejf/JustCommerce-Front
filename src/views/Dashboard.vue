@@ -220,6 +220,20 @@
             <v-chart class="cosmos-panel__chart cosmos-panel__chart--donut" :option="sourceDonutOption" autoresize />
           </section>
 
+          <section class="cosmos-panel">
+            <div class="cosmos-panel__head">
+              <div>
+                <h2>Sklep vs ręcznie</h2>
+                <p>Zamówienia złożone w sklepie oraz wpisane przez panel</p>
+              </div>
+            </div>
+            <v-chart class="cosmos-panel__chart" :option="sourceComparisonOption" autoresize />
+            <div class="source-compare">
+              <span>Sklep: <strong>{{ sourceComparison.shop }}</strong></span>
+              <span>Ręcznie: <strong>{{ sourceComparison.manual }}</strong></span>
+            </div>
+          </section>
+
           <section class="cosmos-panel cosmos-panel--table">
             <div class="cosmos-panel__head">
               <div>
@@ -838,6 +852,42 @@ const donutBase = (data: { name: string; value: number }[]) => ({
 const paymentDonutOption = computed(() => donutBase(paymentBreakdown.value))
 const sourceDonutOption = computed(() => donutBase(sourceBreakdown.value))
 
+const sourceComparison = computed(() => {
+  const countByName = (names: string[]) =>
+    sourceBreakdown.value
+      .filter((item) => names.includes(item.name))
+      .reduce((sum, item) => sum + Number(item.value ?? 0), 0)
+
+  return {
+    shop: countByName(['Koszyk']),
+    manual: countByName(['Stały klient', 'Oferta', 'Telefon', 'Czat', 'E-mail'])
+  }
+})
+
+const sourceComparisonOption = computed(() => ({
+  grid: { left: 44, right: 16, top: 18, bottom: 26 },
+  tooltip: { trigger: 'axis' },
+  xAxis: {
+    type: 'category',
+    data: ['Sklep', 'Ręcznie'],
+    axisLabel: { color: chartTheme.axis },
+    axisLine: { lineStyle: { color: chartTheme.split } }
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: { color: chartTheme.axis },
+    splitLine: { lineStyle: { color: chartTheme.split } }
+  },
+  series: [{
+    type: 'bar',
+    barWidth: 44,
+    data: [
+      { value: sourceComparison.value.shop, itemStyle: { color: '#60a5fa', borderRadius: [8, 8, 0, 0] } },
+      { value: sourceComparison.value.manual, itemStyle: { color: '#f97316', borderRadius: [8, 8, 0, 0] } }
+    ]
+  }]
+}))
+
 onMounted(loadDashboard)
 </script>
 
@@ -1075,6 +1125,20 @@ onMounted(loadDashboard)
 
 .cosmos-panel__chart--donut {
   height: 280px;
+}
+
+.source-compare {
+  display: flex;
+  gap: 14px;
+  margin-top: -8px;
+  padding: 0 16px 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.source-compare strong {
+  color: #0f172a;
+  font-weight: 900;
 }
 
 .cosmos-panel--table {

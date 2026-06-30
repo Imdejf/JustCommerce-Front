@@ -87,7 +87,7 @@ const prefillFromOffer = (o: any) => {
   currentOrder.value.languageId     = o.languageId ?? currentOrder.value.languageId
   currentOrder.value.deliveryMethod = o.deliveryMethod ?? 0
   currentOrder.value.paymentProvider= o.payment ?? 1
-  currentOrder.value.paymentTerm    = o.paymentTerm ?? 99
+  currentOrder.value.paymentTerm    = currentOrder.value.paymentProvider === 5 ? (o.paymentTerm ?? 99) : 99
 
   // Summy (netto/brutto)
   currentOrder.value.shippingFeeAmountNetto      = toNumber(o.shippingPrice, 0)
