@@ -133,6 +133,13 @@
                 <el-option label="Nie" :value="false" />
               </el-select>
             </el-col>
+            <el-col :xs="24" :sm="12" :md="6" :lg="4">
+              <label class="filter-label">Prośba o opinię</label>
+              <el-select v-model="filter.reviewRequestSent" clearable placeholder="Wszystkie" class="!w-full">
+                <el-option label="Wysłana" :value="true" />
+                <el-option label="Nie wysłana" :value="false" />
+              </el-select>
+            </el-col>
             <el-col :xs="24" :sm="24" :md="12" :lg="8" class="flex items-end gap-2">
               <el-button type="primary" @click="applyFilters">Zastosuj filtry</el-button>
               <el-button @click="clearFilters">Wyczyść</el-button>
@@ -351,6 +358,12 @@
                         </el-dropdown-menu>
                       </template>
                     </el-dropdown>
+                    <span
+                      class="flag-chip"
+                      :class="row.reviewRequestSent ? 'flag-chip--yes' : 'flag-chip--neutral'"
+                    >
+                      Opinia: {{ row.reviewRequestSent ? 'wysłana' : 'brak' }}
+                    </span>
                   </div>
                 </div>
 
@@ -617,6 +630,7 @@ type OrderFilters = {
   isPaid: boolean | null
   sendInvoice: boolean | null
   termInvoice: boolean | null
+  reviewRequestSent: boolean | null
   pageNumber: number
   pageSize: number
 }
@@ -803,6 +817,7 @@ const createDefaultFilters = (): OrderFilters => ({
   isPaid: null,
   sendInvoice: null,
   termInvoice: null,
+  reviewRequestSent: null,
   pageNumber: 1,
   pageSize: 12
 })
@@ -824,6 +839,7 @@ const buildFiltersFromQuery = (): OrderFilters => {
     isPaid: parseQueryBoolean(route.query, 'isPaid', null),
     sendInvoice: parseQueryBoolean(route.query, 'sendInvoice', null),
     termInvoice: parseQueryBoolean(route.query, 'termInvoice', null),
+    reviewRequestSent: parseQueryBoolean(route.query, 'reviewRequestSent', null),
     pageNumber: parseQueryPage(route.query, 1),
     pageSize: parseQueryNumber(route.query, 'pageSize', 12) || 12
   }
@@ -844,6 +860,7 @@ const buildQueryFromFilters = (filters: OrderFilters) => {
   setQueryBoolean(query, 'isPaid', filters.isPaid)
   setQueryBoolean(query, 'sendInvoice', filters.sendInvoice)
   setQueryBoolean(query, 'termInvoice', filters.termInvoice)
+  setQueryBoolean(query, 'reviewRequestSent', filters.reviewRequestSent)
   setQueryNumber(query, 'page', filters.pageNumber)
   setQueryNumber(query, 'pageSize', filters.pageSize)
 
@@ -867,6 +884,7 @@ const activeFiltersCount = computed(() => {
   if (filter.value.isPaid !== null) count++
   if (filter.value.sendInvoice !== null) count++
   if (filter.value.termInvoice !== null) count++
+  if (filter.value.reviewRequestSent !== null) count++
 
   return count
 })
@@ -888,6 +906,7 @@ const buildPredicateObject = () => {
   if (filter.value.isPaid !== null) predicate.IsPaid = filter.value.isPaid
   if (filter.value.sendInvoice !== null) predicate.SendInvoice = filter.value.sendInvoice
   if (filter.value.termInvoice !== null) predicate.TermInvoice = filter.value.termInvoice
+  if (filter.value.reviewRequestSent !== null) predicate.ReviewRequestSent = filter.value.reviewRequestSent
 
   if (filter.value.dateFrom || filter.value.dateTo) {
     predicate.CreatedOn = {}

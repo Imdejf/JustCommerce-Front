@@ -287,13 +287,21 @@ const sendPaymentLinkEmail = async () => {
 
 const sendReviewRequestEmail = async () => {
   if (!props.order?.id) return
+  if (props.order.reviewRequestSent) {
+    toast.info('Prośba o opinię została już wysłana dla tego zamówienia.')
+    return
+  }
+
   sendingReviewRequest.value = true
   try {
     await Api.orders.sendReviewRequest(props.order.id)
+    props.order.reviewRequestSent = true
+    props.order.reviewRequestSentAtUtc = new Date().toISOString()
     toast.success('Wysłano e-mail z prośbą o opinię Google')
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
-    toast.error('Nie udało się wysłać prośby o opinię')
+    const message = e?.response?.data?.message || e?.message
+    toast.error(message || 'Nie udało się wysłać prośby o opinię')
   } finally {
     sendingReviewRequest.value = false
   }
@@ -451,10 +459,16 @@ onMounted(initFormsFromOrder)
         </button>
         <button
           @click="sendReviewRequestEmail"
-          :disabled="sendingReviewRequest"
+          :disabled="sendingReviewRequest || order?.reviewRequestSent"
           class="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-60 text-gray-900 font-semibold py-1 px-4 rounded"
         >
-          {{ sendingReviewRequest ? 'Wysyłam...' : 'Wyślij prośbę o opinię Google' }}
+          {{
+            order?.reviewRequestSent
+              ? 'Prośba o opinię wysłana'
+              : sendingReviewRequest
+                ? 'Wysyłam...'
+                : 'Wyślij prośbę o opinię Google'
+          }}
         </button>
         <div v-if="proformaPath" class="flex items-center gap-2">
           <a :href="proformaPath" target="_blank" class="text-blue-600 underline text-sm">Zobacz proformę</a>

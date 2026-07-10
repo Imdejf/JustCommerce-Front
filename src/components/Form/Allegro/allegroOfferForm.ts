@@ -453,6 +453,14 @@ export const mapAllegroImagesFromSyncDto = (images: any[]): AllegroPhoto[] => {
     .filter(Boolean) as AllegroPhoto[]
 }
 
+const getOriginalProductMediaPath = (filePath: string): string => {
+  if (filePath.includes('/original/')) {
+    return filePath
+  }
+
+  return filePath.replace('/Product/', '/Product/original/')
+}
+
 export const mapProductMediasToAllegroPhotos = (medias: any[]): AllegroPhoto[] => {
   if (!Array.isArray(medias)) return []
 
@@ -461,9 +469,11 @@ export const mapProductMediasToAllegroPhotos = (medias: any[]): AllegroPhoto[] =
       const filePath = media.filePath || media.FilePath
       if (!filePath) return null
 
-      const url = filePath.startsWith('http')
-        ? filePath
-        : `https://images.olmag.pl/${String(filePath).replace(/^\/+/, '')}`
+      const originalFilePath = getOriginalProductMediaPath(String(filePath))
+
+      const url = originalFilePath.startsWith('http')
+        ? originalFilePath
+        : `https://images.olmag.pl/${originalFilePath.replace(/^\/+/, '')}`
 
       return {
         id: createId(),
