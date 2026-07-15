@@ -2,7 +2,7 @@
 import { nextTick, computed, ref, reactive, watch, watchEffect, onMounted } from 'vue'
 import { Api } from '/@/services/api'
 import { useToast } from 'vue-toastification'
-import { ProductOptionDTO, ProductOptionValueDTO } from '/@/types/product/ProductOption'
+import { ProductOptionDTO, ProductOptionValueDTO, DisplayType } from '/@/types/product/ProductOption'
 import { ElInput } from 'element-plus'
 import { useLanguageStore } from '/@/stores/language'
 import { OptionProps } from 'element-plus/es/components/select-v2/src/defaults'
@@ -10,6 +10,7 @@ import ProductOptionConfiguration from './ProductOptionConfiguration.vue'
 import { useRoute } from 'vue-router'
 import { ProductDTO } from '/@/types/product/Product'
 import { useStoreStore } from '/@/stores/store'
+import { syncAllOptionValuesFromDefault } from '/@/composables/useProductOptionLangSync'
 
 interface ProductOptionInterface {
   productId: string
@@ -67,6 +68,7 @@ const handleSaveProductOption = async (productOption: ProductOptionDTO) => {
   }
 
   updateProductOption.option.displayType = +updateProductOption.option.displayType
+  syncAllOptionValuesFromDefault(updateProductOption.option)
 
   const payload = {
     body: JSON.stringify(updateProductOption)
@@ -124,11 +126,11 @@ const handleInputConfirm = (id: string) => {
   if (tagValue.value) {
     const newOptionValue: ProductOptionValueDTO = {
       key: tagValue.value,
-      display: option.display,
+      display: '',
       productOptionValueLangs: language.languages.map((lang) => ({
         languageId: lang.id,
-        key: '',
-        display: ''
+        key: tagValue.value,
+        display: Number(option.displayType) === DisplayType.Color ? '' : tagValue.value
       }))
     }
 

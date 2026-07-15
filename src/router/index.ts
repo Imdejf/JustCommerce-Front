@@ -466,6 +466,14 @@ const router = createRouter({
       },
       component: () => import('../views/Tracking/Pages/index.vue')
     },
+    {
+      path: '/tracking/carts',
+      name: 'TrackingAbandonedCarts',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Tracking/Carts/index.vue')
+    },
     //OFFER
     {
       path:'/sale/offer',

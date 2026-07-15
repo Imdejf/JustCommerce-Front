@@ -70,6 +70,15 @@
               <span class="chip__count">{{ meta.withCart }}</span>
             </button>
 
+            <button
+              class="chip"
+              :class="filterMode === 'abandoned' ? 'chip--active' : ''"
+              @click="setMode('abandoned')"
+            >
+              Porzucone koszyki
+              <span class="chip__count">{{ meta.abandoned }}</span>
+            </button>
+
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
             <div class="flex items-center gap-2">
@@ -96,6 +105,7 @@
                 <el-option value="lastActivityDesc" label="Ostatnia aktywność ↓" />
                 <el-option value="trackingsDesc" label="Najwięcej trackingów ↓" />
                 <el-option value="cartsDesc" label="Najwięcej koszyków ↓" />
+                <el-option value="cartValueDesc" label="Wartość koszyka ↓" />
                 <el-option value="createdDesc" label="Najnowsi użytkownicy ↓" />
               </el-select>
             </div>
@@ -136,8 +146,12 @@
                       {{ isOnline(row) ? 'ONLINE' : 'OFFLINE' }}
                     </span>
 
-                    <span v-if="row.hasShoppingCartItems" class="badge badge--cart" title="Ma koszyk">
-                      CART
+                    <span v-if="row.hasActiveCart" class="badge badge--cart" title="Ma aktywny koszyk">
+                      KOSZYK
+                    </span>
+
+                    <span v-if="row.isAbandonedCart" class="badge badge--abandoned" title="Porzucony koszyk">
+                      PORZUCONY
                     </span>
                   </div>
 
@@ -154,12 +168,15 @@
           </el-table-column>
 
           <!-- Activity -->
-          <el-table-column label="Aktywność" width="220">
+          <el-table-column label="Aktywność" width="240">
             <template #default="{ row }">
               <div class="space-y-1">
                 <div class="text-xs text-slate-900">
                   <span class="text-slate-500">Ostatnio:</span>
-                  <span class="font-semibold">{{ formatDateSmart(row.dateLastActivity ?? row.dateLastLogin ?? row.dateCreated) }}</span>
+                  <span class="font-semibold">{{ formatDateSmart(getLastActivity(row)) }}</span>
+                </div>
+                <div v-if="row.currentPath" class="text-[11px] text-sky-700 truncate" :title="row.currentPath">
+                  Teraz: <span class="font-mono">{{ row.currentPath }}</span>
                 </div>
                 <div class="text-[11px] text-slate-500">
                   IP:
@@ -169,10 +186,29 @@
             </template>
           </el-table-column>
 
-          <!-- Metrics -->
-          <el-table-column label="Metryki" min-width="250">
+          <!-- Cart -->
+          <el-table-column label="Koszyk" min-width="220">
             <template #default="{ row }">
-              <div class="grid grid-cols-3 gap-2">
+              <div v-if="!row.hasActiveCart" class="text-xs text-slate-400">Brak aktywnego koszyka</div>
+              <div v-else class="space-y-1">
+                <div class="text-xs font-semibold text-slate-900">
+                  {{ formatMoney(row.activeCartValue) }}
+                  <span class="text-slate-500 font-normal">• {{ totalCartQty(row) }} szt.</span>
+                </div>
+                <div class="text-[11px] text-slate-500">
+                  Aktualizacja: {{ formatDateSmart(row.activeCartUpdatedOn) }}
+                </div>
+                <div class="text-[11px] text-slate-600 truncate" :title="activeCartPreview(row)">
+                  {{ activeCartPreview(row) }}
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- Metrics -->
+          <el-table-column label="Tracking" width="160">
+            <template #default="{ row }">
+              <div class="grid grid-cols-2 gap-2">
                 <div class="metric">
                   <div class="metric__label">Ścieżki</div>
                   <div class="metric__value">{{ row.trackings?.length ?? 0 }}</div>
@@ -181,20 +217,19 @@
                   <div class="metric__label">Koszyki</div>
                   <div class="metric__value">{{ row.carts?.length ?? 0 }}</div>
                 </div>
-                <div class="metric">
-                  <div class="metric__label">Produkty</div>
-                  <div class="metric__value">{{ totalCartQty(row) }}</div>
-                </div>
               </div>
             </template>
           </el-table-column>
 
           <!-- Status -->
-          <el-table-column label="Status" width="200">
+          <el-table-column label="Status" width="170">
             <template #default="{ row }">
               <div class="flex flex-col gap-1">
                 <span class="status" :class="row.active ? 'status--ok' : 'status--warn'">
-                  {{ row.carts?.some(c => c.isActive ?? c.IsActive) ? 'Aktywny' : 'Nieaktywny' }}
+                  {{ row.active ? 'Konto aktywne' : 'Konto nieaktywne' }}
+                </span>
+                <span v-if="row.isAbandonedCart" class="status status--warn">
+                  Koszyk porzucony
                 </span>
                 <span class="status" :class="row.deleted ? 'status--bad' : 'status--muted'">
                   {{ row.deleted ? 'Usunięty' : 'OK' }}
@@ -336,6 +371,8 @@
                   <span>Upd: <b>{{ formatDateSmart(c.latestUpdatedOn) }}</b></span>
                   <span>Pozycji: <b>{{ c.itemsCount }}</b></span>
                   <span>Qty: <b>{{ c.totalQuantity }}</b></span>
+                  <span>Wartość: <b>{{ formatMoney(c.itemsValue) }}</b></span>
+                  <span v-if="c.isAbandoned" class="text-orange-700 font-semibold">PORZUCONY</span>
                   <span v-if="c.couponCode">Kupon: <b>{{ c.couponCode }}</b></span>
                 </div>
 
@@ -354,8 +391,9 @@
                           {{ formatDateSmart(it.createdOn) }}
                         </div>
                       </div>
-                      <div class="text-xs font-bold text-slate-900">
-                        × {{ it.quantity }}
+                      <div class="text-xs font-bold text-slate-900 text-right">
+                        <div>× {{ it.quantity }}</div>
+                        <div class="text-[11px] text-slate-500">{{ formatMoney(it.lineTotal) }}</div>
                       </div>
                     </div>
                   </div>
@@ -376,8 +414,8 @@ import Cookies from 'universal-cookie'
 import { useToast } from 'vue-toastification'
 import { Api } from '/@/services/api'
 
-type Mode = 'all' | 'online' | 'cart'
-type SortMode = 'lastActivityDesc' | 'trackingsDesc' | 'cartsDesc' | 'createdDesc'
+type Mode = 'all' | 'online' | 'cart' | 'abandoned'
+type SortMode = 'lastActivityDesc' | 'trackingsDesc' | 'cartsDesc' | 'createdDesc' | 'cartValueDesc'
 
 const toast = useToast()
 const cookies = new Cookies()
@@ -395,7 +433,7 @@ const totalCount = ref(0)
 
 const rows = ref<any[]>([])
 
-const meta = ref({ total: 0, online: 0, withCart: 0 })
+const meta = ref({ total: 0, online: 0, withCart: 0, abandoned: 0 })
 
 const onlineUsers = ref<any[]>([])
 
@@ -410,28 +448,33 @@ let countdownTimer: any = null
 const storeId = cookies.get('dsStore')
 
 const buildFilter = () => {
-  const predicate = {
+  const predicate: Record<string, unknown> = {
+    SearchTerm: null,
     UserId: null,
     Email: null,
     Username: null,
     Active: null,
     Deleted: null,
     HasShoppingCartItems: null,
+    AbandonedCartOnly: null,
+    OnlineOnly: null,
+    ActivitySinceMinutes: null,
+    SortMode: sortMode.value,
     Path: null,
     DateCreated: null,
     DateLastLogin: null
   }
 
   const s = (search.value ?? '').trim()
-  if (s) {
-    if (/^[0-9a-fA-F-]{32,36}$/.test(s)) predicate.UserId = s
-    else {
-      predicate.Email = s
-      predicate.Username = s
-    }
-  }
+  if (s) predicate.SearchTerm = s
 
   if (filterMode.value === 'cart') predicate.HasShoppingCartItems = true
+  if (filterMode.value === 'abandoned') predicate.AbandonedCartOnly = true
+  if (filterMode.value === 'online') predicate.OnlineOnly = true
+
+  if (activityWindowMinutes.value > 0) {
+    predicate.ActivitySinceMinutes = activityWindowMinutes.value
+  }
 
   return {
     StoreId: storeId,
@@ -445,20 +488,35 @@ const buildFilter = () => {
   }
 }
 
-const isOnline = (row: any) => {
-  if (!row?.userId) return false
-  const uid = String(row.userId).toLowerCase()
-  return (onlineUsers.value ?? []).some((x: any) => String(x?.userId ?? '').toLowerCase() === uid)
+const isOnline = (row: any) => Boolean(row?.isOnline)
+
+const getLastActivity = (row: any) =>
+  row?.lastTrackingAtUtc ?? row?.dateLastActivity ?? row?.dateLastLogin ?? row?.dateCreated
+
+const formatMoney = (value: number | null | undefined) => {
+  const amount = Number(value ?? 0)
+  return new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: 'PLN'
+  }).format(amount)
 }
 
-const paginate = (items: any[], page: number, size: number) => {
-  const start = (page - 1) * size
-  return items.slice(start, start + size)
+const activeCart = (row: any) =>
+  (row?.carts ?? []).find((c: any) => c.isActive) ?? (row?.carts ?? [])[0]
+
+const activeCartPreview = (row: any) => {
+  const cart = activeCart(row)
+  if (!cart?.items?.length) return '—'
+  return cart.items
+    .slice(0, 3)
+    .map((it: any) => `${it.quantity}× ${it.productName ?? 'produkt'}`)
+    .join(', ')
 }
 
 const totalCartQty = (row: any) => {
-  if (!row?.carts?.length) return 0
-  return row.carts.reduce((sum: number, c: any) => sum + (Number(c.totalQuantity ?? 0) || 0), 0)
+  const cart = activeCart(row)
+  if (!cart) return 0
+  return Number(cart.totalQuantity ?? 0) || 0
 }
 
 const initials = (s: string) => {
@@ -492,38 +550,6 @@ const copy = async (text: any) => {
   }
 }
 
-const applyClientFiltersAndSort = (items: any[]) => {
-  let out = [...(items ?? [])]
-
-  if (activityWindowMinutes.value && activityWindowMinutes.value > 0) {
-    const minTs = Date.now() - activityWindowMinutes.value * 60_000
-    out = out.filter((u: any) => {
-      const t = u?.dateLastActivity ?? u?.dateLastLogin ?? u?.dateCreated
-      const dt = new Date(t)
-      return !isNaN(dt.getTime()) && dt.getTime() >= minTs
-    })
-  }
-
-  const getLast = (u: any) => {
-    const t = u?.dateLastActivity ?? u?.dateLastLogin ?? u?.dateCreated
-    const dt = new Date(t)
-    return isNaN(dt.getTime()) ? 0 : dt.getTime()
-  }
-
-  if (sortMode.value === 'lastActivityDesc') out.sort((a, b) => getLast(b) - getLast(a))
-  if (sortMode.value === 'trackingsDesc') out.sort((a, b) => (b?.trackings?.length ?? 0) - (a?.trackings?.length ?? 0))
-  if (sortMode.value === 'cartsDesc') out.sort((a, b) => (b?.carts?.length ?? 0) - (a?.carts?.length ?? 0))
-  if (sortMode.value === 'createdDesc') {
-    const getCreated = (u: any) => {
-      const dt = new Date(u?.dateCreated)
-      return isNaN(dt.getTime()) ? 0 : dt.getTime()
-    }
-    out.sort((a, b) => getCreated(b) - getCreated(a))
-  }
-
-  return out
-}
-
 const fetchUsers = async () => {
   loading.value = true
   try {
@@ -532,33 +558,18 @@ const fetchUsers = async () => {
     })
 
     const data = res?.data ?? res
-
     const table = data?.users ?? data
-    const allOnline = data?.onlineUsers ?? []
 
-    onlineUsers.value = allOnline
+    onlineUsers.value = data?.onlineUsers ?? []
 
     const items = table?.items ?? []
+    rows.value = items
+    totalCount.value = table?.totalCount ?? items.length
+
     meta.value.total = table?.totalCount ?? items.length
-    meta.value.online = allOnline.length
-    meta.value.withCart = items.filter((u: any) => u?.hasShoppingCartItems).length
-
-    if (filterMode.value === 'online') {
-      const filteredOnline = applyClientFiltersAndSort(allOnline)
-
-      totalCount.value = filteredOnline.length
-      rows.value = paginate(filteredOnline, pageNumber.value, pageSize.value)
-      return
-    }
-
-    const filtered = applyClientFiltersAndSort(items)
-
-    rows.value = filtered
-
-    totalCount.value = activityWindowMinutes.value > 0
-      ? filtered.length
-      : (table?.totalCount ?? filtered.length)
-
+    meta.value.online = data?.onlineCount ?? onlineUsers.value.length
+    meta.value.withCart = data?.withActiveCartCount ?? 0
+    meta.value.abandoned = data?.abandonedCartCount ?? 0
   } catch (e) {
     console.error(e)
     toast.error('Nie udało się pobrać użytkowników')
@@ -695,6 +706,7 @@ onBeforeUnmount(() => stopTimers())
 .badge--online { border-color: #86efac; background: #ecfdf5; color: #166534; }
 .badge--offline { border-color: #e2e8f0; background: #fff; color: #64748b; }
 .badge--cart { border-color: #c4b5fd; background: #f5f3ff; color: #5b21b6; }
+.badge--abandoned { border-color: #fdba74; background: #fff7ed; color: #9a3412; }
 
 /* Metrics */
 .metric {

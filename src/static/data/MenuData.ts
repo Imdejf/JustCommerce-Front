@@ -158,6 +158,10 @@ export const menuData: MenuItem[] = [
       {
         name: "Strony",
         route: "/tracking/pages"
+      },
+      {
+        name: "Porzucone koszyki",
+        route: "/tracking/carts"
       }
     ]
   }

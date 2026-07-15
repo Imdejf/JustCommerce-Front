@@ -54,7 +54,7 @@ const fetchPages = async () => {
       })
     })
 
-    const users = response?.data?.items ?? response?.items ?? []
+    const users = response?.data?.users?.items ?? response?.data?.items ?? response?.items ?? []
     const map = new Map<string, { visits: number; users: Set<string>; lastVisit?: string }>()
 
     for (const user of users) {

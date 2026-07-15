@@ -8,6 +8,7 @@ import { computed, ref } from 'vue'
 import { productOptions } from '/@/services/api/product/productOption'
 import { useLanguageStore } from '/@/stores/language'
 import { LanguageDTO } from '/@/types/language/Language'
+import { syncAllOptionValuesFromDefault } from '/@/composables/useProductOptionLangSync'
 
 const props = defineProps({
   option: {
@@ -38,6 +39,7 @@ const handleClose = () => {
 }
 
 const handleSave = () => {
+  syncAllOptionValuesFromDefault(activeOption.value)
   emits('save', activeOption)
 }
 
@@ -90,6 +92,10 @@ const handleLanguage = (currentLanguage: LanguageDTO | null) => {
           </ul>
         </div>
         <div class="p-6 space-y-6">
+          <p class="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">
+            Wartości w innych językach domyślnie kopiują język domyślny. Dla kolorów hex jest
+            taki sam we wszystkich językach.
+          </p>
           <div class="mb-2 flex items-center text-sm w-full">
             <el-radio-group
               v-model="displayTypeSelected"
