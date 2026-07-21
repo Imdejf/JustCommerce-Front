@@ -192,17 +192,30 @@ const exportProductToExcel = (payload) =>
   });
 
   const importProductFromExcel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/exportProductToExcel`, {
+  fetch(`${APISettings.baseURL}administration/product/ImportProductFromExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!response.ok) {
       throw response.status
     } else {
       return response.json()
     }
+  })
+
+const updateQuickEdit = (payload) =>
+  fetch(`${APISettings.baseURL}administration/product/QuickEdit`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...payload
+  }).then(function (response) {
+    if (!response.ok) {
+      throw response.status
+    }
+    return response.json()
   })
 
 
@@ -262,6 +275,7 @@ export const products = {
   updateCategory,
   exportProductToExcel,
   importProductFromExcel,
+  updateQuickEdit,
   removeAttributeValue,
   addProductBlogItem,
   removeProductBlogItem,

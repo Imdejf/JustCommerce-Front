@@ -1,50 +1,34 @@
 import { CreateBaseApiService } from '../baseApi'
+import { APISettings } from '../config.js'
 
-const addRule = (payload) =>
-  fetch(`${APISettings.baseURL}administration/ProductOption`, {
+const exportToExcel = (payload) =>
+  fetch(`${APISettings.baseURL}administration/rule/ExportToExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!response.ok) {
       throw response.status
-    } else {
-      return response.json()
     }
+    return response
   })
 
-const updateRule = (payload) =>
-  fetch(`${APISettings.baseURL}administration/ProductOption`, {
-    method: 'PUT',
-    credentials: 'include',
+const importFromExcel = (payload) =>
+  fetch(`${APISettings.baseURL}administration/rule/ImportFromExcel`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...payload
   }).then(function (response) {
-    if (response.status != 200) {
+    if (!response.ok) {
       throw response.status
-    } else {
-      return response.json()
     }
-  })
-
-const removeRule = (payload) =>
-  fetch(`${APISettings.baseURL}administration/ProductOption`, {
-    method: 'DELETE',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...payload
-  }).then(function (response) {
-    if (response.status != 200) {
-      throw response.status
-    } else {
-      return response.json()
-    }
+    return response.json()
   })
 
 export const rules = {
-  addRule,
-  updateRule,
-  removeRule,
+  exportToExcel,
+  importFromExcel,
   ...CreateBaseApiService('administration/rule')
 }

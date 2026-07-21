@@ -49,7 +49,10 @@ const route = useRoute()
 const toast = useToast()
 const brands = ref<Array<{ value: string | null; label: string }>>([])
 const categories = ref<Array<{ value: string | null; label: string }>>([])
-const emit = defineEmits(['open-import'])
+const props = defineProps<{
+  exportLoading?: boolean
+}>()
+const emit = defineEmits(['open-import', 'open-export'])
 const filtersOpen = ref(false)
 const loading = ref(false)
 const isSyncingFromRoute = ref(false)
@@ -229,7 +232,12 @@ const fetchTableData = async () => {
       })
     }
     const result = await Api.products.smartTable(payload)
-    products.value = result.data ?? { items: [], totalCount: 0 }
+    const data = result.data ?? { items: [], totalCount: 0 }
+    data.items = (data.items ?? []).map((item: any) => ({
+      ...item,
+      displayOrder: item.displayOrder && item.displayOrder > 0 ? item.displayOrder : null
+    }))
+    products.value = data
   } catch (e) {
     console.error(e)
     toast.error('Nie udało się pobrać produktów')
@@ -262,23 +270,33 @@ const openProduct = (id: string) => {
 
 const handleAdd = () => router.push('/catalog/product/add')
 
-const exportProductToExcel = async () => {
+const exportProductToExcel = () => emit('open-export')
+
+const quickEditSaving = ref<Record<string, boolean>>({})
+
+const saveQuickEdit = async (product: any) => {
+  const id = String(product.id)
+  if (quickEditSaving.value[id]) return
+  quickEditSaving.value = { ...quickEditSaving.value, [id]: true }
   try {
-    const result = await Api.products.exportProductToExcel({
-      body: JSON.stringify({ storeId: cookies.get('dsStore') })
+    const displayOrderRaw = product.displayOrder
+    const displayOrder =
+      displayOrderRaw === null || displayOrderRaw === undefined || displayOrderRaw === ''
+        ? null
+        : Number(displayOrderRaw)
+
+    await Api.products.updateQuickEdit({
+      body: JSON.stringify({
+        productId: product.id,
+        gmc: !!product.gmc,
+        displayOrder: Number.isFinite(displayOrder as number) ? displayOrder : null
+      })
     })
-    const blob = await result.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `Produkty_${new Date().toISOString().replace(/[:.]/g, '_')}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    toast.success('Eksport zakończony')
+    toast.success('Zapisano')
   } catch {
-    toast.error('Błąd eksportu')
+    toast.error('Nie udało się zapisać')
+  } finally {
+    quickEditSaving.value = { ...quickEditSaving.value, [id]: false }
   }
 }
 
@@ -323,7 +341,10 @@ onMounted(async () => {
   await Promise.all([allBrands(), allCategories(), fetchTableData()])
 })
 
-defineExpose({ refresh: fetchTableData })
+defineExpose({
+  refresh: fetchTableData,
+  getExportFilters: () => ({ ...buildPredicateObject() })
+})
 </script>
 
 <template>
@@ -336,7 +357,7 @@ defineExpose({ refresh: fetchTableData })
       </div>
       <div class="catalog-page__actions">
         <el-button type="primary" :icon="Plus" @click="handleAdd">Dodaj produkt</el-button>
-        <el-button :icon="Download" @click="exportProductToExcel">Eksport</el-button>
+        <el-button :icon="Download" :loading="props.exportLoading" @click="exportProductToExcel">Eksport</el-button>
         <el-button :icon="Upload" @click="emit('open-import')">Import</el-button>
         <el-button :icon="Refresh" :loading="loading" @click="fetchTableData">Odśwież</el-button>
       </div>
@@ -517,6 +538,28 @@ defineExpose({ refresh: fetchTableData })
                     </div>
                   </div>
 
+                  <div class="product-card__quick" @click.stop>
+                    <div class="product-card__quick-row">
+                      <span class="product-card__quick-label">Kolejność</span>
+                      <el-input-number
+                        v-model="product.displayOrder"
+                        :min="1"
+                        :controls="false"
+                        placeholder="—"
+                        class="product-card__order-input"
+                        @change="saveQuickEdit(product)"
+                      />
+                    </div>
+                    <div class="product-card__quick-row">
+                      <span class="product-card__quick-label">GMC</span>
+                      <el-switch
+                        v-model="product.gmc"
+                        :loading="!!quickEditSaving[product.id]"
+                        @change="saveQuickEdit(product)"
+                      />
+                    </div>
+                  </div>
+
                   <div class="product-card__foot">
                     <span class="stock-chip" :class="`stock-chip--${stockTone(product.stockQuantity)}`">
                       Stan: {{ product.stockQuantity ?? '—' }}
@@ -623,6 +666,11 @@ defineExpose({ refresh: fetchTableData })
 .product-card__brand { margin: 0; font-size: 11px; color: #475569; font-weight: 600; }
 
 .product-card__prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; padding-top: 8px; border-top: 1px solid #f1f5f9; }
+.product-card__quick { display: grid; gap: 8px; margin-top: 10px; padding: 8px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.product-card__quick-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.product-card__quick-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+.product-card__order-input { width: 88px; }
+.product-card__order-input :deep(.el-input__inner) { text-align: center; }
 .product-card__price-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
 .product-card__price { font-size: 14px; color: #0f172a; }
 
