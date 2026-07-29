@@ -68,7 +68,7 @@
             <div class="cosmic-card__stars" />
             <div class="cosmic-card__content">
               <div class="cosmic-card__head">
-                <span class="cosmic-card__label">Zysk netto</span>
+                <span class="cosmic-card__label">Zysk netto sklepu</span>
                 <span class="cosmic-card__glyph">✦</span>
               </div>
               <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(kpi.profit) }}</div>
@@ -126,8 +126,8 @@
           <section class="cosmos-panel">
             <div class="cosmos-panel__head">
               <div>
-                <h2>Zysk netto</h2>
-                <p>Marża na pozycjach (cena netto − cena producenta)</p>
+                <h2>Zysk netto sklepu</h2>
+                <p>Bez Allegro · marża na pozycjach (cena netto − cena producenta)</p>
               </div>
             </div>
             <v-chart class="cosmos-panel__chart" :option="profitTrendOption" autoresize />
@@ -237,8 +237,8 @@
           <section class="cosmos-panel cosmos-panel--table">
             <div class="cosmos-panel__head">
               <div>
-                <h2>Top produkty</h2>
-                <p>Najczęściej sprzedawane · zysk netto</p>
+                <h2>Top produkty sklepu</h2>
+                <p>Bez Allegro · najczęściej sprzedawane · zysk netto</p>
               </div>
             </div>
             <el-table :data="topProducts" stripe class="cosmos-table">

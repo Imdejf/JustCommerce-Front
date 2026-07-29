@@ -114,7 +114,7 @@
 
           <div class="cosmos-filters__foot">
             <el-tag effect="dark" round>{{ rangeLabel }}</el-tag>
-            <span class="cosmos-filters__hint">Zysk liczony netto: cena netto − cena producenta</span>
+            <span class="cosmos-filters__hint">Zysk sklepu bez Allegro (cena netto − cena producenta). Allegro poniżej osobno.</span>
           </div>
         </div>
       </el-collapse-transition>
@@ -170,7 +170,7 @@
               <div class="cosmic-card__stars" />
               <div class="cosmic-card__content">
                 <div class="cosmic-card__head">
-                  <span class="cosmic-card__label">Zysk netto</span>
+                  <span class="cosmic-card__label">Zysk netto sklepu</span>
                   <span class="cosmic-card__glyph">✦</span>
                 </div>
                 <div class="cosmic-card__value cosmic-card__value--money">{{ moneyNet(raport.profit) }}</div>
@@ -530,14 +530,18 @@ const orderSourceOptions = [
   { value: 2, label: 'Oferta' },
   { value: 3, label: 'Telefon' },
   { value: 4, label: 'Czat' },
-  { value: 5, label: 'E-mail' },
-  { value: 6, label: 'Allegro' }
+  { value: 5, label: 'E-mail' }
 ]
 
-const orderSourceLabelByKey = orderSourceOptions.reduce<Record<number, string>>((acc, item) => {
-  acc[item.value] = item.label
-  return acc
-}, {})
+const orderSourceLabelByKey: Record<number, string> = {
+  0: 'Koszyk',
+  1: 'Stały klient',
+  2: 'Oferta',
+  3: 'Telefon',
+  4: 'Czat',
+  5: 'E-mail',
+  6: 'Allegro'
+}
 
 const chartTheme = {
   axis: '#94a3b8',
