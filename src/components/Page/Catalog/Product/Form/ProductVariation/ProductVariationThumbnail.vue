@@ -6,6 +6,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useLanguageStore } from '/@/stores/language'
 import DropZone from '../../../../../Form/File/DropZone.vue'
 import { buildVariantThumbnailSeo, syncMediaLangsFromDefault } from '/@/composables/useProductVariationNaming'
+import { sanitizeSeoFileName } from '/@/utils/seoFileName'
 
 const emits = defineEmits(['close', 'save'])
 
@@ -31,6 +32,27 @@ const props = defineProps({
 const file = ref<FileDTO | null>(null)
 const currentThumbnailImage = ref<FileDTO | null>(null)
 const language = useLanguageStore()
+
+const seoFileNameHelp =
+  'Tylko małe litery (a-z), cyfry, myślnik i podkreślenie. Bez przecinków, spacji i polskich znaków.'
+
+const updateSeoFileName = (value: string | undefined, setter: (next: string) => void) => {
+  setter(sanitizeSeoFileName(value))
+}
+
+const sanitizeThumbnailSeoFields = () => {
+  if (!currentThumbnailImage.value) {
+    return
+  }
+
+  currentThumbnailImage.value.media.seoFileName = sanitizeSeoFileName(
+    currentThumbnailImage.value.media.seoFileName
+  )
+
+  currentThumbnailImage.value.media.mediaLangs.forEach((mediaLang) => {
+    mediaLang.seoFileName = sanitizeSeoFileName(mediaLang.seoFileName)
+  })
+}
 
 const applySeoDefaults = () => {
   if (!props.parentProduct || !currentThumbnailImage.value) {
@@ -142,6 +164,7 @@ const emitSave = async () => {
   }
 
   applySeoDefaults()
+  sanitizeThumbnailSeoFields()
 
   const newFile: MediaDTO = {
     seoFileName: currentThumbnailImage.value.media.seoFileName,
@@ -245,15 +268,21 @@ watch(
       />
     </FormSection>
     <FormKit ref="myForm" type="form" @submit="handleSave" :actions="false">
-      <div v-if="!language.selectedLanguage">
-        <FormSection :title="'Zdjęcie SEO'">
+      <FormSection :title="'Zdjęcie SEO'">
+        <div v-if="!language.selectedLanguage" class="variant-seo-fields">
           <FormKit
             type="text"
-            v-model="currentThumbnailImage.media.seoFileName"
+            :model-value="currentThumbnailImage.media.seoFileName"
             label="Nazwa SEO"
             validation="required"
             validation-visibility="live"
-            help="Nazwa pod jaką plik ma zostać zapisany"
+            :help="seoFileNameHelp"
+            @update:model-value="
+              (value) =>
+                updateSeoFileName(value, (next) => {
+                  currentThumbnailImage!.media.seoFileName = next
+                })
+            "
           />
           <FormKit
             type="text"
@@ -269,17 +298,22 @@ watch(
             validation="required"
             validation-visibility="live"
           />
-        </FormSection>
-      </div>
-      <div v-for="(formLanguage, index) in language.languages" :key="formLanguage.id">
-        <div v-if="language.selectedLanguage?.id === formLanguage.id">
-          <FormSection :title="'Zdjęcie SEO'">
+        </div>
+        <div v-for="(formLanguage, index) in language.languages" :key="formLanguage.id">
+          <div v-if="language.selectedLanguage?.id === formLanguage.id" class="variant-seo-fields">
             <FormKit
               type="text"
-              v-model="currentThumbnailImage.media.mediaLangs[index].seoFileName"
+              :model-value="currentThumbnailImage.media.mediaLangs[index].seoFileName"
               label="Nazwa SEO"
               validation="required"
               validation-visibility="live"
+              :help="seoFileNameHelp"
+              @update:model-value="
+                (value) =>
+                  updateSeoFileName(value, (next) => {
+                    currentThumbnailImage!.media.mediaLangs[index].seoFileName = next
+                  })
+              "
             />
             <FormKit
               type="text"
@@ -295,9 +329,9 @@ watch(
               validation="required"
               validation-visibility="live"
             />
-          </FormSection>
+          </div>
         </div>
-      </div>
+      </FormSection>
       <div class="my-3 flex w-full justify-between">
         <FormKit type="button" @click="handleBack" label="Wróć" />
         <FormKit type="submit" label="Zapisz" />
@@ -315,23 +349,31 @@ watch(
       <strong>{{ variantName }}</strong>
     </div>
 
-    <div class="grid w-full gap-6 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+    <div class="flex w-full flex-col gap-6">
       <DropZone
         ref="dropzoneEmbedded"
         :fileInfo="file"
         :url="currentThumbnailImage?.media?.filePath"
         v-model="file"
-        class="w-full min-h-[220px]"
+        class="w-full max-w-[320px] min-h-[220px]"
       />
 
-      <div class="min-w-0">
-        <div v-if="!language.selectedLanguage" class="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="w-full">
+        <div v-if="!language.selectedLanguage" class="variant-seo-fields">
           <FormKit
             type="text"
-            v-model="currentThumbnailImage!.media.seoFileName"
+            :model-value="currentThumbnailImage!.media.seoFileName"
             label="Nazwa SEO"
             outer-class="variant-field-lg"
-            @blur="emitSave"
+            :help="seoFileNameHelp"
+            @update:model-value="
+              (value) => {
+                updateSeoFileName(value, (next) => {
+                  currentThumbnailImage!.media.seoFileName = next
+                })
+                emitSave()
+              }
+            "
           />
           <FormKit
             type="text"
@@ -352,14 +394,22 @@ watch(
         <div v-for="(formLanguage, index) in language.languages" :key="formLanguage.id">
           <div
             v-if="language.selectedLanguage?.id === formLanguage.id"
-            class="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            class="variant-seo-fields"
           >
             <FormKit
               type="text"
-              v-model="currentThumbnailImage!.media.mediaLangs[index].seoFileName"
+              :model-value="currentThumbnailImage!.media.mediaLangs[index].seoFileName"
               label="Nazwa SEO"
               outer-class="variant-field-lg"
-              @blur="emitSave"
+              :help="seoFileNameHelp"
+              @update:model-value="
+                (value) => {
+                  updateSeoFileName(value, (next) => {
+                    currentThumbnailImage!.media.mediaLangs[index].seoFileName = next
+                  })
+                  emitSave()
+                }
+              "
             />
             <FormKit
               type="text"
@@ -399,5 +449,12 @@ watch(
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 10px;
+}
+
+.variant-seo-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 </style>

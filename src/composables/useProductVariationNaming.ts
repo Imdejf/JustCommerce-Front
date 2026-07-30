@@ -4,6 +4,7 @@ import type {
   ProductOptionCombinationDTO,
   ProductVariationLang
 } from '/@/types/product/ProductVariation'
+import { sanitizeSeoFileName } from '/@/utils/seoFileName'
 
 const normalize = (value: string | null | undefined) => (value ?? '').trim()
 
@@ -11,7 +12,7 @@ export const syncMediaLangsFromDefault = (media: MediaDTO) => {
   const defaultAlt = normalize(media.altAttribute)
   const defaultTitle = normalize(media.titleAttribute)
   const defaultSeo =
-    normalize(media.seoFileName) || defaultAlt.toLowerCase().replace(/\s+/g, '-')
+    sanitizeSeoFileName(media.seoFileName) || sanitizeSeoFileName(defaultAlt)
 
   if (!media.mediaLangs?.length) {
     return
@@ -101,7 +102,8 @@ export const buildVariantThumbnailSeo = (
   return {
     productId: existing?.productId ?? null,
     mediaId: existing?.mediaId ?? null,
-    seoFileName: existing?.seoFileName || altAttribute.toLowerCase().replace(/\s+/g, '-'),
+    seoFileName:
+      sanitizeSeoFileName(existing?.seoFileName) || sanitizeSeoFileName(altAttribute),
     altAttribute: existing?.altAttribute || altAttribute,
     titleAttribute: existing?.titleAttribute || titleAttribute,
     filePath: existing?.filePath ?? '',
@@ -120,8 +122,8 @@ export const buildVariantThumbnailSeo = (
           titleAttribute:
             lang.titleAttribute || (suffix ? `${parentLangTitle} ${suffix}`.trim() : parentLangTitle),
           seoFileName:
-            lang.seoFileName ||
-            (lang.altAttribute || parentLangAlt).toLowerCase().replace(/\s+/g, '-')
+            sanitizeSeoFileName(lang.seoFileName) ||
+            sanitizeSeoFileName(lang.altAttribute || parentLangAlt)
         }
       }) ?? []
   }
