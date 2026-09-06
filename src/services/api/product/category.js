@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const addBlogItemToCategory = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Category/AddBlogItemToCategory`, {
+  apiFetch(`${APISettings.baseURL}administration/Category/AddBlogItemToCategory`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -16,7 +17,7 @@ const addBlogItemToCategory = (payload) =>
   })
 
 const removeBlogItemToCategory = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Category/removeBlogItemToCategory`, {
+  apiFetch(`${APISettings.baseURL}administration/Category/removeBlogItemToCategory`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -35,7 +36,7 @@ const removeBlogItemToCategory = (payload) =>
   pageNumber = 1,
   searchQuery = ''
 ) =>
-  fetch(
+  apiFetch(
     `${APISettings.baseURL}administration/categoryFaq?categoryId=${encodeURIComponent(categoryId)}&pageSize=${pageSize}&pageNumber=${pageNumber}&searchQuery=${encodeURIComponent(searchQuery)}`,
     {
       method: 'GET',
@@ -51,7 +52,7 @@ const removeBlogItemToCategory = (payload) =>
   })
 
 const getCategoryFaqById = (categoryFaqId) =>
-  fetch(`${APISettings.baseURL}administration/categoryFaq/${categoryFaqId}`, {
+  apiFetch(`${APISettings.baseURL}administration/categoryFaq/${categoryFaqId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -64,7 +65,7 @@ const getCategoryFaqById = (categoryFaqId) =>
   })
 
 const getCategoryFaqByCategoryId = (categoryId) =>
-  fetch(`${APISettings.baseURL}administration/categoryFaq/GetCategoryFaqByCategoryId/${categoryId}`, {
+  apiFetch(`${APISettings.baseURL}administration/categoryFaq/GetCategoryFaqByCategoryId/${categoryId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -77,7 +78,7 @@ const getCategoryFaqByCategoryId = (categoryId) =>
   })
 
 const createCategoryFaq = (payload) =>
-  fetch(`${APISettings.baseURL}administration/categoryFaq`, {
+  apiFetch(`${APISettings.baseURL}administration/categoryFaq`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -91,7 +92,7 @@ const createCategoryFaq = (payload) =>
   })
 
 const updateCategoryFaq = (payload) =>
-  fetch(`${APISettings.baseURL}administration/categoryFaq`, {
+  apiFetch(`${APISettings.baseURL}administration/categoryFaq`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -105,7 +106,7 @@ const updateCategoryFaq = (payload) =>
   })
 
 const deleteCategoryFaq = (id) =>
-  fetch(`${APISettings.baseURL}administration/categoryFaq/${id}`, {
+  apiFetch(`${APISettings.baseURL}administration/categoryFaq/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'

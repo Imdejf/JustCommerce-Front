@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const getAllOrderShippingNotProcessed = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -13,7 +14,7 @@ const getAllOrderShippingNotProcessed = (payload) =>
   })
 
 const changeOrderedCourier = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/changeOrderedCourier`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/changeOrderedCourier`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -24,7 +25,7 @@ const changeOrderedCourier = (payload) =>
   })
 
 const generateOrderSelectedProductsToManufacturer = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/generateOrderSelectedProductsToManufacturer`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/generateOrderSelectedProductsToManufacturer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -35,7 +36,7 @@ const generateOrderSelectedProductsToManufacturer = (payload) =>
   })
 
 const changeManufacturerOrderedDate = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/changeManufacturerOrderedDate`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/changeManufacturerOrderedDate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -46,7 +47,7 @@ const changeManufacturerOrderedDate = (payload) =>
   })
 
 const generateOrderToManufacturer = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/generateOrderToManufacturer`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/generateOrderToManufacturer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -61,7 +62,7 @@ const generateOrderToManufacturer = (payload) =>
  * Body: { storeId, brandId, orderIds: [] }
  */
 const generateOrdersToManufacturerSelected = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/generateOrdersToManufacturerSelected`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/generateOrdersToManufacturerSelected`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -72,7 +73,7 @@ const generateOrdersToManufacturerSelected = (payload) =>
   })
 
 const getByIdOrderShipping = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/GetByIdOrderShipping`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/GetByIdOrderShipping`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -83,7 +84,7 @@ const getByIdOrderShipping = (payload) =>
   })
 
 const changeShippingOrderState = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/changeShippingOrderState`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/changeShippingOrderState`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -94,7 +95,7 @@ const changeShippingOrderState = (payload) =>
   })
 
 const addLabelNumer = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/AddLabelNumer`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/AddLabelNumer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -105,7 +106,7 @@ const addLabelNumer = (payload) =>
   })
 
 const changeOwnLabel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/changeOwnLabel`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/changeOwnLabel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -116,7 +117,7 @@ const changeOwnLabel = (payload) =>
   })
 
 const getLabelsZip = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/GetLabel`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/GetLabel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -144,7 +145,7 @@ const getLabelsZip = (payload) =>
   })
 
 const addShipment = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/AddShipment`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/AddShipment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -155,7 +156,7 @@ const addShipment = (payload) =>
   })
 
 const printLabel = (shipmentId, userId) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/${shipmentId}?userId=${encodeURIComponent(userId)}`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/${shipmentId}?userId=${encodeURIComponent(userId)}`, {
     method: 'GET',
     credentials: 'include'
   }).then((response) => {
@@ -164,7 +165,7 @@ const printLabel = (shipmentId, userId) =>
   })
 
 const smartTableShipment = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/SmartTable`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/SmartTable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -175,7 +176,7 @@ const smartTableShipment = (payload) =>
   })
 
 const deleteShipment = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/DeleteShipment`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/DeleteShipment`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -186,7 +187,7 @@ const deleteShipment = (payload) =>
   })
 
 const releaseShipments = (payload) =>
-  fetch(`${APISettings.baseURL}administration/orderShipping/Shipment/ReleaseShipments`, {
+  apiFetch(`${APISettings.baseURL}administration/orderShipping/Shipment/ReleaseShipments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

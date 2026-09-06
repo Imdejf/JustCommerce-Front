@@ -1,9 +1,10 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const sendInvoice = async (invoiceId) => {
   try {
-    const response = await fetch(`${APISettings.baseURL}administration/invoice/SendInvoice/` + invoiceId, {
+    const response = await apiFetch(`${APISettings.baseURL}administration/invoice/SendInvoice/` + invoiceId, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include'
@@ -22,7 +23,7 @@ const sendInvoice = async (invoiceId) => {
 };
 
 const getInvoicesThisMonth = async () => {
-  const response = await fetch(`${APISettings.baseURL}administration/invoice/InvoiceThisMonth`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/invoice/InvoiceThisMonth`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -37,7 +38,7 @@ const getInvoicesThisMonth = async () => {
 }
 
 const createInvoice = async (orderId) => {
-  const response = await fetch(`${APISettings.baseURL}administration/invoice/CreateInvoice/` + orderId, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/invoice/CreateInvoice/` + orderId, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -58,7 +59,7 @@ const createInvoice = async (orderId) => {
 };
 
 const getBulkInvoicePreview = async (storeId) => {
-  const response = await fetch(`${APISettings.baseURL}administration/invoice/BulkInvoicePreview/${storeId}`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/invoice/BulkInvoicePreview/${storeId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -73,7 +74,7 @@ const getBulkInvoicePreview = async (storeId) => {
 }
 
 const createBulkInvoices = async (storeId, orderIds) => {
-  const response = await fetch(`${APISettings.baseURL}administration/invoice/CreateBulkInvoices`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/invoice/CreateBulkInvoices`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -96,7 +97,7 @@ const createBulkInvoices = async (storeId, orderIds) => {
 }
 
 const generateProforma = (orderId) => {
-  return fetch(`${APISettings.baseURL}administration/invoice/GenerateProformaInvoice/` + orderId, {
+  return apiFetch(`${APISettings.baseURL}administration/invoice/GenerateProformaInvoice/` + orderId, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

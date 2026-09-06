@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { apiFetch } from '/@/services/api/http.js'
 
 const props = withDefaults(
   defineProps<{
@@ -77,10 +78,9 @@ async function submitFile() {
     let lastResult: any = null
 
     for (const endpoint of props.endpoints) {
-      const response = await fetch(`${basePath}${endpoint}`, {
+      const response = await apiFetch(`${basePath}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(payload)
       })
 

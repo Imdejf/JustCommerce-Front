@@ -19,6 +19,13 @@
         GTIN / EAN
       </label>
 
+      <div
+        v-if="productGtin"
+        class="mb-2 text-xs text-emerald-800"
+      >
+        EAN z produktu: <strong class="font-mono">{{ productGtin }}</strong>
+      </div>
+
       <div class="flex gap-3">
         <el-input
           v-model="catalogSearchPhrase"
@@ -80,8 +87,142 @@
   </div>
 </el-dialog>
     <div class="space-y-4">
-      <!-- TYTUŁ -->
       <div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+              Wystawianie na Allegro
+            </p>
+            <h1 class="text-xl font-bold text-[#111827]">
+              {{ currentStepMeta.title }}
+            </h1>
+            <p class="text-sm text-[#64748b] mt-1">
+              {{ currentStepMeta.description }}
+            </p>
+          </div>
+
+          <div class="text-right text-xs">
+            <p
+              class="font-semibold"
+              :class="accountConnected ? 'text-emerald-700' : 'text-red-600'"
+            >
+              {{ accountConnected ? 'Konto Allegro podpięte' : 'Brak połączenia z Allegro' }}
+            </p>
+            <p class="text-[#64748b] mt-1">
+              Cena sklepu + {{ Math.round((ALLEGRO_PRICE_MULTIPLIER - 1) * 100) }}%
+            </p>
+          </div>
+        </div>
+
+        <el-steps
+          :active="currentStep"
+          align-center
+          finish-status="success"
+          class="allegro-wizard-steps"
+        >
+          <el-step
+            v-for="(step, index) in ALLEGRO_WIZARD_STEPS"
+            :key="step.id"
+            :title="step.title"
+            class="cursor-pointer"
+            @click="goToStep(index)"
+          />
+        </el-steps>
+      </div>
+
+      <div
+        v-show="currentStep === 0"
+        class="bg-white border border-[#d6dfe9] rounded-xl p-6 space-y-5"
+      >
+        <div class="bg-[#f8fafc] border border-[#e2e8f0] rounded-lg p-4 text-xs text-[#334155] leading-5">
+          Połącz produkt z katalogiem Allegro po EAN. Jeśli produkt ma EAN w panelu,
+          uzupełniamy go automatycznie i od razu szukamy w katalogu Allegro.
+        </div>
+
+        <div
+          v-if="productGtin"
+          class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+        >
+          <span class="font-semibold">EAN produktu:</span>
+          <span class="ml-2 font-mono tracking-wide">{{ productGtin }}</span>
+        </div>
+
+        <div
+          v-else
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          Ten produkt nie ma zapisanego EAN w panelu. Wpisz go ręcznie albo uzupełnij EAN w karcie produktu.
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-[#64748b] mb-1">
+            GTIN / EAN
+          </label>
+          <div class="flex gap-3">
+            <el-input
+              v-model="catalogSearchPhrase"
+              class="allegro-input"
+              placeholder="Wpisz GTIN / EAN"
+              @keyup.enter="searchCatalogByGtin"
+            />
+            <el-button
+              color="#ea580c"
+              :loading="catalogLoading"
+              @click="searchCatalogByGtin"
+            >
+              Szukaj w katalogu
+            </el-button>
+          </div>
+        </div>
+
+        <div v-if="form.allegroCatalogProductId" class="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
+          <p class="text-sm font-bold text-emerald-800">
+            Połączono z katalogiem Allegro
+          </p>
+          <p class="text-xs text-emerald-900 mt-1">
+            {{ form.allegroCatalogProductName || form.allegroCatalogProductId }}
+          </p>
+        </div>
+
+        <div v-if="catalogProducts.length" class="space-y-3">
+          <div
+            v-for="item in catalogProducts"
+            :key="item.id"
+            class="border border-[#e5e7eb] rounded-lg p-4 flex justify-between items-center gap-4"
+          >
+            <div class="min-w-0">
+              <div class="text-sm font-bold text-[#111827]">
+                {{ item.name || item.id }}
+              </div>
+              <div class="text-xs text-[#64748b] mt-1">
+                ID produktu Allegro: {{ item.id }}
+              </div>
+              <div
+                v-if="getCatalogItemGtin(item) || getCatalogItemProducerCode(item)"
+                class="text-xs text-[#64748b] mt-1"
+              >
+                <span v-if="getCatalogItemGtin(item)">EAN: {{ getCatalogItemGtin(item) }}</span>
+                <span v-if="getCatalogItemGtin(item) && getCatalogItemProducerCode(item)"> · </span>
+                <span v-if="getCatalogItemProducerCode(item)">Kod: {{ getCatalogItemProducerCode(item) }}</span>
+              </div>
+            </div>
+            <el-button color="#00796b" @click="selectCatalogProduct(item)">
+              Wybierz
+            </el-button>
+          </div>
+        </div>
+
+        <el-empty
+          v-if="catalogSearched && !catalogLoading && !catalogProducts.length && !form.allegroCatalogProductId"
+          description="Nie znaleziono produktu w Katalogu Allegro"
+        />
+      </div>
+
+      <!-- TYTUŁ -->
+      <div
+        v-show="currentStep === 0"
+        class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+      >
         <h2 class="text-[26px] font-bold text-[#111827] mb-6">
           Tytuł
         </h2>
@@ -129,27 +270,33 @@
       </div>
 
       <!-- KATEGORIA -->
-      <div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+      <div
+        v-show="currentStep === 1"
+        class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+      >
         <h2 class="text-[26px] font-bold text-[#111827] mb-6">
           Kategoria
         </h2>
 
         <div v-if="selectedCategory">
-          <div class="flex items-center gap-2 text-xs mb-2">
+          <div class="flex items-center gap-2 text-sm mb-2">
             <strong class="text-[#111827]">
-              {{ selectedCategory.name }}
+              {{ selectedCategoryDisplayName }}
             </strong>
 
-            <span class="text-[#64748b]">
+            <span class="text-[#64748b] text-xs">
               Nr kategorii {{ selectedCategory.id }}
             </span>
           </div>
 
           <div class="text-sm text-[#111827]">
-            {{ selectedCategoryPathText }}
+            <span v-if="selectedCategoryPathText && selectedCategoryPathText !== selectedCategoryDisplayName">
+              {{ selectedCategoryPathText }}
+            </span>
 
             <button
-              class="ml-3 text-[#00796b] underline hover:text-[#115e59]"
+              class="ml-0 text-[#00796b] underline hover:text-[#115e59]"
+              :class="selectedCategoryPathText && selectedCategoryPathText !== selectedCategoryDisplayName ? 'ml-3' : ''"
               type="button"
               @click="openCategoryModal"
             >
@@ -166,7 +313,10 @@
       </div>
 
       <!-- PRODUKTY W OFERCIE -->
-      <div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+      <div
+        v-show="currentStep === 2"
+        class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+      >
         <h2 class="text-[22px] font-bold text-[#111827] mb-5">
           Produkty w ofercie
         </h2>
@@ -367,14 +517,19 @@
       </div>
 
       <!-- ZDJĘCIA I OPIS -->
-      <AllegroPhotosAndDescription
-        v-model:photos="form.photos"
-        v-model:descriptionRows="form.descriptionRows"
-        @generate-rewrite-ai="openDescriptionRewriteModal"
-      />
+      <div v-show="currentStep === 4">
+        <AllegroPhotosAndDescription
+          v-model:photos="form.photos"
+          v-model:descriptionRows="form.descriptionRows"
+          @generate-rewrite-ai="openDescriptionRewriteModal"
+        />
+      </div>
 
 <!-- UWAGI DO ZAKUPU -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 3"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-4">
     Uwagi do zakupu (wiadomość dla sprzedającego)
   </h2>
@@ -404,7 +559,10 @@
 </el-radio-group>
 </div>
 <!-- DOSTAWA I PŁATNOŚĆ -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 3"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-5">
     Dostawa i płatność
   </h2>
@@ -502,47 +660,13 @@
         placeholder="Wpisz dodatkowe informacje o dostawie"
       />
     </div>
-
-    <div>
-      <h3 class="text-sm font-bold text-[#111827] mb-3">
-        Formy płatności
-      </h3>
-
-      <div class="text-[22px] leading-none">
-        <span class="text-[#ff5a00] font-bold">allegro</span>
-        <span class="text-[#111827] ml-1">Finanse</span>
-      </div>
-
-      <p class="text-[11px] text-[#64748b] mt-1">
-        Płatności elektroniczne.
-      </p>
-    </div>
-
-    <div>
-      <h3 class="text-sm font-bold text-[#111827] mb-2">
-        Wysyłka z
-      </h3>
-
-      <p class="text-xs text-[#111827]">
-        {{ form.shippingFrom }}
-      </p>
-
-      <p class="mt-3 text-[11px] text-[#64748b] leading-5">
-        Na podstawie kraju wysyłki i wybranej krajowej stawki VAT - pokażemy na Allegro Business
-        cenę netto, jako informację dla kupujących.
-      </p>
-
-      <button
-        type="button"
-        class="mt-4 text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline"
-      >
-        ZMIEŃ
-      </button>
-    </div>
   </div>
 </div>
 <!-- CENA -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 5"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-6">
     Cena
   </h2>
@@ -579,6 +703,15 @@
           zł
         </template>
       </el-input>
+
+      <p
+        v-if="productData?.price"
+        class="mt-2 text-[11px] text-[#64748b]"
+      >
+        Cena sklepu: {{ Number(productData.price).toFixed(2) }} zł
+        → Allegro (+{{ Math.round((ALLEGRO_PRICE_MULTIPLIER - 1) * 100) }}%):
+        {{ calculateAllegroPrice(productData.price)?.toFixed(2) }} zł
+      </p>
 
       <div class="mt-3">
         <el-checkbox v-model="form.isAuction">
@@ -721,7 +854,10 @@
   </div>
 </div>
 <!-- STAN MAGAZYNOWY -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 5"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-6">
     Stan magazynowy
   </h2>
@@ -788,7 +924,10 @@
 </div>
 
 <!-- WARUNKI SPRZEDAŻY -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 3"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-6">
     Warunki sprzedaży
   </h2>
@@ -940,7 +1079,10 @@
   </div>
 </div>
 <!-- OPCJE WYSTAWIENIA -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 5"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <h2 class="text-[22px] font-bold text-[#111827] mb-7">
     Opcje wystawienia
   </h2>
@@ -1000,80 +1142,139 @@
   </div>
 </div>
 
+<!-- WALIDACJA -->
+<div
+  v-show="currentStep === 6"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <h2 class="text-[22px] font-bold text-[#111827]">
+      Walidacja oferty
+    </h2>
+
+    <el-button
+      color="#00796b"
+      :loading="loadingValidation"
+      @click="runServerValidation(true)"
+    >
+      Sprawdź ofertę
+    </el-button>
+  </div>
+
+  <AllegroOfferValidationPanel
+    :loading="loadingValidation"
+    :validation="validationResult"
+    :offer-preview="offerPreview ? JSON.stringify(offerPreview, null, 2) : undefined"
+  />
+</div>
+
 <!-- PODSUMOWANIE -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
-  <h2 class="text-[22px] font-bold text-[#111827] mb-6">
+<div
+  v-show="currentStep === 7"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6 space-y-6"
+>
+  <h2 class="text-[22px] font-bold text-[#111827]">
     Podsumowanie
   </h2>
 
-  <div class="max-w-[620px]">
-    <h3 class="text-sm font-bold text-[#111827] mb-5">
-      Prowizje od sprzedaży
-    </h3>
-
-    <div class="border-b border-[#111827] pb-2 mb-2">
-      <p class="text-xs font-bold text-[#111827]">
-        opłata za sprzedaż
-      </p>
+  <div class="grid gap-3 rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-4 text-sm text-[#111827]">
+    <div class="flex justify-between gap-4">
+      <span class="text-[#64748b]">Tytuł</span>
+      <span class="font-semibold text-right">{{ form.title || '—' }}</span>
     </div>
-
-    <div class="grid grid-cols-[1fr_auto] gap-4 text-xs text-[#111827] border-b border-[#e5e7eb] pb-3">
-      <p>
-        Prowizja od sprzedaży 1 sztuki (zależna od ceny dostawy)
-      </p>
-
-      <p class="font-semibold">
-        {{ feePreview ? 'Pobrano z Allegro' : 'Kliknij „Sprawdź kalkulator opłat”' }}
-      </p>
+    <div class="flex justify-between gap-4">
+      <span class="text-[#64748b]">Kategoria</span>
+      <span class="font-semibold text-right">{{ selectedCategoryDisplayName || form.categoryId || '—' }}</span>
     </div>
-
-    <button
-      type="button"
-      class="mt-3 text-xs text-[#00796b] underline"
-      @click="previewFees"
-    >
-      Sprawdź kalkulator opłat
-    </button>
+    <div class="flex justify-between gap-4">
+      <span class="text-[#64748b]">Cena</span>
+      <span class="font-semibold text-right">{{ form.price ? `${Number(form.price).toFixed(2)} zł` : '—' }}</span>
+    </div>
+    <div class="flex justify-between gap-4">
+      <span class="text-[#64748b]">Stan</span>
+      <span class="font-semibold text-right">{{ form.stockQuantity ?? '—' }} szt.</span>
+    </div>
+    <div class="flex justify-between gap-4">
+      <span class="text-[#64748b]">Zdjęcia</span>
+      <span class="font-semibold text-right">{{ form.photos.length }}</span>
+    </div>
   </div>
 
-  <p class="mt-5 text-[11px] text-[#64748b] leading-5">
-    Podana wycena jest wyceną szacunkową - opiera się na aktualnej konfiguracji oferty
-    i nie uwzględnia wcześniejszych opłat zarejestrowanych dla oferty.
-    Pełna kwota opłat dla oferty dostępna będzie po jej zatwierdzeniu w zakładce
-    <button type="button" class="text-[#00796b] underline">
-      Rozliczenia z Allegro
-    </button>.
-    Zasady wyznaczania opłat opisane są w
-    <button type="button" class="text-[#00796b] underline">
-      Regulaminie Allegro
-    </button>.
-  </p>
+  <div class="max-w-[620px]">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h3 class="text-sm font-bold text-[#111827]">
+        Prowizje od sprzedaży
+      </h3>
+
+      <el-button
+        color="#00796b"
+        size="small"
+        :loading="loadingFees"
+        @click="previewFees"
+      >
+        Przelicz prowizję
+      </el-button>
+    </div>
+
+    <div
+      v-if="parsedFeePreview"
+      class="space-y-3"
+    >
+      <div
+        v-for="item in parsedFeePreview.commissions"
+        :key="`c-${item.type}-${item.name}`"
+        class="grid grid-cols-[1fr_auto] gap-4 border-b border-[#e5e7eb] pb-2 text-sm text-[#111827]"
+      >
+        <span>{{ item.name }}</span>
+        <strong>{{ formatFeeAmount(item.amount, item.currency) }}</strong>
+      </div>
+
+      <div
+        v-for="item in parsedFeePreview.quotes"
+        :key="`q-${item.type}-${item.name}`"
+        class="grid grid-cols-[1fr_auto] gap-4 border-b border-[#e5e7eb] pb-2 text-sm text-[#111827]"
+      >
+        <span>{{ item.name }}</span>
+        <strong>{{ formatFeeAmount(item.amount, item.currency) }}</strong>
+      </div>
+
+      <div class="grid grid-cols-[1fr_auto] gap-4 pt-1 text-sm font-bold text-[#111827]">
+        <span>Suma prowizji od sprzedaży</span>
+        <span>{{ formatFeeAmount(parsedFeePreview.totalCommission, parsedFeePreview.currency) }}</span>
+      </div>
+    </div>
+
+    <p
+      v-else
+      class="text-sm text-[#64748b]"
+    >
+      {{ loadingFees ? 'Liczenie prowizji…' : 'Kliknij „Przelicz prowizję”, aby zobaczyć opłaty Allegro.' }}
+    </p>
+
+    <p
+      v-if="feePreviewError"
+      class="mt-2 text-sm text-red-600"
+    >
+      {{ feePreviewError }}
+    </p>
+  </div>
 </div>
 
 <!-- PASEK AKCJI -->
-<div class="bg-white border border-[#d6dfe9] rounded-xl p-6">
+<div
+  v-show="currentStep === 7"
+  class="bg-white border border-[#d6dfe9] rounded-xl p-6"
+>
   <div class="flex items-start justify-end mb-5">
     <p
       v-if="form.saveError"
-      class="text-xs text-[#111827]"
+      class="text-xs text-red-600"
     >
       Nie udało się zapisać zmian
     </p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-6 items-start">
-    <div class="flex justify-center md:justify-end">
-      <button
-        type="button"
-        class="h-[42px] px-8 text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline disabled:opacity-50"
-        :disabled="loadingPreview"
-        @click="previewOffer"
-      >
-        {{ loadingPreview ? 'POBIERAM...' : 'ZOBACZ PODGLĄD OFERTY' }}
-      </button>
-    </div>
-
-    <div>
+  <div class="max-w-[320px] ml-auto">
     <button
       type="button"
       class="w-full h-[42px] bg-[#4f6bed] hover:bg-[#3f5bdc] text-white text-xs font-bold tracking-[0.18em] rounded disabled:opacity-50"
@@ -1082,15 +1283,40 @@
     >
       {{ loadingPublish ? 'WYSTAWIAM...' : 'WYSTAW PRZEDMIOT' }}
     </button>
+  </div>
+</div>
 
-      <p class="mt-2 text-[11px] text-[#64748b] leading-4">
-        Gdy klikasz [wystaw przedmiot], oświadczasz, że treść oferty została przez Ciebie sprawdzona,
-        jest prawidłowa i zgodna z przepisami prawa i
-        <button type="button" class="text-[#00796b] underline">
-          Regulaminem Allegro
-        </button>.
-        Znasz też treść danych o produkcie i o jego producencie.
-      </p>
+<!-- NAWIGACJA WIZARDA -->
+<div class="bg-white border border-[#d6dfe9] rounded-xl p-6 sticky bottom-4 z-20 shadow-lg">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <el-button
+      :disabled="isFirstStep"
+      @click="handlePrevStep"
+    >
+      Wstecz
+    </el-button>
+
+    <p class="text-xs text-[#64748b]">
+      Krok {{ currentStep + 1 }} / {{ ALLEGRO_WIZARD_STEPS.length }}
+    </p>
+
+    <div class="flex gap-3">
+      <el-button
+        v-if="!isLastStep"
+        color="#4f6bed"
+        @click="handleNextStep"
+      >
+        Dalej
+      </el-button>
+
+      <el-button
+        v-if="currentStep === 6"
+        color="#00796b"
+        :loading="loadingValidation"
+        @click="runServerValidation(true)"
+      >
+        Sprawdź ofertę
+      </el-button>
     </div>
   </div>
 </div>
@@ -1195,7 +1421,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Api } from '/@/services/api'
 import AllegroPhotosAndDescription from '/@/components/Form/Allegro/AllegroPhotosAndDescription.vue'
@@ -1211,20 +1438,69 @@ import {
   buildFeePreviewBody,
   createDefaultDescriptionRows,
   extractAllegroUrlFromUpload,
+  formatFeeAmount,
   mapAllegroImagesFromSyncDto,
   mapProductMediasToAllegroPhotos,
+  parseFeePreview,
   prepareDescriptionRowsForAllegro,
+  type AllegroFeePreview,
 } from '/@/components/Form/Allegro/allegroOfferForm.ts'
+import AllegroOfferValidationPanel from '/@/components/Page/Allegro/Products/AllegroOfferValidationPanel.vue'
+import {
+  ALLEGRO_PRICE_MULTIPLIER,
+  ALLEGRO_WIZARD_STEPS,
+  applyGtinToParameters,
+  applyProducerCodeToParameters,
+  calculateAllegroPrice,
+  normalizeValidationResult,
+  useAllegroOfferWizard,
+  validateWizardStep,
+} from '/@/composables/useAllegroOfferWizard.ts'
 
 const props = defineProps<{
   productId: string
+  initialGtin?: string
 }>()
+
+const route = useRoute()
+
+const resolvedProductId = computed(() => {
+  const fromProps = String(props.productId || '').trim()
+  if (fromProps) return fromProps
+  return String(route.params.productId || route.params.id || '').trim()
+})
+
+const resolvedInitialGtin = computed(() => {
+  const fromProps = String(props.initialGtin || '').trim()
+  if (fromProps) return fromProps
+
+  const fromQuery = route.query.gtin ?? route.query.Gtin
+  return String(Array.isArray(fromQuery) ? fromQuery[0] : fromQuery || '').trim()
+})
 
 const categoryModalVisible = ref(false)
 const categoryLoading = ref(false)
 const loadingPublish = ref(false)
 const loadingPreview = ref(false)
 const loadingInitialData = ref(false)
+const loadingValidation = ref(false)
+const loadingFees = ref(false)
+const feePreviewError = ref('')
+const parsedFeePreview = ref<AllegroFeePreview | null>(null)
+
+const {
+  currentStep,
+  currentStepMeta,
+  isFirstStep,
+  isLastStep,
+  validationResult,
+  offerPreview,
+  accountConnected,
+  goToStep,
+  nextStep,
+  prevStep,
+  resetValidation,
+} = useAllegroOfferWizard()
 
 const currentCategories = ref<any[]>([])
 const categoryPath = ref<any[]>([])
@@ -1250,6 +1526,7 @@ const catalogLoading = ref(false)
 const showOfferForm = ref(false)
 const catalogSearched = ref(false)
 const productData = ref<any>(null)
+const mappingGtinOverride = ref('')
 const descriptionRewriteModalVisible = ref(false)
 const descriptionRewriteLoading = ref(false)
 const descriptionAutoGenerated = ref(false)
@@ -1329,10 +1606,257 @@ const form = reactive({
   checkingCatalogProduct: false,
 })
 
-const openCatalogModal = () => {
+const unwrapApiPayload = (result: any) => {
+  if (!result || typeof result !== 'object') return result
+
+  if (result.data !== undefined && result.data !== null && typeof result.data === 'object') {
+    // ApiResponse: { statusCode, data, errors }
+    if ('statusCode' in result || 'errors' in result || !('id' in result)) {
+      return result.data
+    }
+  }
+
+  if (result.Data !== undefined && result.Data !== null) {
+    return result.Data
+  }
+
+  return result
+}
+
+const extractGtinFromParameterValues = (parameterValues: any): string => {
+  if (!parameterValues) return ''
+
+  const entries = Array.isArray(parameterValues)
+    ? parameterValues
+    : Object.entries(parameterValues).map(([parameterId, value]) => ({
+        parameterId,
+        value: typeof value === 'object' ? value?.value ?? value?.Value : value,
+      }))
+
+  for (const entry of entries) {
+    const id = String(entry?.parameterId ?? entry?.ParameterId ?? '').trim()
+    const value = String(
+      entry?.value ??
+      entry?.Value ??
+      entry?.values?.[0] ??
+      ''
+    ).trim()
+
+    // Allegro GTIN/EAN parameter id used in our mappings
+    if (id === '225693' && /^\d{8,14}$/.test(value)) {
+      return value
+    }
+
+    if (/^\d{8,14}$/.test(value) && id.toLowerCase().includes('gtin')) {
+      return value
+    }
+  }
+
+  return ''
+}
+
+const getProductGtin = () => {
+  const fromProduct = String(
+    productData.value?.gtin ??
+    productData.value?.Gtin ??
+    productData.value?.productLang?.[0]?.gtin ??
+    productData.value?.productLangs?.[0]?.gtin ??
+    ''
+  ).trim()
+
+  if (fromProduct) return fromProduct
+
+  const fromOverride = String(mappingGtinOverride.value || '').trim()
+  if (fromOverride) return fromOverride
+
+  return extractGtinFromParameterValues(form.parameterValues)
+}
+
+const productGtin = computed(() => getProductGtin())
+
+const getProductProducerCode = () =>
+  String(
+    productData.value?.identificationCode ??
+    productData.value?.IdentificationCode ??
+    productData.value?.sku ??
+    productData.value?.Sku ??
+    ''
+  ).trim()
+
+const getCatalogItemGtin = (item: any) => {
+  const params = Array.isArray(item?.parameters) ? item.parameters : []
+  const gtinParam = params.find((param: any) => {
+    const name = String(param?.name || '').toLowerCase()
+    return name.includes('gtin') || name.includes('ean')
+  })
+
+  return String(gtinParam?.values?.[0] || '').trim()
+}
+
+const getCatalogItemProducerCode = (item: any) => {
+  const params = Array.isArray(item?.parameters) ? item.parameters : []
+  const codeParam = params.find((param: any) => {
+    const name = String(param?.name || '').toLowerCase()
+    return (
+      name.includes('kod producenta') ||
+      name.includes('mpn') ||
+      name.includes('manufacturer')
+    )
+  })
+
+  return String(codeParam?.values?.[0] || '').trim()
+}
+
+const pickBestCatalogProduct = (items: any[]) => {
+  if (!items.length) return null
+  if (items.length === 1) return items[0]
+
+  const gtin = getProductGtin()
+  const producerCode = getProductProducerCode().toLowerCase()
+
+  const byProducerCode = producerCode
+    ? items.find(item => getCatalogItemProducerCode(item).toLowerCase() === producerCode)
+    : null
+
+  if (byProducerCode) return byProducerCode
+
+  const byGtin = gtin
+    ? items.find(item => getCatalogItemGtin(item) === gtin)
+    : null
+
+  return byGtin || null
+}
+
+const getFormSnapshot = () => ({
+  title: form.title,
+  categoryId: form.categoryId,
+  allegroCatalogProductId: form.allegroCatalogProductId,
+  deliveryPriceListId: form.deliveryPriceListId,
+  returnPolicyId: form.returnPolicyId,
+  impliedWarrantyId: form.impliedWarrantyId,
+  price: form.price,
+  photosCount: form.photos.length,
+  descriptionRowsCount: form.descriptionRows.length,
+  parameterValues: form.parameterValues,
+})
+
+const validateCurrentStepClient = () => {
+  return validateWizardStep(currentStep.value, getFormSnapshot(), parameters.value)
+}
+
+const handleNextStep = async () => {
+  const errors = validateCurrentStepClient()
+  if (errors.length) {
+    ElMessage.error(errors[0])
+    return
+  }
+
+  if (currentStep.value === ALLEGRO_WIZARD_STEPS.length - 2) {
+    await runServerValidation(false)
+    if (validationResult.value && !validationResult.value.isValid) {
+      ElMessage.error('Popraw błędy walidacji przed publikacją.')
+      return
+    }
+  }
+
+  nextStep()
+}
+
+const handlePrevStep = () => {
+  prevStep()
+}
+
+const runServerValidation = async (showSuccessMessage = true) => {
+  loadingValidation.value = true
+  resetValidation()
+  offerPreview.value = null
+
+  try {
+    await saveMapping()
+
+    try {
+      await Api.allegro.syncProductImages(resolvedProductId.value)
+    } catch (error) {
+      console.warn('syncProductImages during validation:', error)
+    }
+
+    const [validationResponse, previewResponse] = await Promise.all([
+      Api.allegro.validateProductForAllegro(resolvedProductId.value),
+      Api.allegro.getOfferPreview(resolvedProductId.value).catch(() => null),
+    ])
+
+    validationResult.value = normalizeValidationResult(validationResponse)
+
+    if (previewResponse) {
+      offerPreview.value = previewResponse?.data ?? previewResponse
+    }
+
+    if (showSuccessMessage) {
+      if (validationResult.value.isValid) {
+        ElMessage.success('Walidacja zakończona — oferta gotowa.')
+      } else {
+        ElMessage.warning('Walidacja wykryła błędy do poprawy.')
+      }
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.message || 'Nie udało się uruchomić walidacji.')
+    console.error(error)
+  } finally {
+    loadingValidation.value = false
+  }
+}
+
+const autoSearchCatalogByGtin = async (gtin: string, autoSelectBest = false) => {
+  if (!gtin) return
+
+  catalogSearchPhrase.value = gtin
+  catalogLoading.value = true
+  catalogSearched.value = true
+  catalogProducts.value = []
+
+  try {
+    const result = await Api.allegro.searchCatalogProducts(gtin, form.categoryId, 10, 0)
+    catalogProducts.value = normalizeList(result)
+
+    if (autoSelectBest && catalogProducts.value.length) {
+      const bestMatch = pickBestCatalogProduct(catalogProducts.value)
+      if (bestMatch) {
+        await selectCatalogProduct(bestMatch)
+        return
+      }
+    }
+
+    if (!catalogProducts.value.length) {
+      await applyDefaultAllegroCategoryFromProductCategories()
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('Nie udało się wyszukać produktu po EAN w katalogu Allegro.')
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+const loadAccountStatus = async () => {
+  try {
+    const status = await Api.allegro.getAccountStatus()
+    const payload = status?.data ?? status
+    accountConnected.value = Boolean(payload?.isConnected ?? payload?.connected ?? payload?.IsConnected)
+  } catch {
+    accountConnected.value = false
+  }
+}
+
+const openCatalogModal = async () => {
   catalogModalVisible.value = true
   catalogSearched.value = false
   catalogProducts.value = []
+
+  const gtin = getProductGtin()
+  if (gtin) {
+    catalogSearchPhrase.value = gtin
+    await autoSearchCatalogByGtin(gtin, false)
+  }
 }
 
 const getProductCategoryIds = () => {
@@ -1369,11 +1893,10 @@ const applyDefaultAllegroCategoryFromProductCategories = async () => {
       mappedCategory.allegroCategoryId ??
       mappedCategory.AllegroCategoryId
     ).trim()
-    const allegroCategoryName = String(
-      mappedCategory.allegroCategoryName ??
-      mappedCategory.AllegroCategoryName ??
-      allegroCategoryId
-    ).trim()
+    const allegroCategoryName = await resolveCategoryName(
+      allegroCategoryId,
+      mappedCategory.allegroCategoryName ?? mappedCategory.AllegroCategoryName,
+    )
 
     selectedCategory.value = {
       id: allegroCategoryId,
@@ -1441,10 +1964,14 @@ const selectCatalogProduct = async (item: any) => {
 
   if (item.categoryId || item.category?.id) {
     const categoryId = item.categoryId || item.category?.id
+    const categoryName = await resolveCategoryName(
+      categoryId,
+      item.categoryName || item.category?.name,
+    )
 
     selectedCategory.value = {
       id: categoryId,
-      name: item.categoryName || item.category?.name || categoryId
+      name: categoryName,
     }
 
     form.categoryId = categoryId
@@ -1452,8 +1979,8 @@ const selectCatalogProduct = async (item: any) => {
     categoryPath.value = [
       {
         id: categoryId,
-        name: item.categoryName || item.category?.name || categoryId
-      }
+        name: categoryName,
+      },
     ]
 
     await loadCategoryParameters(categoryId)
@@ -1473,6 +2000,7 @@ const selectCatalogProduct = async (item: any) => {
 
   catalogModalVisible.value = false
   showOfferForm.value = true
+  goToStep(1)
 
   await loadProductPhotos()
   await autoGenerateAllegroDescription(false)
@@ -1490,6 +2018,7 @@ const createNewCatalogProduct = async () => {
 
   catalogModalVisible.value = false
   showOfferForm.value = true
+  goToStep(1)
 
   await loadProductPhotos()
   await autoGenerateAllegroDescription(false)
@@ -1539,6 +2068,30 @@ const fillCatalogProductParameters = (item: any) => {
 const selectedCategoryPathText = computed(() => {
   return categoryPath.value.map(x => x.name).join(' - ')
 })
+
+const selectedCategoryDisplayName = computed(() => {
+  const name = String(selectedCategory.value?.name || '').trim()
+  const id = String(selectedCategory.value?.id || '').trim()
+
+  if (name && name !== id) return name
+  return name || id || ''
+})
+
+const resolveCategoryName = async (categoryId: string, fallbackName?: string | null) => {
+  const currentName = String(fallbackName || '').trim()
+  if (currentName && currentName !== categoryId) {
+    return currentName
+  }
+
+  try {
+    const result = await Api.allegro.getCategoryById(categoryId)
+    const category = result?.data || result
+    return String(category?.name || category?.Name || currentName || categoryId)
+  } catch (error) {
+    console.warn('Nie udało się pobrać nazwy kategorii Allegro.', error)
+    return currentName || categoryId
+  }
+}
 
 const normalizeList = (result: any) => {
   const data = result?.data || result
@@ -1607,7 +2160,12 @@ const confirmCategory = async () => {
 }
 
 const setSelectedCategory = async (category: any) => {
-  selectedCategory.value = category
+  const categoryName = await resolveCategoryName(category.id, category.name)
+
+  selectedCategory.value = {
+    ...category,
+    name: categoryName,
+  }
   form.categoryId = category.id
   showAllParameters.value = false
 
@@ -1648,34 +2206,84 @@ const loadCategoryParameters = async (categoryId: string) => {
   })
 
   applyAllegroParameterDefaults(parameters.value, form.parameterValues)
+  applyGtinToParameters(parameters.value, getProductGtin(), form.parameterValues)
+  applyProducerCodeToParameters(
+    parameters.value,
+    productData.value?.identificationCode ?? productData.value?.IdentificationCode,
+    form.parameterValues,
+  )
 }
 
 const loadSavedMapping = async () => {
   try {
-    const mappingResult = await Api.allegro.getProductMapping(props.productId)
-    const mapping = mappingResult?.data || mappingResult
+    const mappingResult = await Api.allegro.getProductMapping(resolvedProductId.value)
+    const mapping = unwrapApiPayload(mappingResult)
+    if (!mapping?.categoryId && !mapping?.productGtin && !mapping?.ProductGtin) return
+
+    const mappingGtin = String(
+      mapping.productGtin ??
+      mapping.ProductGtin ??
+      extractGtinFromParameterValues(mapping.parameterValues || mapping.ParameterValues) ??
+      ''
+    ).trim()
+
+    if (mappingGtin) {
+      mappingGtinOverride.value = mappingGtin
+      catalogSearchPhrase.value = mappingGtin
+    }
+
     if (!mapping?.categoryId) return
+
+    const categoryName = await resolveCategoryName(
+      mapping.categoryId,
+      mapping.categoryName,
+    )
 
     selectedCategory.value = {
       id: mapping.categoryId,
-      name: mapping.categoryName || mapping.categoryId,
+      name: categoryName,
     }
     form.categoryId = mapping.categoryId
     categoryPath.value = [
       {
         id: mapping.categoryId,
-        name: mapping.categoryName || mapping.categoryId,
+        name: categoryName,
       },
     ]
 
     await loadCategoryParameters(mapping.categoryId)
     applyParameterValuesFromApi(form.parameterValues, mapping.parameterValues || [])
+    applyGtinToParameters(parameters.value, getProductGtin(), form.parameterValues)
+    applyProducerCodeToParameters(
+      parameters.value,
+      productData.value?.identificationCode ??
+        productData.value?.IdentificationCode ??
+        mapping.productSku ??
+        mapping.ProductSku,
+      form.parameterValues,
+    )
 
     form.deliveryPriceListId = mapping.deliveryPriceListId || form.deliveryPriceListId
     form.returnPolicyId = mapping.returnPolicyId || form.returnPolicyId
     form.impliedWarrantyId = mapping.impliedWarrantyId || form.impliedWarrantyId
     form.warrantyId = mapping.warrantyId || form.warrantyId
     form.shippingRateId = mapping.shippingRateId || form.shippingRateId
+    form.allegroCatalogProductId =
+      mapping.allegroCatalogProductId || form.allegroCatalogProductId
+    form.allegroCatalogProductName =
+      mapping.allegroCatalogProductName || form.allegroCatalogProductName
+
+    if (!form.title && (mapping.productName || mapping.ProductName)) {
+      form.title = mapping.productName || mapping.ProductName
+    }
+
+    if (!form.signature && (mapping.productSku || mapping.ProductSku)) {
+      form.signature = mapping.productSku || mapping.ProductSku
+    }
+
+    if (form.allegroCatalogProductId) {
+      showOfferForm.value = true
+    }
   } catch (error) {
     console.warn('Brak zapisanego mapowania Allegro.', error)
   }
@@ -1686,12 +2294,12 @@ const loadProductPhotos = async () => {
 
   try {
     try {
-      await Api.allegro.syncProductImages(props.productId)
+      await Api.allegro.syncProductImages(resolvedProductId.value)
     } catch (error) {
       console.warn('syncProductImages:', error)
     }
 
-    const imagesResult = await Api.allegro.getProductImages(props.productId)
+    const imagesResult = await Api.allegro.getProductImages(resolvedProductId.value)
     const syncedPhotos = mapAllegroImagesFromSyncDto(normalizeList(imagesResult))
 
     if (syncedPhotos.length) {
@@ -1715,27 +2323,94 @@ const loadProductPhotos = async () => {
   }
 }
 
+const applyKnownGtin = (raw?: string | null, autoSearch = false) => {
+  const gtin = String(raw || '').trim()
+  if (!gtin) return ''
+
+  mappingGtinOverride.value = gtin
+  catalogSearchPhrase.value = gtin
+  showOfferForm.value = true
+  goToStep(0)
+
+  if (autoSearch) {
+    void autoSearchCatalogByGtin(gtin, !form.allegroCatalogProductId)
+  }
+
+  return gtin
+}
+
 const loadProductContext = async () => {
-  if (!props.productId) return
+  if (!resolvedProductId.value) return
+
+  // Keep GTIN from table/route; do not wipe it before product/mapping loads.
+  mappingGtinOverride.value = String(resolvedInitialGtin.value || mappingGtinOverride.value || '').trim()
+  if (mappingGtinOverride.value) {
+    catalogSearchPhrase.value = mappingGtinOverride.value
+    showOfferForm.value = true
+    goToStep(0)
+  }
 
   try {
-    const productResult = await Api.products.get(props.productId)
-    productData.value = productResult?.data || productResult
+    // Mapping first: lightweight and already contains productGtin.
+    await loadSavedMapping()
+
+    const gtinAfterMapping = getProductGtin()
+    if (gtinAfterMapping) {
+      applyKnownGtin(gtinAfterMapping)
+    }
+
+    try {
+      const productResult = await Api.products.get(resolvedProductId.value)
+      const payload = unwrapApiPayload(productResult)
+      productData.value = payload
+
+      const productGtinValue = String(
+        payload?.gtin ??
+        payload?.Gtin ??
+        productResult?.data?.gtin ??
+        productResult?.data?.Gtin ??
+        ''
+      ).trim()
+
+      if (productGtinValue) {
+        applyKnownGtin(productGtinValue)
+      }
+    } catch (productError) {
+      console.warn('Nie udało się pobrać pełnej karty produktu — używam danych z mapowania Allegro.', productError)
+    }
 
     if (!form.title && productData.value?.name) {
       form.title = productData.value.name
     }
 
-    if ((form.price === null || form.price === undefined) && productData.value?.price) {
-      form.price = Number(productData.value.price)
+    const allegroPrice = calculateAllegroPrice(
+      productData.value?.price ?? productData.value?.Price,
+    )
+    if ((form.price === null || form.price === undefined) && allegroPrice) {
+      form.price = allegroPrice
     }
 
-    if (!form.signature && productData.value?.identificationCode) {
-      form.signature = productData.value.identificationCode
+    if (!form.signature) {
+      form.signature =
+        productData.value?.identificationCode ||
+        productData.value?.IdentificationCode ||
+        productData.value?.sku ||
+        form.signature
     }
 
-    await loadSavedMapping()
+    const gtin = getProductGtin()
+    if (gtin) {
+      applyKnownGtin(gtin)
+    }
+
+    // Photos after EAN is already visible — sync must not block catalog step.
     await loadProductPhotos()
+
+    if (gtin && !catalogProducts.value.length && !form.allegroCatalogProductId) {
+      await autoSearchCatalogByGtin(gtin, true)
+    } else if (gtin && !catalogProducts.value.length) {
+      await autoSearchCatalogByGtin(gtin, false)
+    }
   } catch (error) {
     console.error(error)
   }
@@ -1963,6 +2638,12 @@ const loadInitialData = async () => {
     form.warrantyId =
       warranties.value[0]?.id || null
 
+    form.deliveryPriceListId =
+      deliveryPriceLists.value[0]?.id || null
+
+    form.shippingRateId =
+      form.deliveryPriceListId
+
     form.shippingTime = 'PT72H'
 
     form.stockQuantity = 1000
@@ -2003,7 +2684,7 @@ const buildParameterValues = () => {
 const saveMapping = async () => {
   form.saveError = false
 
-  if (!props.productId) {
+  if (!resolvedProductId.value) {
     throw new Error('Brak productId.')
   }
 
@@ -2011,7 +2692,7 @@ const saveMapping = async () => {
     throw new Error('Wybierz kategorię Allegro.')
   }
 
-await Api.allegro.saveProductMapping(props.productId, {
+await Api.allegro.saveProductMapping(resolvedProductId.value, {
   categoryId: form.categoryId,
   parameterValues: buildParameterValues(),
 
@@ -2022,7 +2703,7 @@ await Api.allegro.saveProductMapping(props.productId, {
 
   shippingRateId: form.shippingRateId || form.deliveryPriceListId,
 
-  priceMultiplier: 1,
+  priceMultiplier: ALLEGRO_PRICE_MULTIPLIER,
   stockMode: form.stockUnit,
   active: true,
   allegroCatalogProductId: form.allegroCatalogProductId,
@@ -2056,15 +2737,22 @@ await Api.allegro.saveProductMapping(props.productId, {
 }
 
 const previewFees = async () => {
+  feePreviewError.value = ''
+  parsedFeePreview.value = null
+
   if (!form.categoryId) {
-    ElMessage.error('Wybierz kategorię, aby sprawdzić prowizję.')
+    feePreviewError.value = 'Wybierz kategorię, aby sprawdzić prowizję.'
+    ElMessage.error(feePreviewError.value)
     return
   }
 
   if (!form.price || Number(form.price) <= 0) {
-    ElMessage.error('Podaj cenę, aby sprawdzić prowizję.')
+    feePreviewError.value = 'Podaj cenę, aby sprawdzić prowizję.'
+    ElMessage.error(feePreviewError.value)
     return
   }
+
+  loadingFees.value = true
 
   try {
     feePreview.value = await Api.allegro.previewOfferFees(
@@ -2078,29 +2766,24 @@ const previewFees = async () => {
         isAuction: form.isAuction,
       })
     )
+
+    parsedFeePreview.value = parseFeePreview(feePreview.value)
+
+    if (
+      !parsedFeePreview.value.commissions.length &&
+      !parsedFeePreview.value.quotes.length
+    ) {
+      feePreviewError.value = 'Allegro nie zwróciło pozycji prowizji. Sprawdź kategorię, cenę i cennik dostawy.'
+      return
+    }
+
     ElMessage.success('Pobrano prowizje z Allegro.')
-  } catch (e) {
-    console.error(e)
-    ElMessage.error('Nie udało się pobrać prowizji.')
-  }
-}
-
-const previewOffer = async () => {
-  loadingPreview.value = true
-
-  try {
-    await saveMapping()
-
-    const result = await Api.allegro.getOfferPreview(props.productId)
-
-    ElMessage.success('Podgląd oferty pobrany poprawnie.')
-    console.log('Offer preview:', result)
   } catch (e: any) {
-    form.saveError = true
-    ElMessage.error(e?.message || 'Nie udało się pobrać podglądu oferty.')
     console.error(e)
+    feePreviewError.value = e?.message || 'Nie udało się pobrać prowizji.'
+    ElMessage.error(feePreviewError.value)
   } finally {
-    loadingPreview.value = false
+    loadingFees.value = false
   }
 }
 
@@ -2109,11 +2792,21 @@ const publishOffer = async () => {
   form.saveError = false
 
   try {
+    if (!validationResult.value?.isValid) {
+      await runServerValidation(false)
+    }
+
+    if (!validationResult.value?.isValid) {
+      ElMessage.error('Oferta nie przeszła walidacji. Popraw błędy i uruchom walidację ponownie.')
+      goToStep(ALLEGRO_WIZARD_STEPS.findIndex(step => step.id === 'validation'))
+      return
+    }
+
     await saveMapping()
 
     try {
-      await Api.allegro.syncProductImages(props.productId)
-      const imagesResult = await Api.allegro.getProductImages(props.productId)
+      await Api.allegro.syncProductImages(resolvedProductId.value)
+      const imagesResult = await Api.allegro.getProductImages(resolvedProductId.value)
       const syncedPhotos = mapAllegroImagesFromSyncDto(normalizeList(imagesResult))
 
       if (syncedPhotos.length) {
@@ -2176,7 +2869,7 @@ const publishOffer = async () => {
       base64File => Api.allegro.uploadImage(base64File),
     )
 
-    const result = await Api.allegro.publishProduct(props.productId, {
+    const result = await Api.allegro.publishProduct(resolvedProductId.value, {
       publishImmediately: form.publishOption === 'NOW',
       startingAt,
       offerName: form.title,
@@ -2226,14 +2919,29 @@ const publishOffer = async () => {
 }
 
 onMounted(async () => {
-  showOfferForm.value = false
-  catalogModalVisible.value = true
+  catalogModalVisible.value = false
+
+  if (resolvedInitialGtin.value) {
+    applyKnownGtin(resolvedInitialGtin.value)
+  } else {
+    showOfferForm.value = false
+  }
 
   await Promise.all([
     loadCategories(null),
     loadInitialData(),
     loadProductContext(),
+    loadAccountStatus(),
   ])
+
+  // Jeśli produkt ma EAN — zostajemy na kroku katalogu, żeby był widoczny i wyszukany.
+  // Bez EAN, ale z już zapisanym powiązaniem katalogowym — przechodzimy dalej.
+  if (getProductGtin()) {
+    applyKnownGtin(getProductGtin())
+  } else if (form.allegroCatalogProductId) {
+    showOfferForm.value = true
+    goToStep(1)
+  }
 })
 </script>
 

@@ -1,4 +1,5 @@
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const getLogs = (params = {}) => {
   const qs = new URLSearchParams()
@@ -15,7 +16,7 @@ const getLogs = (params = {}) => {
 
   const url = `${APISettings.baseURL}administration/customer-notification?${qs.toString()}`
 
-  return fetch(url, {
+  return apiFetch(url, {
     method: 'GET',
     credentials: 'include'
   }).then((response) => {

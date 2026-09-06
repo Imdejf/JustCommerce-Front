@@ -1,9 +1,10 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 
 const addRuleToProduct = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductRule`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductRule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -17,7 +18,7 @@ const addRuleToProduct = (payload) =>
   })
 
 const removeProductFromRule = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductRule`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductRule`, {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

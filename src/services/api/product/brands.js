@@ -1,5 +1,6 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 // ===== Warehouses for Brand =====
 
@@ -7,7 +8,7 @@ const getAllWarehouseBrand = (storeId, config) => {
   const params = new URLSearchParams()
   params.append('storeId', storeId)
 
-  return fetch(`${APISettings.baseURL}administration/Brand/Warehouse/GetAllWarehouseBrand?${params.toString()}`, {
+  return apiFetch(`${APISettings.baseURL}administration/Brand/Warehouse/GetAllWarehouseBrand?${params.toString()}`, {
     method: 'GET',
     credentials: 'include',
     ...config
@@ -21,7 +22,7 @@ const getAllWarehouseBrand = (storeId, config) => {
 }
 
 const getWarehouseBrandById = (warehouseId, config) =>
-  fetch(`${APISettings.baseURL}administration/Brand/Warehouse/${warehouseId}`, {
+  apiFetch(`${APISettings.baseURL}administration/Brand/Warehouse/${warehouseId}`, {
     method: 'GET',
     credentials: 'include',
     ...config
@@ -34,7 +35,7 @@ const getWarehouseBrandById = (warehouseId, config) =>
   })
 
 const createWarehouseBrand = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Brand/Warehouse/CreateWarehouseBrand`, {
+  apiFetch(`${APISettings.baseURL}administration/Brand/Warehouse/CreateWarehouseBrand`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -48,7 +49,7 @@ const createWarehouseBrand = (payload) =>
   })
 
 const updateWarehouseBrand = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Brand/Warehouse/UpdateWarehouseBrand`, {
+  apiFetch(`${APISettings.baseURL}administration/Brand/Warehouse/UpdateWarehouseBrand`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -62,7 +63,7 @@ const updateWarehouseBrand = (payload) =>
   })
 
 const removeWarehouseBrand = (id) =>
-  fetch(`${APISettings.baseURL}administration/Brand/Warehouse/RemoveWarehouseBrand/${id}`, {
+  apiFetch(`${APISettings.baseURL}administration/Brand/Warehouse/RemoveWarehouseBrand/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'

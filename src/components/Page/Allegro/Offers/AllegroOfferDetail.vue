@@ -95,7 +95,7 @@
           </h2>
 
           <div v-if="form.categoryId" class="text-sm text-[#111827]">
-            <strong>{{ form.categoryName || form.categoryId }}</strong>
+            <strong>{{ form.categoryName && form.categoryName !== form.categoryId ? form.categoryName : 'Ładowanie nazwy…' }}</strong>
             <span class="text-[#64748b] ml-2">
               Nr kategorii {{ form.categoryId }}
             </span>
@@ -478,10 +478,11 @@
           <div class="flex justify-end gap-4">
             <button
               type="button"
-              class="h-[42px] px-8 text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline"
+              class="h-[42px] px-8 text-xs font-bold tracking-[0.22em] text-[#00796b] hover:underline disabled:opacity-50"
+              :disabled="loadingFees"
               @click="previewFees"
             >
-              SPRAWDŹ PROWIZJE
+              {{ loadingFees ? 'LICZĘ…' : 'PRZELICZ PROWIZJĘ' }}
             </button>
 
             <button
@@ -494,11 +495,38 @@
             </button>
           </div>
 
-          <el-collapse v-if="feePreview" class="mt-5">
-            <el-collapse-item title="Podgląd prowizji" name="fees">
-              <pre class="json-preview">{{ JSON.stringify(feePreview, null, 2) }}</pre>
-            </el-collapse-item>
-          </el-collapse>
+          <div
+            v-if="parsedFeePreview"
+            class="mt-5 max-w-[520px] space-y-2"
+          >
+            <div
+              v-for="item in parsedFeePreview.commissions"
+              :key="`c-${item.type}-${item.name}`"
+              class="grid grid-cols-[1fr_auto] gap-4 border-b border-[#e5e7eb] pb-2 text-sm"
+            >
+              <span>{{ item.name }}</span>
+              <strong>{{ formatFeeAmount(item.amount, item.currency) }}</strong>
+            </div>
+            <div
+              v-for="item in parsedFeePreview.quotes"
+              :key="`q-${item.type}-${item.name}`"
+              class="grid grid-cols-[1fr_auto] gap-4 border-b border-[#e5e7eb] pb-2 text-sm"
+            >
+              <span>{{ item.name }}</span>
+              <strong>{{ formatFeeAmount(item.amount, item.currency) }}</strong>
+            </div>
+            <div class="grid grid-cols-[1fr_auto] gap-4 pt-1 text-sm font-bold">
+              <span>Suma prowizji od sprzedaży</span>
+              <span>{{ formatFeeAmount(parsedFeePreview.totalCommission, parsedFeePreview.currency) }}</span>
+            </div>
+          </div>
+
+          <p
+            v-if="feePreviewError"
+            class="mt-3 text-sm text-red-600"
+          >
+            {{ feePreviewError }}
+          </p>
         </div>
 
         <!-- RAW -->
@@ -539,6 +567,7 @@ import {
   extractAllegroUrlFromUpload,
   extractParametersFromLiveOffer,
   fileToBase64,
+  formatFeeAmount,
   getParamValues,
   isBooleanParameter,
   isNumberParameter,
@@ -546,7 +575,9 @@ import {
   mapDescriptionRowsFromApi,
   mapDescriptionSectionsFromAllegroApi,
   normalizeAllegroImages,
+  parseFeePreview,
   prepareDescriptionRowsForAllegro,
+  type AllegroFeePreview,
 } from '/@/components/Form/Allegro/allegroOfferForm.ts'
 
 const route = useRoute()
@@ -571,6 +602,9 @@ const defaultProductPageUrl = computed(() => {
 const offer = ref<any>(null)
 const liveOffer = ref<any>(null)
 const feePreview = ref<any | null>(null)
+const parsedFeePreview = ref<AllegroFeePreview | null>(null)
+const loadingFees = ref(false)
+const feePreviewError = ref('')
 
 const responsibleProducers = ref<any[]>([])
 const returnPolicies = ref<any[]>([])
@@ -676,6 +710,19 @@ const loadInitialData = async () => {
   }
 }
 
+const ensureCategoryName = async () => {
+  if (!form.categoryId) return
+  if (form.categoryName && form.categoryName !== form.categoryId) return
+
+  try {
+    const result = await Api.allegro.getCategoryById(form.categoryId)
+    const category = result?.data || result
+    form.categoryName = String(category?.name || category?.Name || form.categoryId)
+  } catch (error) {
+    console.warn('Nie udało się pobrać nazwy kategorii Allegro.', error)
+  }
+}
+
 const loadOffer = async () => {
   if (!offerId.value) {
     ElMessage.error('Brak ID oferty Allegro')
@@ -689,6 +736,7 @@ const loadOffer = async () => {
     offer.value = result?.data || result
 
     fillFormFromEditDto(offer.value)
+    await ensureCategoryName()
     await syncCategoryParameters(offer.value.parameterValues || [])
   } catch (error) {
     console.error(error)
@@ -711,6 +759,7 @@ const loadLiveOffer = async () => {
     liveOffer.value = result?.data || result
 
     fillFormFromLiveOffer(liveOffer.value)
+    await ensureCategoryName()
     await syncCategoryParameters(extractParametersFromLiveOffer(liveOffer.value))
 
     ElMessage.success('Pobrano aktualne dane z Allegro')
@@ -1067,15 +1116,22 @@ const saveChanges = async () => {
 }
 
 const previewFees = async () => {
+  feePreviewError.value = ''
+  parsedFeePreview.value = null
+
   if (!form.categoryId) {
-    ElMessage.error('Brak kategorii — nie można sprawdzić prowizji')
+    feePreviewError.value = 'Brak kategorii — nie można sprawdzić prowizji'
+    ElMessage.error(feePreviewError.value)
     return
   }
 
   if (!form.price || Number(form.price) <= 0) {
-    ElMessage.error('Podaj cenę, aby sprawdzić prowizję')
+    feePreviewError.value = 'Podaj cenę, aby sprawdzić prowizję'
+    ElMessage.error(feePreviewError.value)
     return
   }
+
+  loadingFees.value = true
 
   try {
     feePreview.value = await Api.allegro.previewOfferFees(
@@ -1088,10 +1144,24 @@ const previewFees = async () => {
         deliveryPriceListId: form.deliveryPriceListId,
       })
     )
+
+    parsedFeePreview.value = parseFeePreview(feePreview.value)
+
+    if (
+      !parsedFeePreview.value.commissions.length &&
+      !parsedFeePreview.value.quotes.length
+    ) {
+      feePreviewError.value = 'Allegro nie zwróciło pozycji prowizji.'
+      return
+    }
+
     ElMessage.success('Pobrano prowizje z Allegro')
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    ElMessage.error('Nie udało się pobrać prowizji')
+    feePreviewError.value = error?.message || 'Nie udało się pobrać prowizji'
+    ElMessage.error(feePreviewError.value)
+  } finally {
+    loadingFees.value = false
   }
 }
 

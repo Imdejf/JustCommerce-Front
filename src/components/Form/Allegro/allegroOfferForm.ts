@@ -351,7 +351,7 @@ export const buildFeePreviewBody = (form: {
 }) => {
   const body: Record<string, any> = {
     offer: {
-      name: form.title,
+      name: form.title || 'Oferta',
       category: {
         id: form.categoryId,
       },
@@ -366,6 +366,9 @@ export const buildFeePreviewBody = (form: {
         available: Number(form.stockQuantity || 1),
         unit: form.stockUnit || 'UNIT',
       },
+      publication: {
+        status: 'ACTIVE',
+      },
     },
   }
 
@@ -379,6 +382,79 @@ export const buildFeePreviewBody = (form: {
 
   return body
 }
+
+export type AllegroFeeItem = {
+  name: string
+  type: string
+  amount: number
+  currency: string
+}
+
+export type AllegroFeePreview = {
+  commissions: AllegroFeeItem[]
+  quotes: AllegroFeeItem[]
+  totalCommission: number
+  totalQuotes: number
+  currency: string
+}
+
+const mapFeeItems = (items: unknown): AllegroFeeItem[] => {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .map((item: any) => {
+      const amount = Number(item?.fee?.amount ?? item?.amount ?? 0)
+      return {
+        name: String(item?.name || item?.type || 'Opłata'),
+        type: String(item?.type || ''),
+        amount: Number.isFinite(amount) ? amount : 0,
+        currency: String(item?.fee?.currency || item?.currency || 'PLN'),
+      }
+    })
+    .filter(item => item.name)
+}
+
+export const parseFeePreview = (result: unknown): AllegroFeePreview => {
+  const payload = (result as any)?.data ?? result ?? {}
+  let raw = payload
+
+  if (typeof payload?.rawResponse === 'string' && payload.rawResponse.trim()) {
+    try {
+      raw = JSON.parse(payload.rawResponse)
+    } catch {
+      raw = payload
+    }
+  } else if (typeof payload?.RawResponse === 'string' && payload.RawResponse.trim()) {
+    try {
+      raw = JSON.parse(payload.RawResponse)
+    } catch {
+      raw = payload
+    }
+  }
+
+  const commissions = mapFeeItems(
+    raw?.commissions ?? payload?.commissions ?? payload?.Commissions,
+  )
+  const quotes = mapFeeItems(
+    raw?.quotes ?? payload?.quotes ?? payload?.Quotes,
+  )
+
+  const currency =
+    commissions[0]?.currency ||
+    quotes[0]?.currency ||
+    'PLN'
+
+  return {
+    commissions,
+    quotes,
+    totalCommission: commissions.reduce((sum, item) => sum + item.amount, 0),
+    totalQuotes: quotes.reduce((sum, item) => sum + item.amount, 0),
+    currency,
+  }
+}
+
+export const formatFeeAmount = (amount: number, currency = 'PLN') =>
+  `${amount.toFixed(2).replace('.', ',')} ${currency}`
 
 const findDictionaryValue = (param: any, matcher: (label: string) => boolean) => {
   const dictionaryValues = getParamValues(param)

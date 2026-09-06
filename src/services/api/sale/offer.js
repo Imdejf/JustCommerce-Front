@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const smartTable = (payload) =>
-    fetch(`${APISettings.baseURL}administration/offer/smartTable`, {
+    apiFetch(`${APISettings.baseURL}administration/offer/smartTable`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -16,7 +17,7 @@ const smartTable = (payload) =>
 })
 
 export const getDetailById = async (offerId) => {
-  const res = await fetch(`${APISettings.baseURL}administration/offer/${offerId}`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/offer/${offerId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -35,7 +36,7 @@ export const getDetailById = async (offerId) => {
 
   
 const createOffer = async (payload) => {
-  const res = await fetch(`${APISettings.baseURL}administration/offer/CreateOffer`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/offer/CreateOffer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -56,7 +57,7 @@ const createOffer = async (payload) => {
 };
 
 const updateOffer = async (payload) => {
-  const res = await fetch(`${APISettings.baseURL}administration/offer/UpdateOffer`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/offer/UpdateOffer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -76,7 +77,7 @@ const updateOffer = async (payload) => {
 
 const generateOrDownloadOffer = async (offerId) => {
   try {
-    const response = await fetch(`${APISettings.baseURL}administration/offer/GenerateOffer/${offerId}`, {
+    const response = await apiFetch(`${APISettings.baseURL}administration/offer/GenerateOffer/${offerId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include'
@@ -96,7 +97,7 @@ const generateOrDownloadOffer = async (offerId) => {
 
 
 const getStatistics = async (storeId) => {
-  const res = await fetch(`${APISettings.baseURL}administration/offer/Statistics/${storeId}`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/offer/Statistics/${storeId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -112,7 +113,7 @@ const getStatistics = async (storeId) => {
 }
 
 const changeOfferStatus = (payload) => {
-  fetch(`${APISettings.baseURL}administration/offer/ChangeStatusOffer`, {
+  apiFetch(`${APISettings.baseURL}administration/offer/ChangeStatusOffer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

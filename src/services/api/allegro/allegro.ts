@@ -1,15 +1,16 @@
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const baseUrl = `${APISettings.baseURL}administration/allegro`
 
 const request = async (url: string, config: RequestInit = {}) => {
-  const res = await fetch(url, {
-    credentials: 'include',
+  const { headers: configHeaders, ...rest } = config
+  const res = await apiFetch(url, {
+    ...rest,
     headers: {
       'Content-Type': 'application/json',
-      ...(config.headers || {})
-    },
-    ...config
+      ...(configHeaders as Record<string, string> | undefined)
+    }
   })
 
   if (!res.ok) {
@@ -81,6 +82,11 @@ const getCategories = (parentId?: string | null) => {
   })
 }
 
+const getCategoryById = (categoryId: string) =>
+  request(`${baseUrl}/categories/${categoryId}`, {
+    method: 'GET'
+  })
+
 const getCategoryParameters = (categoryId: string) =>
   request(`${baseUrl}/categories/${categoryId}/parameters`, {
     method: 'GET'
@@ -97,6 +103,11 @@ const saveProductMapping = (productId: string, body: any) =>
   request(`${baseUrl}/products/${productId}/mapping`, {
     method: 'PUT',
     body: JSON.stringify(body)
+  })
+
+const clearProductLinking = (productId: string) =>
+  request(`${baseUrl}/products/${productId}/mapping`, {
+    method: 'DELETE'
   })
 
 const validateProductForAllegro = (productId: string) =>
@@ -569,10 +580,12 @@ export const allegro = {
   disconnectAccount,
 
   getCategories,
+  getCategoryById,
   getCategoryParameters,
 
   getProductMapping,
   saveProductMapping,
+  clearProductLinking,
   validateProductForAllegro,
   getOfferPreview,
   publishProduct,

@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const removeRelated = (payload) =>
-  fetch(`${APISettings.baseURL}${'administration/related'}`, {
+  apiFetch(`${APISettings.baseURL}${'administration/related'}`, {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const getAllShoppingCart = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Tracking/ShoppingCart`, {
+  apiFetch(`${APISettings.baseURL}administration/Tracking/ShoppingCart`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -13,7 +14,7 @@ const getAllShoppingCart = (payload) =>
   })
 
 const getAllTrackingUsers = (payload) =>
-  fetch(`${APISettings.baseURL}administration/Tracking/Users`, {
+  apiFetch(`${APISettings.baseURL}administration/Tracking/Users`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -24,7 +25,7 @@ const getAllTrackingUsers = (payload) =>
   })
 
 const getOnline = () =>
-  fetch(`${APISettings.baseURL}administration/Tracking/online`, {
+  apiFetch(`${APISettings.baseURL}administration/Tracking/online`, {
     method: 'GET',
     credentials: 'include'
   }).then((response) => {

@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const getFaqByBlogItemId = (blogItemId) =>
-  fetch(`${APISettings.baseURL}administration/blogItem/${blogItemId}/faq`, {
+  apiFetch(`${APISettings.baseURL}administration/blogItem/${blogItemId}/faq`, {
     method: 'GET',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }
@@ -15,7 +16,7 @@ const getFaqByBlogItemId = (blogItemId) =>
   })
 
 const addFaq = (payload) =>
-  fetch(`${APISettings.baseURL}administration/blogItem/faq`, {
+  apiFetch(`${APISettings.baseURL}administration/blogItem/faq`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -29,7 +30,7 @@ const addFaq = (payload) =>
   })
 
 const updateFaq = (payload) =>
-  fetch(`${APISettings.baseURL}administration/blogItem/faq`, {
+  apiFetch(`${APISettings.baseURL}administration/blogItem/faq`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -43,7 +44,7 @@ const updateFaq = (payload) =>
   })
 
 const removeFaq = (payload) =>
-  fetch(`${APISettings.baseURL}administration/blogItem/faq`, {
+  apiFetch(`${APISettings.baseURL}administration/blogItem/faq`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

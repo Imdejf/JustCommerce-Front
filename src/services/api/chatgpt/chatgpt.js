@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const generateProductData = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductData`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductData`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -10,7 +11,7 @@ const generateProductData = (payload) =>
   })
 
 const generateProductSection = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductSection`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductSection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -18,7 +19,7 @@ const generateProductSection = (payload) =>
   })
 
 const generateProductPhoto = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductPhoto`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductPhoto`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -26,7 +27,7 @@ const generateProductPhoto = (payload) =>
   })
 
 const generateProductSeoFromCompetitor = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductSeoFromCompetitor`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductSeoFromCompetitor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -34,7 +35,7 @@ const generateProductSeoFromCompetitor = (payload) =>
   })
 
 const generateProductDescriptionVision = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionVision`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionVision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -42,7 +43,7 @@ const generateProductDescriptionVision = (payload) =>
   })
 
 const generateProductDescriptionRewrite = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionRewrite`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductDescriptionRewrite`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -50,7 +51,7 @@ const generateProductDescriptionRewrite = (payload) =>
   })
 
 const generateProductAttributesFromDescription = (payload) =>
-  fetch(`${APISettings.baseURL}administration/chatGpt/generateProductAttributesFromDescription`, {
+  apiFetch(`${APISettings.baseURL}administration/chatGpt/generateProductAttributesFromDescription`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

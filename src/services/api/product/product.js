@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const smartTable = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/smartTable`, {
+  apiFetch(`${APISettings.baseURL}administration/product/smartTable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -16,7 +17,7 @@ const smartTable = (payload) =>
   })
 
 const getByNameOrCode = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/GetProductByNameOrCode`, {
+  apiFetch(`${APISettings.baseURL}administration/product/GetProductByNameOrCode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -30,7 +31,7 @@ const getByNameOrCode = (payload) =>
   })
 
 const addVariation = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -44,7 +45,7 @@ const addVariation = (payload) =>
   })
 
 const updateVariation = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductVariation`, {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -58,7 +59,7 @@ const updateVariation = (payload) =>
   })
 
 const addOptionCombination = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -72,7 +73,7 @@ const addOptionCombination = (payload) =>
   })
 
 const addOption = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductOption`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductOption`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -86,7 +87,7 @@ const addOption = (payload) =>
   })
 
 const updateOption = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductOption`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductOption`, {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -100,7 +101,7 @@ const updateOption = (payload) =>
   })
 
 const removeOptionCombination = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductOptionCombination`, {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -116,7 +117,7 @@ const removeOptionCombination = (payload) =>
 const isSuccessResponse = (status) => status >= 200 && status < 300
 
 const addAttributeValue = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
+  apiFetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -130,7 +131,7 @@ const addAttributeValue = (payload) =>
   })
 
 const removeAttributeValue = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/RemoveProductAttributeValue`, {
+  apiFetch(`${APISettings.baseURL}administration/product/RemoveProductAttributeValue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -144,7 +145,7 @@ const removeAttributeValue = (payload) =>
   })
 
 const updateAttributeValue = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
+  apiFetch(`${APISettings.baseURL}administration/product/AttributeValue`, {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -158,7 +159,7 @@ const updateAttributeValue = (payload) =>
   })
 
   const removeProduct = (productId) =>
-    fetch(`${APISettings.baseURL}administration/product/` + productId, {
+    apiFetch(`${APISettings.baseURL}administration/product/` + productId, {
       method: 'DELETE',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' }
@@ -170,7 +171,7 @@ const updateAttributeValue = (payload) =>
       }
     })
 const updateCategory = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductCategory`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductCategory`, {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -184,7 +185,7 @@ const updateCategory = (payload) =>
   })
 
 const exportProductToExcel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/exportProductToExcel`, {
+  apiFetch(`${APISettings.baseURL}administration/product/exportProductToExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -192,7 +193,7 @@ const exportProductToExcel = (payload) =>
   });
 
   const importProductFromExcel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ImportProductFromExcel`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ImportProductFromExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -206,7 +207,7 @@ const exportProductToExcel = (payload) =>
   })
 
 const updateQuickEdit = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/QuickEdit`, {
+  apiFetch(`${APISettings.baseURL}administration/product/QuickEdit`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -220,7 +221,7 @@ const updateQuickEdit = (payload) =>
 
 
   const addProductBlogItem = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductBlogItem`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductBlogItem`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -234,7 +235,7 @@ const updateQuickEdit = (payload) =>
   })
 
 const removeProductBlogItem = (payload) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductBlogItem`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductBlogItem`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -248,7 +249,7 @@ const removeProductBlogItem = (payload) =>
   })
 
   const getProductBlogItem = (productId) =>
-  fetch(`${APISettings.baseURL}administration/product/ProductBlogItem/${productId}`, {
+  apiFetch(`${APISettings.baseURL}administration/product/ProductBlogItem/${productId}`, {
     method: 'GET',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }

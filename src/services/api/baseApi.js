@@ -1,5 +1,6 @@
 import { APISettings } from './config.js'
 import Cookies from 'universal-cookie'
+import { apiFetch } from './http.js'
 
 export const CreateBaseApiService = (resource) => {
   const cookie = new Cookies()
@@ -16,8 +17,7 @@ export const CreateBaseApiService = (resource) => {
 
         const url = `${APISettings.baseURL}${resource}?${params.toString()}`
 
-        fetch(url, {
-          credentials: 'include',
+        apiFetch(url, {
           method: 'GET'
         })
           .then(async function (response) {
@@ -35,9 +35,8 @@ export const CreateBaseApiService = (resource) => {
     },
     // Get a list of resources
     list: (config) =>
-      fetch(`${APISettings.baseURL}${resource}`, {
+      apiFetch(`${APISettings.baseURL}${resource}`, {
         method: 'GET',
-        credentials: 'include',
         ...config
       }).then(function (response) {
         if (response.status != 200) {
@@ -53,9 +52,8 @@ export const CreateBaseApiService = (resource) => {
 
         const url = `${APISettings.baseURL}${resource}?${params.toString()}`
 
-        fetch(url, {
+        apiFetch(url, {
           method: 'GET',
-          credentials: 'include',
           ...config
         })
           .then(async function (response) {
@@ -73,9 +71,8 @@ export const CreateBaseApiService = (resource) => {
     },
     // Get a single resource by its id
     get: (id, config) =>
-      fetch(`${APISettings.baseURL}${resource}/${id}`, {
+      apiFetch(`${APISettings.baseURL}${resource}/${id}`, {
         method: 'GET',
-        credentials: 'include',
         ...config
       }).then(function (response) {
         if (response.status != 200) {
@@ -86,10 +83,9 @@ export const CreateBaseApiService = (resource) => {
       }),
     // Create a new resource
     create: (payload) =>
-      fetch(`${APISettings.baseURL}${resource}`, {
+      apiFetch(`${APISettings.baseURL}${resource}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         ...payload
       }).then(function (response) {
         if (response.status != 200) {
@@ -100,9 +96,8 @@ export const CreateBaseApiService = (resource) => {
       }),
     // Replace an existing resource with payload
     update: (payload) =>
-      fetch(`${APISettings.baseURL}${resource}`, {
+      apiFetch(`${APISettings.baseURL}${resource}`, {
         method: 'PUT',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         ...payload
       }).then(function (response) {
@@ -114,9 +109,8 @@ export const CreateBaseApiService = (resource) => {
       }),
     // Merge new payload into a resource
     patch: (id, payload) =>
-      fetch(`${APISettings.baseURL}${resource}/${id}`, {
+      apiFetch(`${APISettings.baseURL}${resource}/${id}`, {
         method: 'PATCH',
-        credentials: 'include',
         ...payload
       }).then(function (response) {
         if (response.status != 200) {
@@ -127,9 +121,8 @@ export const CreateBaseApiService = (resource) => {
       }),
     // Remove a resource by its id
     remove: (id) =>
-      fetch(`${APISettings.baseURL}${resource}/${id}`, {
+      apiFetch(`${APISettings.baseURL}${resource}/${id}`, {
         method: 'DELETE',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       }).then(function (response) {
         if (response.status != 200) {

@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const getByNip = async (nip) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${APISettings.baseURL}administration/gusbir/${nip}`,
     {
       method: 'GET',

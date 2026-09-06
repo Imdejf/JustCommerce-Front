@@ -227,6 +227,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
 import { TableKit } from '@tiptap/extension-table'
 import Cookies from 'universal-cookie'
+import { apiFetch } from '/@/services/api/http.js'
 
 const CustomImage = Image.extend({
   addAttributes() {
@@ -693,7 +694,7 @@ export default {
         }
       }
 
-      const response = await fetch(`${defaultString}administration/file/content`, {
+      const response = await apiFetch(`${defaultString}administration/file/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fileToSave)

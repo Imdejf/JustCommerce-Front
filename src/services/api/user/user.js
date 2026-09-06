@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const smartTable = (payload) =>
-  fetch(`${APISettings.baseURL}administration/user/smartTable`, {
+  apiFetch(`${APISettings.baseURL}administration/user/smartTable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

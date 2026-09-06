@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const smartTable = (payload) =>
-  fetch(`${APISettings.baseURL}administration/order/smartTable`, {
+  apiFetch(`${APISettings.baseURL}administration/order/smartTable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -37,7 +38,7 @@ const getOrderRaport = (query) => {
 
     const url = `${APISettings.baseURL}administration/order/OrderRaport?${qs.toString()}`
 
-    fetch(url, {
+    apiFetch(url, {
       method: 'POST',
       credentials: 'include'
     })
@@ -64,7 +65,7 @@ const getOrderDashboard = (query) => {
       }, {})
   ).toString()
 
-  return fetch(`${APISettings.baseURL}administration/order/Dashboard?${qs}`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/Dashboard?${qs}`, {
     method: 'POST',
     credentials: 'include',
   }).then(async (response) => {
@@ -75,7 +76,7 @@ const getOrderDashboard = (query) => {
 }
 
 const addInvoiceToOrder = async (payload) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${APISettings.baseURL}administration/order/AddInvoiceToOrder`,
     {
       method: 'POST',
@@ -98,7 +99,7 @@ const addInvoiceToOrder = async (payload) => {
 const getAvilableAddresses = (storeId) => {
   return new Promise((resolve, reject) => {
     const url = `${APISettings.baseURL}product/shoppingcart/GetAvilableAddresses?storeId=${storeId}`
-    fetch(url, {
+    apiFetch(url, {
       method: 'GET',
       credentials: 'include'
     })
@@ -117,7 +118,7 @@ const getAvilableAddresses = (storeId) => {
 }
 
 const changePaidStatus = (payload) => {
-  fetch(`${APISettings.baseURL}administration/order/ChangePaidStatus`, {
+  apiFetch(`${APISettings.baseURL}administration/order/ChangePaidStatus`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -132,7 +133,7 @@ const changePaidStatus = (payload) => {
 }
 
 const changeInvoiceStatus = (payload) => {
-  fetch(`${APISettings.baseURL}administration/order/ChangeInvoiceStatus`, {
+  apiFetch(`${APISettings.baseURL}administration/order/ChangeInvoiceStatus`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -147,7 +148,7 @@ const changeInvoiceStatus = (payload) => {
 }
 
 const changeOrderStatus = (payload) => {
-  fetch(`${APISettings.baseURL}administration/order/ChangeOrderStatus`, {
+  apiFetch(`${APISettings.baseURL}administration/order/ChangeOrderStatus`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -162,7 +163,7 @@ const changeOrderStatus = (payload) => {
 }
 
 const createOrder = async (payload) => {
-  const res = await fetch(`${APISettings.baseURL}administration/order/CreateOrder`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/order/CreateOrder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -182,7 +183,7 @@ const createOrder = async (payload) => {
 
 
 const updateOrder = async (payload) => {
-  const res = await fetch(`${APISettings.baseURL}administration/order/UpdateOrder`, {
+  const res = await apiFetch(`${APISettings.baseURL}administration/order/UpdateOrder`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -202,7 +203,7 @@ const updateOrder = async (payload) => {
 
 
 const getOrderById = async (orderId) => {
-  const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/order/${orderId}`, {
     method: 'GET',
     credentials: 'include',
   });
@@ -215,7 +216,7 @@ const getOrderById = async (orderId) => {
 };
 
 const uploadPurchaseInvoice = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/UploadPurchaseInvoice`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/UploadPurchaseInvoice`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -230,7 +231,7 @@ const uploadPurchaseInvoice = (payload) => {
 }
 
 const uploadInvoice = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/UploadInvoice`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/UploadInvoice`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -245,7 +246,7 @@ const uploadInvoice = (payload) => {
 }
 
 const removePurchaseInvoice = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/removePurchaseInvoice` , {
+  return apiFetch(`${APISettings.baseURL}administration/order/removePurchaseInvoice` , {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -260,7 +261,7 @@ const removePurchaseInvoice = (payload) => {
 }
 
 const updateOrderBillingAndShipping = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/UpdateOrderBillingAndShipping`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/UpdateOrderBillingAndShipping`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -275,7 +276,7 @@ const updateOrderBillingAndShipping = (payload) => {
 }
 
 const uploadOrderAttachment = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/UploadOrderAttachment`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/UploadOrderAttachment`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -290,7 +291,7 @@ const uploadOrderAttachment = (payload) => {
 }
 
 const sendPaymentLink = async (orderId) => {
-  const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}/send-payment-link`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/order/${orderId}/send-payment-link`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -305,7 +306,7 @@ const sendPaymentLink = async (orderId) => {
 }
 
 const sendReviewRequest = async (orderId) => {
-  const response = await fetch(`${APISettings.baseURL}administration/order/${orderId}/send-review-request`, {
+  const response = await apiFetch(`${APISettings.baseURL}administration/order/${orderId}/send-review-request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -320,7 +321,7 @@ const sendReviewRequest = async (orderId) => {
 }
 
 const removeOrderAttachment = (payload) => {
-  return fetch(`${APISettings.baseURL}administration/order/RemoveOrderAttachment`, {
+  return apiFetch(`${APISettings.baseURL}administration/order/RemoveOrderAttachment`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

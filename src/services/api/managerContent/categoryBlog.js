@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const blogCateogryWithPost = (storeId) =>
-  fetch(`${APISettings.baseURL}administration/BlogCategory/BlogCateogryWithPost/` + storeId, {
+  apiFetch(`${APISettings.baseURL}administration/BlogCategory/BlogCateogryWithPost/` + storeId, {
     method: 'GET',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }

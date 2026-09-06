@@ -1,9 +1,10 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 // custom GET (bo masz route z paramem)
 const getByProductId = (productId) =>
-  fetch(`${APISettings.baseURL}administration/product-faq/${productId}`, {
+  apiFetch(`${APISettings.baseURL}administration/product-faq/${productId}`, {
     method: 'GET',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }
@@ -17,7 +18,7 @@ const getByProductId = (productId) =>
 
 // custom DELETE (bo masz id w URL, nie w body)
 const removeProductFaq = (productFaqId) =>
-  fetch(`${APISettings.baseURL}administration/product-faq/${productFaqId}`, {
+  apiFetch(`${APISettings.baseURL}administration/product-faq/${productFaqId}`, {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }

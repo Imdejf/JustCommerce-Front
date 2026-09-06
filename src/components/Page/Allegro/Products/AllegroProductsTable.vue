@@ -243,7 +243,12 @@
 
         <el-table-column label="Akcje" width="150" label-class-name="order_label">
           <template #default="prop">
-            <el-button size="small" color="#ea580c" @click.stop="openMappingByRow(prop.row)">
+            <el-button
+              size="small"
+              color="#ea580c"
+              :loading="openingProductId === String(prop.row.id || prop.row.productId || '')"
+              @click.stop="openMappingByRow(prop.row)"
+            >
               Allegro
             </el-button>
           </template>
@@ -308,6 +313,7 @@ const cookies = new Cookies()
 
 const selectedRow = ref<any>(null)
 const selectedRowId = ref<string | null>(null)
+const openingProductId = ref<string | null>(null)
 const filtersExpanded = ref<string[]>(['filters'])
 const isSyncingFromRoute = ref(false)
 const brands = ref<Array<{ value: string | null; label: string }>>([])
@@ -540,7 +546,7 @@ const openMapping = () => {
   openMappingByRow(selectedRow.value)
 }
 
-const openMappingByRow = (row: any) => {
+const openMappingByRow = async (row: any) => {
   const productId = row.id || row.productId
 
   if (!productId) {
@@ -548,10 +554,33 @@ const openMappingByRow = (row: any) => {
     return
   }
 
-  router.push({
-    path: `/allegro/products/${productId}`,
-    query: route.query
-  })
+  let gtin = String(row.gtin || row.Gtin || '').trim()
+  openingProductId.value = String(productId)
+
+  try {
+    if (!gtin) {
+      const result = await Api.products.get(productId)
+      const data = result?.data || result
+      gtin = String(data?.gtin || data?.Gtin || '').trim()
+    }
+
+    router.push({
+      path: `/allegro/products/${productId}`,
+      query: {
+        ...route.query,
+        ...(gtin ? { gtin } : {}),
+      },
+    })
+  } catch (error) {
+    console.error(error)
+    toast.error('Nie udało się pobrać EAN produktu')
+    router.push({
+      path: `/allegro/products/${productId}`,
+      query: route.query,
+    })
+  } finally {
+    openingProductId.value = null
+  }
 }
 
 const handlePageChange = async (page: number) => {

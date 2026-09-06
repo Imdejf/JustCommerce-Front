@@ -1,8 +1,9 @@
 import { CreateBaseApiService } from '../baseApi'
 import { APISettings } from '../config.js'
+import { apiFetch } from '../http.js'
 
 const exportToExcel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/rule/ExportToExcel`, {
+  apiFetch(`${APISettings.baseURL}administration/rule/ExportToExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -15,7 +16,7 @@ const exportToExcel = (payload) =>
   })
 
 const importFromExcel = (payload) =>
-  fetch(`${APISettings.baseURL}administration/rule/ImportFromExcel`, {
+  apiFetch(`${APISettings.baseURL}administration/rule/ImportFromExcel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

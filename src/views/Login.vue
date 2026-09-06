@@ -27,8 +27,8 @@ const handleLogin = () => {
       if (data.data.authenticationError) {
         error.value = true
       } else {
-        cookies.set('Authorization', data.data.jwt.jwt)
-        cookies.set("dsStore", "cdf63b0a-88d0-40b0-a31f-c63ae02f320d")
+        cookies.set('Authorization', data.data.jwt.jwt, { path: '/' })
+        cookies.set('dsStore', 'cdf63b0a-88d0-40b0-a31f-c63ae02f320d', { path: '/' })
         router.push('/')
       }
     })

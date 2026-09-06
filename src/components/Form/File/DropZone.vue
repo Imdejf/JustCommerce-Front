@@ -4,6 +4,7 @@ import { DropZone } from 'dropzone-vue'
 import type { FileDTO } from '/@/types/file/File'
 import { useToast } from 'vue-toastification'
 import Cookies from 'universal-cookie'
+import { apiFetch } from '/@/services/api/http.js'
 
 export default defineComponent({
   name: 'App',
@@ -66,7 +67,7 @@ export default defineComponent({
       const defaultString = import.meta.env.VITE_API_URL
 
       try {
-        const response = await fetch(defaultString + 'administration/file', {
+        const response = await apiFetch(defaultString + 'administration/file', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(fileToSave)
