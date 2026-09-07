@@ -78,6 +78,11 @@ const calculateMargin = (priceNetto: number, producerPriceNetto: number, startin
 const createOrderFromOffer = (offerId: string) => {
   router.push({ name: 'CreateOrder', params: { offerId } }) 
 }
+
+const copyOffer = (offerId: string) => {
+  router.push({ name: 'CreateOffer', query: { copyFrom: offerId } })
+  emit('closeOffer')
+}
 </script>
 <template>
     <div class="w-full h-auto !border-b">
@@ -96,7 +101,7 @@ const createOrderFromOffer = (offerId: string) => {
         <el-button type="info">Status</el-button>
         <el-button type="info" @click="generateOrDownloadOfferHandle(offer.id)">{{ offer.filePath ? 'Pobierz ofertę' : 'Generuj ofertę' }}</el-button>
         <el-button type="info" @click="createOrderFromOffer(offer.id)">Utwórz zamówienie</el-button>
-        <el-button type="info">Kopiuj</el-button>
+        <el-button type="info" @click="copyOffer(offer.id)">Kopiuj</el-button>
         </div>
     </div>
     <div class="pt-5">

@@ -129,6 +129,19 @@ const readyToMarkShippedRows = computed(() =>
 const money = (v?: number) =>
   new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(v ?? 0)
 
+const formatOrderDate = (value?: string | Date | null) => {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('pl-PL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(d)
+}
+
 const currentDateTimeValue = () => {
   const d = new Date()
   const yyyy = d.getFullYear()
@@ -591,7 +604,7 @@ onMounted(async () => {
     <el-card shadow="never" class="list-card">
       <div class="list-head">
         <span></span>
-        <span>Zamówienie</span>
+        <span>Zamówienie / data</span>
         <span>Producent / adres</span>
         <span>Workflow</span>
         <span>Statusy</span>
@@ -633,6 +646,9 @@ onMounted(async () => {
 
                   <div class="ship-card__col ship-card__col--order">
                     <div class="ship-card__number">#{{ row.orderNumber }}</div>
+                    <div class="ship-card__date" :title="'Data złożenia zamówienia'">
+                      {{ formatOrderDate(row.createdOn) }}
+                    </div>
                     <div class="ship-card__meta">{{ row.brandName }}</div>
                     <div class="ship-card__amount">{{ money(row.orderPriceGross) }}</div>
                     <span v-if="row.paymentProvider === PaymentProvider.CashOnDelivery" class="cod-badge">COD</span>
@@ -836,6 +852,7 @@ onMounted(async () => {
 .ship-card__col--check { display: flex; align-items: center; gap: 6px; }
 .expand-btn { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px; width: 28px; height: 28px; cursor: pointer; color: #475569; }
 .ship-card__number { font-size: 15px; font-weight: 900; color: #0f172a; }
+.ship-card__date { font-size: 11px; font-weight: 600; color: #334155; margin-top: 2px; }
 .ship-card__meta { font-size: 11px; color: #64748b; }
 .ship-card__amount { font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px; }
 .cod-badge { display: inline-flex; margin-top: 4px; padding: 2px 7px; border-radius: 999px; background: #fff7ed; color: #c2410c; font-size: 10px; font-weight: 800; }

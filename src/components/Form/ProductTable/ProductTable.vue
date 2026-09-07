@@ -303,6 +303,17 @@ watch(
 )
 
 watch(
+  () => [props.shippingNetto, props.shippingBrutto, props.transportIndividualPricing] as const,
+  ([netto, brutto, individual]) => {
+    shippingNetto.value = Number(netto ?? 0)
+    shippingBrutto.value = Number(brutto ?? 0)
+    transportIndividualPricing.value = !!individual
+    updateTotalSums()
+    emit('updateProductTableSummary', productTableSummary.value)
+  }
+)
+
+watch(
   itemsTable,
   (newItems) => {
     newItems.forEach((newItem, index) => {
