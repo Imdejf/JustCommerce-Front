@@ -409,6 +409,46 @@ const router = createRouter({
     },
     //CERTIFICATION AND SAFETY
     {
+      path: '/safety/users',
+      name: 'IamUsers',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Safety/Users/index.vue')
+    },
+    {
+      path: '/safety/users/add',
+      name: 'IamUsersCreate',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Safety/Users/CreateUser.vue')
+    },
+    {
+      path: '/safety/users/edit/:id',
+      name: 'IamUsersEdit',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Safety/Users/EditUser.vue')
+    },
+    {
+      path: '/safety/roles',
+      name: 'IamRoles',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Safety/Roles/index.vue')
+    },
+    {
+      path: '/safety/permissions',
+      name: 'IamPermissions',
+      meta: {
+        layout: PageLayout
+      },
+      component: () => import('../views/Safety/Permissions/index.vue')
+    },
+    {
       path: '/safety/CertyficationAndSafety',
       name: 'CertyficationAndSafety',
       meta: {

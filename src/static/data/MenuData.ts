@@ -141,6 +141,18 @@ export const menuData: MenuItem[] = [
     route: "/",
     subMenus: [
       {
+        name: "Użytkownicy i role",
+        route: "/safety/users"
+      },
+      {
+        name: "Role i uprawnienia",
+        route: "/safety/roles"
+      },
+      {
+        name: "Uprawnienia",
+        route: "/safety/permissions"
+      },
+      {
         name: "Certyfikaty i Bezpieczeństwo",
         route: "/safety/CertyficationAndSafety"
       }

@@ -23,6 +23,7 @@ import { productValuePrice } from './product/productValuePrice'
 import { tracking } from './tracking/tracking'
 import { productFaq } from './productFaq/productFaq'
 import { allegro } from './allegro/allegro'
+import { iamUsers, iamRoles, iamPermissions } from './iam/iam'
 
 
 export const Api = {
@@ -50,5 +51,8 @@ export const Api = {
   productValuePrice,
   tracking,
   productFaq,
-  allegro
+  allegro,
+  iamUsers,
+  iamRoles,
+  iamPermissions
 }
